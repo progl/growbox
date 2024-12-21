@@ -1,34 +1,37 @@
-#if c_BMP280 == 1
-while (xSemaphoreTake(xSemaphoreX, (TickType_t)1) == pdFALSE);
+while (xSemaphoreTake(xSemaphore_C, (TickType_t)1) == pdFALSE)
+  ;
 
-    if (!bmx280.begin())
-      {
-        Serial.println("begin() failed. check your BMx280 Interface and I2C Address.");
-        while (1);
-      }
+Wire.requestFrom(static_cast<uint16_t>(0x38), static_cast<uint8_t>(1));
 
-      if (bmx280.isBME280())
-        Serial.println("sensor is a BME280");
-      else
-        Serial.println("sensor is a BMP280");
+if (Wire.available())
+{
+  AHTx = true;
+  syslog_ng("BMx280: found sensor AHTx! Hum and Temp disable");
+}
 
-      //reset sensor to default parameters.
-      bmx280.resetToDefaults();
+Wire.requestFrom(static_cast<uint16_t>(0x76), static_cast<uint8_t>(1));
 
-      //by default sensing is disabled and must be enabled by setting a non-zero
-      //oversampling setting.
-      //set an oversampling setting for pressure and temperature measurements. 
-      bmx280.writeOversamplingPressure(BMx280MI::OSRS_P_x16);
-      bmx280.writeOversamplingTemperature(BMx280MI::OSRS_T_x16);
+if (Wire.available())
+{
+ 
+  BMP280addr = 0x76;
+  BMP280Params76 = {"BMP280", BMP280, 30000, xSemaphore_C};
+  xTaskCreatePinnedToCore(TaskTemplate, "BMP280", stack_size, (void *)&BMP280Params76, 1, NULL, 0);
 
-      //if sensor is a BME280, set an oversampling setting for humidity measurements.
-      if (bmx280.isBME280())
-        bmx280.writeOversamplingHumidity(BMx280MI::OSRS_H_x16);
+  setSensorDetected("BMx280", 1);
+}
+else
+{
 
-xSemaphoreGive(xSemaphoreX);
+  Wire.requestFrom(static_cast<uint16_t>(0x77), static_cast<uint8_t>(1));
 
+  if (Wire.available())
+  {
+    BMP280addr = 0x77;
+    BMP280Params77 = {"BMP280", BMP280, 30000, xSemaphore_C};
+    xTaskCreatePinnedToCore(TaskTemplate, "BMP280", stack_size, (void *)&BMP280Params77, 1, NULL, 0);
 
-xTaskCreate(TaskBMP280,"TaskBMP280",10000,NULL,0,NULL);
-syslog_ng("BMP280 add Task");
-
-#endif // c_BME280
+    setSensorDetected("BMx280", 1);
+  }
+}
+xSemaphoreGive(xSemaphore_C);

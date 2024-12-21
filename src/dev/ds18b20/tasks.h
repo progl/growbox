@@ -1,60 +1,67 @@
-#if c_DS18B20 == 1
-void TaskDS18B20(void *parameters)
+void DS18B20()
 {
-  vTaskDelay(10000);
-  for (;;)
+
+  sens18b20.requestTemperatures();
+
+  for (uint8_t i = 0; i < sensorCount && i < MAX_DS18B20_SENSORS; i++)
   {
-    if (OtaStart == true)
-      vTaskDelete(NULL);
-    //vTaskDelay(1000);
-    delay(100);
+    DeviceAddress currentAddress;
+    sens18b20.getAddress(currentAddress, i);
 
-    unsigned long DS18B20_LastTime = millis() - DS18B20_old;
+    float tempC = sens18b20.getTempC(currentAddress);
 
-    if (xSemaphoreX != NULL and DS18B20_LastTime > DS18B20_Repeat)
+    if (tempC != DEVICE_DISCONNECTED_C)
     {
-      if (xSemaphoreTake(xSemaphoreX, (TickType_t)5) == pdTRUE)
+      // Сохраняем адрес и температуру в массив
+      memcpy(sensorArray[i].address, currentAddress, sizeof(DeviceAddress));
+      sensorArray[i].temperature = tempC;
+      publish_parameter("dallas__" + deviceAddressToString(currentAddress), tempC, 3, 1);
+
+      // Логируем данные
+      syslog_ng("DS18B20 Sensor " + String(i) + " Temp: " + fFTS(tempC, 3));
+
+      DeviceAddress deviceAdrCompare;
+      DeviceAddress deviceAdrCompare2;
+
+      // Преобразуем строки в адреса устройств
+      stringToDeviceAddress(rootTempAddressString, deviceAdrCompare);
+      stringToDeviceAddress(WNTCAddressString, deviceAdrCompare2);
+
+      // Создаем массив и копируем в него адреса после их инициализации
+      DeviceAddress addressesToCompare[2];
+      memcpy(addressesToCompare[0], deviceAdrCompare, sizeof(DeviceAddress));
+      memcpy(addressesToCompare[1], deviceAdrCompare2, sizeof(DeviceAddress));
+      syslog_ng("DS18B20 rootTempAddressString: " + rootTempAddressString);
+      syslog_ng("DS18B20 WNTCAddressString: " + WNTCAddressString);
+      for (int j = 0; j < 2; j++)
       {
-        unsigned long DS18B20_time = millis();
-        syslog_ng("DS18B20 Start " + fFTS(DS18B20_LastTime - DS18B20_Repeat, 0) + "ms");
-        
-        
-          sens18b20.begin();
-          sens18b20.requestTemperatures();
+        syslog_ng("DS18B20 cmp: " + deviceAddressToString(addressesToCompare[j]) + ":" + deviceAddressToString(currentAddress));
+        if (memcmp(currentAddress, addressesToCompare[j], sizeof(DeviceAddress)) == 0)
+        {
+          syslog_ng("DS18B20 cmp true: " + deviceAddressToString(addressesToCompare[j]) + ":" + deviceAddressToString(currentAddress));
 
-          unsigned long cont;
-          float ds0 = -127;
-          for (cont = 0;  ( ds0 == -127 or ds0 == 85) and cont < 100; cont++)
+          if (j == 0)
           {
-            vTaskDelay(1);
-            ds0 = sens18b20.getTempCByIndex(0);
-            //sens18b20.begin();
+            
+            syslog_ng("DS18B20 found by adress RootTemp Sensor: " + fFTS(RootTemp, 3));
+            RootTempRM.add(tempC);
+            RootTemp = RootTempRM.getAverage(3);
+
+            publish_parameter("RootTemp", RootTemp, 3, 1);
+            Kornevoe = AirTemp - RootTemp;
+            rootVPD = calculateVPD(RootTemp, AirHum);
+            airVPD = calculateVPD(AirTemp, AirHum);
           }
-          if (ds0 and ds0 != -127 and ds0 != 85 and ds0 != -255)
-            RootTempRM.add(ds0);
-         // else
-            //oneWire.reset();
-            //delay(1000);
-            //sens18b20.begin();
-
-          syslog_ng("DS18B20:" + fFTS(ds0, 3));
-          if (cont > 1)
-            syslog_ng("DS18B20 Error cont:" + fFTS(cont - 1, 0));
-
-          RootTemp = RootTempRM.getAverage();
-          syslog_ng("DS18B20 Filter:" + fFTS(RootTemp, 3));
-
-        DS18B20_time = millis() - DS18B20_time;
-
-        syslog_ng("DS18B20 " + fFTS(DS18B20_time, 0) + "ms end.");
-        DS18B20_old = millis();
-        xSemaphoreGive(xSemaphoreX);
+          if (j == 1)
+          {
+            wNTC = tempC;
+            syslog_ng("DS18B20 found by adress wNTC Sensor: " + fFTS(wNTC, 3));
+            publish_parameter("wNTC", wNTC, 3, 1);
+            preferences.putFloat("wNTC", wNTC);
+          }
+        }
       }
-      
     }
-    
   }
-  syslog_ng("DS18B20 EXIT Task");
 }
-
-#endif // c_DS18B2
+  TaskParams DS18B20Params  ;

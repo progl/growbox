@@ -1,6 +1,6 @@
 // Hex dump of 'CCS811_FW_App_v2-0-1.bin' created at 2020-05-17 20:22:19.372605
 
-#include <stdint.h>
+
 
 const char * image_name="CCS811_FW_App_v2-0-1.bin";
 const uint8_t image_data[] PROGMEM = {

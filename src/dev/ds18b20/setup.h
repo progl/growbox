@@ -1,22 +1,32 @@
-#if c_DS18B20 == 1
-while (xSemaphoreTake(xSemaphoreX, (TickType_t)1) == pdFALSE);
-
-
 sens18b20.begin();
-sens18b20.begin();
+while (xSemaphoreTake(xSemaphore_C, (TickType_t)1) == pdFALSE)
+    ;
 
-if (sens18b20.getDeviceCount() > 0)
+sensorCount = sens18b20.getDeviceCount();
+for (int attempt = 0; attempt < 10; ++attempt)
 {
+    sensorCount = sens18b20.getDeviceCount();
+    if (sensorCount != 0)
+    {
+        break;
+    }
+    sens18b20.begin();
+    vTaskDelay(100);
+}
+
+if (sensorCount > 0)
+{
+    RootTempFound = true;
     sens18b20.setResolution(12);
-    syslog_ng("DS18B20 Found 1-W devices:" + fFTS(sens18b20.getDeviceCount(), 0));
+    syslog_ng("DS18B20 Found 1-W devices:" + fFTS(sensorCount, 0));
+
+    int DS18B20_TaskErr = xTaskCreatePinnedToCore(TaskTemplate, "DS18B20", 10000, (void *)&DS18B20Params, 1, NULL, 0);
+
+    DS18B20Params = {"DS18B20", DS18B20, 30000, xSemaphore_C};
+    setSensorDetected("Dallas", 1);
 }
 else
 {
-    syslog_ng("DS18B20 not found!");
+    RootTempFound = false;
 }
-    xSemaphoreGive(xSemaphoreX);    
-
-long DS18B20_TaskErr = xTaskCreate(TaskDS18B20, "TaskDS18B20", 10000, NULL, 1, NULL);
-syslog_ng("DS18B20 add Task:" + fFTS(DS18B20_TaskErr, 0));
-
-#endif // c_DS18B20
+xSemaphoreGive(xSemaphore_C);

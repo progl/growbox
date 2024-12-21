@@ -1,107 +1,106 @@
-// Измерение термистора
-#if c_EC == 1
-void TaskEC(void *parameters)
+  // Определяем ошибку для АЦП
+
+void EC_void()
 {
-        syslog_ng("EC Task Start");
-        adc1_config_width(ADC_WIDTH_BIT_12);
-        adc1_config_channel_atten(EC_AnalogPort, ADC_ATTEN_DB_11); 
-  for (;;)
+  unsigned long EC_time = millis();
+  unsigned long ec_probe_time = micros();
+
+  // Начало работы с АЦП
+  adc_power_acquire(); // Без проверки на SUCCESS, т.к. функция ничего не возвращает
+  SAR_ADC1_LOCK_ACQUIRE();
+  delay(1); // Подождите 1 мс для стабилизации
+
+  pinMode(EC_DigitalPort1, OUTPUT);
+  pinMode(EC_DigitalPort2, OUTPUT);
+
+  // Инициализация для измерений
+  digitalWrite(EC_DigitalPort1, LOW);
+  digitalWrite(EC_DigitalPort2, LOW);
+
+  unsigned long An0 = 0;
+  unsigned long Ap0 = 0;
+
+  // Измерения
+  for (long i = 0; i < EC_MiddleCount && !OtaStart; i++)
   {
-    if (OtaStart == true)
-      vTaskDelete(NULL);
-    vTaskDelay(100);
-    //syslog_ng("EC loop");
+    digitalWrite(EC_DigitalPort1, HIGH);
+    delayMicroseconds(10);
 
-    unsigned long EC_LastTime = millis() - EC_old;
-
-    if (xSemaphoreX != NULL and EC_LastTime > EC_Repeat)
-    { //syslog_ng("EC Semaphore");
-      vTaskDelay(1);
-
-      if (xSemaphoreTake(xSemaphoreX, (TickType_t)2) == pdTRUE)
-      {
-        unsigned long EC_time = millis();
-        syslog_ng("EC Start " + fFTS(EC_LastTime - EC_Repeat, 0) + "ms");
-
-        unsigned long An0 = 0;
-        unsigned long Ap0 = 0;
-
-        pinMode(EC_DigitalPort1, OUTPUT);
-        pinMode(EC_DigitalPort2, OUTPUT);
-
-        digitalWrite(EC_DigitalPort1, LOW);
-        digitalWrite(EC_DigitalPort2, LOW);
-
-        long ect = millis();
-
-        // rtc_wdt_protect_off();
-        // rtc_wdt_disable();
-        // disableCore0WDT();
-        // disableLoopWDT();
-
-        for (long i = 0; i < EC_MiddleCount and OtaStart != true; i++)
-        {
-          pinMode(EC_DigitalPort1, OUTPUT);
-          pinMode(EC_DigitalPort2, OUTPUT);
-          digitalWrite(EC_DigitalPort1, LOW);
-          digitalWrite(EC_DigitalPort2, LOW);
-
-          digitalWrite(EC_DigitalPort1, HIGH);
-          Ap0 = adc1_get_raw(EC_AnalogPort) + Ap0;
-          digitalWrite(EC_DigitalPort1, LOW);
-          delayMicroseconds(1);
-
-          digitalWrite(EC_DigitalPort2, HIGH);
-          delayMicroseconds(1);
-          digitalWrite(EC_DigitalPort2, LOW);
-
-          digitalWrite(EC_DigitalPort1, HIGH);
-          delayMicroseconds(1);
-          digitalWrite(EC_DigitalPort1, LOW);
-
-          digitalWrite(EC_DigitalPort2, HIGH);
-          An0 = adc1_get_raw(EC_AnalogPort) + An0;
-          digitalWrite(EC_DigitalPort2, LOW);
-
-          if (millis() - ect > 1000)
-          {
-            pinMode(EC_DigitalPort1, INPUT);
-            pinMode(EC_DigitalPort2, INPUT);
-            //delay (300);
-            vTaskDelay(300 / portTICK_PERIOD_MS);
-            ect = millis();
-          }
-        }
-
-        // rtc_wdt_protect_on();
-        // rtc_wdt_enable();
-        // enableCore0WDT();
-        // enableLoopWDT();
-
-        pinMode(EC_DigitalPort1, INPUT);
-        pinMode(EC_DigitalPort2, INPUT);
-
-        float Mid_Ap0 = float(Ap0) / EC_MiddleCount;
-        float Mid_An0 = float(An0) / EC_MiddleCount;
-        ApRM.add(Mid_Ap0);
-        AnRM.add(Mid_An0);
-        if (Mid_Ap0 < 4095)
-          //Ap = Mid_Ap0;
-          Ap = ApRM.getAverage();
-        if (Mid_An0 > 0)
-          //An = Mid_An0;
-          An = AnRM.getAverage();
-
-        EC_time = millis() - EC_time;
-        syslog_ng("EC Ap:" + fFTS(Ap, 3));
-        syslog_ng("EC An:" + fFTS(An, 3));
-        syslog_ng("EC " + fFTS(EC_time, 0) + "ms end.");
-        EC_old = millis();
-        
-        xSemaphoreGive(xSemaphoreX);
-        //vTaskDelay(1000 / portTICK_PERIOD_MS);
-      }
+    // Периодический запуск и завершение ADC
+    if (__wega_adcStart(EC_AnalogPort) == false)
+    {
+      syslog_ng("Ошибка при запуске АЦП");
+      return;
     }
+    Ap0 += __wega_adcEnd(EC_AnalogPort);
+
+    digitalWrite(EC_DigitalPort1, LOW);
+    digitalWrite(EC_DigitalPort2, HIGH);
+    delayMicroseconds(10);
+
+    if (__wega_adcStart(EC_AnalogPort) == false)
+    {
+      syslog_ng("Ошибка при запуске АЦП");
+      return;
+    }
+    An0 += __wega_adcEnd(EC_AnalogPort);
+    digitalWrite(EC_DigitalPort2, LOW);
   }
+
+  // Завершаем измерения
+  ec_probe_time = micros() - ec_probe_time;
+  pinMode(EC_DigitalPort1, INPUT);
+  pinMode(EC_DigitalPort2, INPUT);
+
+  // Освобождаем АЦП
+  SAR_ADC1_LOCK_RELEASE();
+  adc_power_release();
+
+  // Средние значения
+  float Mid_Ap0 = float(Ap0) / EC_MiddleCount;
+  float Mid_An0 = float(An0) / EC_MiddleCount;
+
+  // Применение фильтра
+  if (EC_KAL_E == 1)
+  {
+    ApRM_AVG.add(Mid_Ap0);
+    AnRM_AVG.add(Mid_An0);
+    Ap = ApRM_AVG.getAverage();
+    An = AnRM_AVG.getAverage();
+  }
+  else
+  {
+    An = Mid_An0;
+    Ap = Mid_Ap0;
+  }
+
+  // Частота измерений
+  float EC_Freq = EC_MiddleCount * 1000 / float(ec_probe_time);
+
+  // Время работы
+  EC_time = millis() - EC_time;
+  EC_old = millis();
+
+  // Получаем EC
+  get_ec();
+
+  // Логирование
+  syslog_ng("EC Ap:" + fFTS(Ap, 3) + " An:" + fFTS(An, 3) +
+            " probe time micros:" + String(ec_probe_time) +
+            " probe count:" + String(EC_MiddleCount) +
+            " Frequency kHz:" + fFTS(EC_Freq, 3) +
+            " wR2:" + fFTS(wR2, 3) +
+            " wNTC:" + fFTS(wNTC, 3) +
+            " wEC:" + fFTS(wEC, 3) +
+            " " + fFTS(EC_time, 0) + "ms end.");
+
+  // Публикация данных
+  publish_parameter("EC_Kalman", EC_Kalman, 3, 1);
+  publish_parameter("wECnt", ec_notermo, 3, 1);
+  publish_parameter("wR2", wR2, 3, 1);
+  publish_parameter("wEC", wEC, 3, 1);
+  publish_parameter("Ap", Ap, 3, 1);
+  publish_parameter("An", An, 3, 1);
 }
-#endif // c_EC
+
+TaskParams EC_voidParams;

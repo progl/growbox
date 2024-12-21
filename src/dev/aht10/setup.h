@@ -1,14 +1,24 @@
-#if c_AHT10 == 1
-while (xSemaphoreTake(xSemaphoreX, (TickType_t)1) == pdFALSE);
+while (xSemaphoreTake(xSemaphore_C, (TickType_t)1) == pdFALSE)
+  ;
+
+Wire.requestFrom(static_cast<uint16_t>(AHT10addr), static_cast<uint8_t>(1));
+if (Wire.available())
+{
 
   myAHT10.softReset();
   delay(50);
   myAHT10.begin();
   myAHT10.setNormalMode();
-  //myAHT10.setCycleMode();
-xSemaphoreGive(xSemaphoreX);
 
+  AHT10Params = {"AHT10", AHT10, 30000, xSemaphore_C};
+  xTaskCreatePinnedToCore(TaskTemplate,
+                          "AHT10",
+                          stack_size,
+                          (void *)&AHT10Params,
+                          1,
+                          NULL,
+                          0);
 
-xTaskCreate(TaskAHT10,"TaskAHT10",5000,NULL,1,NULL);
-syslog_ng("AHT10 add Task");
-#endif // c_TaskAHT10
+  setSensorDetected("AHT10", 1);
+}
+xSemaphoreGive(xSemaphore_C);

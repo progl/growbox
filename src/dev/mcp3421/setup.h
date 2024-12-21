@@ -1,19 +1,24 @@
-#if c_MCP3421 == 1
-while (xSemaphoreTake(xSemaphoreX, (TickType_t)1) == pdFALSE);
+
+while (xSemaphoreTake(xSemaphore_C, (TickType_t)1) == pdFALSE)
+  ;
+
+Wire.requestFrom(static_cast<uint16_t>(MCP3421addr), static_cast<uint8_t>(1));
+if (Wire.available())
+{
 
   MCP342x::generalCallReset();
   delay(1); // MC342x needs 300us to settle
-    // Check device present
-  Wire.requestFrom(address, (uint8_t)1);
-  if (!Wire.available()) {
-    syslog_err("MCP3421: No device found");
-    //Serial.print("No device found at address ");
-    //Serial.println(address, HEX);     
-  }
-  else 
-  syslog_ng("MCP3421: Device found!");
-    xSemaphoreGive(xSemaphoreX);    
+  MCP3421Params = {"MCP3421", MCP3421, 30000, xSemaphore_C};
+  xTaskCreatePinnedToCore(TaskTemplate,
+                          "MCP3421",
+                          stack_size,
+                          (void *)&MCP3421Params,
+                          1,
+                          NULL,
+                          1);
 
+ 
+  setSensorDetected("MCP3421", 1);
+}
 
-xTaskCreate(TaskMCP3421,"TaskMCP3421",5000,NULL,1,NULL);
-#endif // c_MCP3421
+xSemaphoreGive(xSemaphore_C);
