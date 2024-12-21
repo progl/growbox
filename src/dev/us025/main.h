@@ -14,5 +14,5 @@ boolean first_Dist = true;
 boolean first_Level = true;
 
 // Экземпляр и использование
-UltrasonicSensor distanceSensor(13, 14, timeout); // 30 мс таймаут
+UltrasonicSensor distanceSensor(13, 14, timeout); // 200000 мс таймаут - мало ли в потолок смотрим 
 UltrasonicMeasurement measurement;
