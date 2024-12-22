@@ -727,9 +727,10 @@ Group groups[] = {
      }},
 
     {"Калибровка",
-     21,
+     22,
      {
 
+         {"VccRU", "Параметр RAW VCC для расчета своего VCC", Param::FLOAT, .defaultFloat = VccRawUser},
          {"tR_DAC", "Параметр tR_DAC для NTC", Param::FLOAT, .defaultFloat = tR_DAC},
          {"tR_B", "Параметр tR_B для NTC", Param::FLOAT, .defaultFloat = tR_B},
          {"tR_val_korr", "Линейная коррекция NTC", Param::FLOAT, .defaultFloat = tR_val_korr},

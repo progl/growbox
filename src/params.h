@@ -360,6 +360,9 @@ int DRV3_D_State = 0;
 int DRV4_C_State = 0;
 int DRV4_D_State = 0;
 
+float VccRaw = 0;
+float VccRawUser = 2048;
+
 std::map<std::string, int *> variablePointers;
 
 // Инициализация словаря указателями на переменные
