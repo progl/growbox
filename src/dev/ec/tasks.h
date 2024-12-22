@@ -29,6 +29,8 @@ void EC_void()
         // Периодический запуск и завершение ADC
         if (__wega_adcStart(EC_AnalogPort) == false)
         {
+            SAR_ADC1_LOCK_RELEASE();
+            adc_power_release();
             syslog_ng("Ошибка при запуске АЦП");
             return;
         }
@@ -41,6 +43,8 @@ void EC_void()
         if (__wega_adcStart(EC_AnalogPort) == false)
         {
             syslog_ng("Ошибка при запуске АЦП");
+            SAR_ADC1_LOCK_RELEASE();
+            adc_power_release();
             return;
         }
         An0 += __wega_adcEnd(EC_AnalogPort);
