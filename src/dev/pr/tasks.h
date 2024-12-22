@@ -82,7 +82,7 @@ void PR_void()
     {
         if (__wega_adcStart(PR_AnalogPort) == false)
         {
-            syslog_ng("PR: Ошибка при запуске АЦП "+ fFTS(cont,0));
+            syslog_ng("PR: Ошибка при запуске АЦП " + fFTS(cont, 0));
             SAR_ADC1_LOCK_RELEASE();
             adc_power_release();
             return;
@@ -95,7 +95,7 @@ void PR_void()
     // Завершаем измерения
     pr_probe_time = micros() - pr_probe_time;
     syslog_ng("PR: " + fFTS(PR, 3));
-    
+
     PR_time = millis() - PR_time;
     float Mid_PR = float(PR0) / PR_MiddleCount;
 
