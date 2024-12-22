@@ -101,16 +101,7 @@ void PR_void()
     // Среднее значение
     float Mid_PR = float(PR0) / PR_MiddleCount;
 
-    // Применение фильтра (если нужно)
-    if (PR_KAL_E == 1)
-    {
-        PRRM_AVG.add(Mid_PR);
-        PR = PRRM_AVG.getAverage();
-    }
-    else
-    {
-        PR = Mid_PR;
-    }
+    PR = Mid_PR;
 
     // Частота измерений
     float PR_Freq = PR_MiddleCount * 1000 / float(pr_probe_time);

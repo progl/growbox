@@ -8,7 +8,7 @@ else
     US_ECHO = 13;
     US_TRIG = 14;
 }
-UltrasonicSensor distanceSensor(US_ECHO, US_TRIG, timeout);  // 30 мс таймаут
+UltrasonicSensor distanceSensor(US_ECHO, US_TRIG, 200000);  // 20 мс таймаут
 
 distanceSensor.begin();
 distanceSensor.triggerPulse();
