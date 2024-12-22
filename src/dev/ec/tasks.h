@@ -25,7 +25,6 @@ void EC_void()
     {
         digitalWrite(EC_DigitalPort1, HIGH);
         delayMicroseconds(10);
-
         // Периодический запуск и завершение ADC
         if (__wega_adcStart(EC_AnalogPort) == false)
         {
