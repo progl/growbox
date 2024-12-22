@@ -50,7 +50,7 @@ float fpr(float my_arg)
     }
 
     float R = pr(my_arg);
-    syslog_ng("PR: R" + fFTS(R, 3));
+    syslog_ng("PR: fpr R " + fFTS(R, 3));
 
     if (pR_type == "direct" || pR_type == "reverse")
     {
@@ -70,52 +70,51 @@ void PR_void()
 {
     unsigned long PR_time = millis();
     unsigned long pr_probe_time = micros();
-
+    unsigned long PR0 = 0;
+    syslog_ng("PR: " + fFTS(pr_probe_time, 0) + "ms start.");
     // Начало работы с АЦП
     adc_power_acquire();  // Без проверки на SUCCESS, т.к. функция ничего не возвращает
     SAR_ADC1_LOCK_ACQUIRE();
     delay(1);  // Подождите 1 мс для стабилизации
-
-    unsigned long PR0 = 0;
 
     // Измерения
     for (long cont = 0; cont < PR_MiddleCount && !OtaStart; cont++)
     {
         if (__wega_adcStart(PR_AnalogPort) == false)
         {
-            syslog_ng("Ошибка при запуске АЦП");
+            syslog_ng("PR: Ошибка при запуске АЦП "+ fFTS(cont,0));
             SAR_ADC1_LOCK_RELEASE();
             adc_power_release();
             return;
         }
         PR0 += __wega_adcEnd(PR_AnalogPort);
     }
-
-    // Завершаем измерения
-    pr_probe_time = micros() - pr_probe_time;
-
     // Освобождаем АЦП
     SAR_ADC1_LOCK_RELEASE();
     adc_power_release();
-
-    // Среднее значение
+    // Завершаем измерения
+    pr_probe_time = micros() - pr_probe_time;
+    syslog_ng("PR: " + fFTS(PR, 3));
+    
+    PR_time = millis() - PR_time;
     float Mid_PR = float(PR0) / PR_MiddleCount;
 
     PR = Mid_PR;
+    wPR = fpr(PR);
 
     // Частота измерений
     float PR_Freq = PR_MiddleCount * 1000 / float(pr_probe_time);
 
     // Время работы
-    PR_time = millis() - PR_time;
 
     // Логирование
-    syslog_ng("PR: " + fFTS(PR, 3) + " probe time micros:" + String(pr_probe_time) + " probe count:" +
-              String(PR_MiddleCount) + " Frequency kHz:" + fFTS(PR_Freq, 3) + " " + fFTS(PR_time, 0) + "ms end.");
+    syslog_ng("PR: " + fFTS(PR, 3) + " wPR " + fFTS(wPR, 3) + " probe time micros:" + String(pr_probe_time) +
+              " probe count:" + String(PR_MiddleCount) + " Frequency kHz:" + fFTS(PR_Freq, 3) + " " + fFTS(PR_time, 0) +
+              "ms end.");
 
     // Публикация данных
     publish_parameter("PR", PR, 3, 1);
-    publish_parameter("wPR", fpr(PR), 3, 1);
+    publish_parameter("wPR", wPR, 3, 1);
 }
 
 TaskParams PRParams;
