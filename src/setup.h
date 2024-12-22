@@ -3,23 +3,15 @@ int stack_size = 4096;
 void setupTimers()
 {
 #if defined(ENABLE_PONICS_ONLINE)
-    mqttReconnectTimer = xTimerCreate(
-        "MqttReconnectTimer",
-        pdMS_TO_TICKS(20000),
-        pdFALSE,
-        (void *)0,
-        onMqttReconnectTimer);
+    mqttReconnectTimer =
+        xTimerCreate("MqttReconnectTimer", pdMS_TO_TICKS(20000), pdFALSE, (void *)0, onMqttReconnectTimer);
     if (mqttReconnectTimer == NULL)
     {
         syslog_ng("Failed to create timer for MQTT reconnect");
     }
 #endif
-    mqttReconnectTimerHa = xTimerCreate(
-        "MqttReconnectTimerHa",
-        pdMS_TO_TICKS(20000),
-        pdFALSE,
-        (void *)0,
-        onMqttReconnectTimerHa);
+    mqttReconnectTimerHa =
+        xTimerCreate("MqttReconnectTimerHa", pdMS_TO_TICKS(20000), pdFALSE, (void *)0, onMqttReconnectTimerHa);
 
     if (mqttReconnectTimerHa == NULL)
     {
@@ -88,54 +80,59 @@ void setupOTA()
     ArduinoOTA.setHostname(HOSTNAME.c_str());
     preferences.putInt("rst_counter", 5);
     ArduinoOTA
-        .onStart([]()
-                 {
-                     OtaStart = true;
-                     preferences.putInt("rst_counter", 5);
-                     Serial.println("before OTA");
-                     syslog_ng("OTA: Start");
+        .onStart(
+            []()
+            {
+                OtaStart = true;
+                preferences.putInt("rst_counter", 5);
+                Serial.println("before OTA");
+                syslog_ng("OTA: Start");
 
-                     pinMode(EC_DigitalPort1, INPUT);
-                     pinMode(EC_DigitalPort2, INPUT);
-                     pinMode(EC_AnalogPort, INPUT);
+                pinMode(EC_DigitalPort1, INPUT);
+                pinMode(EC_DigitalPort2, INPUT);
+                pinMode(EC_AnalogPort, INPUT);
 
-                     String type;
-                     if (ArduinoOTA.getCommand() == U_FLASH)
-                         type = "sketch";
-                     else
-                         type = "filesystem";
-                     syslog_ng("OTA:Start updating " + type); })
-        .onEnd([]()
-               { 
-                   preferences.putInt("rst_counter", 0);
-                   syslog_ng("OTA:End"); })
+                String type;
+                if (ArduinoOTA.getCommand() == U_FLASH)
+                    type = "sketch";
+                else
+                    type = "filesystem";
+                syslog_ng("OTA:Start updating " + type);
+            })
+        .onEnd(
+            []()
+            {
+                preferences.putInt("rst_counter", 0);
+                syslog_ng("OTA:End");
+            })
         .onProgress([](unsigned int progress, unsigned int total)
                     { Serial.printf("Progress: %u%%\r", (progress / (total / 100))); })
-        .onError([](ota_error_t error)
-                 {
-                      
-                     syslog_err("OTA:Error: " + String(error));
-                    preferences.putInt("rst_counter", 5);
-                     switch (error)
-                     {
-                     case OTA_AUTH_ERROR:
-                         syslog_err("OTA:Auth Failed");
-                         break;
-                     case OTA_BEGIN_ERROR:
-                         syslog_err("OTA:Begin Failed");
-                         break;
-                     case OTA_CONNECT_ERROR:
-                         syslog_err("OTA:Connect Failed");
-                         break;
-                     case OTA_RECEIVE_ERROR:
-                         syslog_err("OTA:Receive Failed");
-                         break;
-                     case OTA_END_ERROR:
-                         syslog_err("OTA:End Failed");
-                         break;
-                     }
-                     preferences.putString(pref_reset_reason, "OTA");
-                     ESP.restart(); });
+        .onError(
+            [](ota_error_t error)
+            {
+                syslog_err("OTA:Error: " + String(error));
+                preferences.putInt("rst_counter", 5);
+                switch (error)
+                {
+                    case OTA_AUTH_ERROR:
+                        syslog_err("OTA:Auth Failed");
+                        break;
+                    case OTA_BEGIN_ERROR:
+                        syslog_err("OTA:Begin Failed");
+                        break;
+                    case OTA_CONNECT_ERROR:
+                        syslog_err("OTA:Connect Failed");
+                        break;
+                    case OTA_RECEIVE_ERROR:
+                        syslog_err("OTA:Receive Failed");
+                        break;
+                    case OTA_END_ERROR:
+                        syslog_err("OTA:End Failed");
+                        break;
+                }
+                preferences.putString(pref_reset_reason, "OTA");
+                ESP.restart();
+            });
 
     ArduinoOTA.begin();
 }
@@ -177,7 +174,6 @@ void setupDisplay()
 
 void setupResetReasons()
 {
-
     Reset_reason0 = reset_reason(rtc_get_reset_reason(0));
     Reset_reason1 = reset_reason(rtc_get_reset_reason(1));
 
@@ -193,15 +189,13 @@ void setupI2C()
 
 void setupServer()
 {
-
     server.on("/", HTTP_GET, handleRoot);
     server.on("/api/status", HTTP_GET, handleApiStatuses);
     server.on("/api/groups", HTTP_GET, handleApiGroups);
     server.on("/save-settings", HTTP_POST, saveSettings);
     server.on("/reset", handleReset);
     server.on("/update", update);
-    server.onNotFound([]()
-                      { server.send(404, "text/plain", "FileNotFound"); });
+    server.onNotFound([]() { server.send(404, "text/plain", "FileNotFound"); });
     server.begin();
 
     http.setConnectTimeout(10000);
@@ -215,10 +209,10 @@ void setupMQTT()
     syslog_ng("mqtt MQTT_HOST: " + String(MQTT_HOST) + "mqtt MQTT_PORT: " + String(MQTT_PORT));
     mqttClient.onConnect(onMqttConnect);
     mqttClient.onDisconnect(onMqttDisconnect);
-    mqttClient.onMessage(onMqttMessage); // Set the callback for received messages
+    mqttClient.onMessage(onMqttMessage);  // Set the callback for received messages
     mqttClient.setClientId(wegadb.c_str());
     mqttClient.setServer(MQTT_HOST, MQTT_PORT);
-    mqttClient.setCredentials(mqtt_mqtt_user, mqtt_mqtt_password); // Set login and password
+    mqttClient.setCredentials(mqtt_mqtt_user, mqtt_mqtt_password);  // Set login and password
     syslog_ng("mqtt end setupMQTT connected: " + String(mqttClient.connected()));
 #endif
 }
@@ -235,37 +229,36 @@ void setupHA_MQTT()
         mqttClientHA.onDisconnect(onMqttDisconnectHA);
         mqttClientHA.setClientId((wegadb + "_ha").c_str());
         mqttClientHA.setServer(a_ha_c, uint16_t(port_ha));
-        mqttClientHA.setCredentials(u_ha_c, p_ha_c); // Set login and password
+        mqttClientHA.setCredentials(u_ha_c, p_ha_c);  // Set login and password
     }
 }
 
 void setupDevices()
 {
-
 #include <dev/mcp23017/setup.h>
     if (disable_ntc == 0)
     {
 #include <dev/ntc/setup.h>
     }
 
-#include <dev/ds18b20/setup.h>
-#include <dev/ec/setup.h>
-#include <dev/cput/setup.h>
-#include <dev/vcc/setup.h>
-#include <dev/us025/setup.h>
-#include <dev/mcp3421/setup.h>
-#include <dev/aht10/setup.h>
 #include <dev/ads1115/setup.h>
-#include <dev/pr/setup.h>
-#include <dev/lcd/setup.h>
-#include <dev/ccs811/setup.h>
+#include <dev/aht10/setup.h>
 #include <dev/am2320/setup.h>
 #include <dev/bmp280/setup.h>
+#include <dev/ccs811/setup.h>
+#include <dev/cput/setup.h>
 #include <dev/doser/setup.h>
+#include <dev/ds18b20/setup.h>
+#include <dev/ec/setup.h>
 #include <dev/hx710b/setup.h>
+#include <dev/lcd/setup.h>
+#include <dev/mcp3421/setup.h>
+#include <dev/pr/setup.h>
 #include <dev/sdc30/setup.h>
-#include <dev/vl6180x/setup.h>
+#include <dev/us025/setup.h>
+#include <dev/vcc/setup.h>
 #include <dev/vl53l0x_us/setup.h>
+#include <dev/vl6180x/setup.h>
 }
 
 void setupTaskMqtt()
@@ -278,10 +271,9 @@ void setupTaskMqtt()
 
 void setup()
 {
-
     Serial.begin(115200);
     mcp.writeGPIOAB(0);
-    esp_register_shutdown_handler(debugUpdate); // Регистрация обработчика перезагрузки
+    esp_register_shutdown_handler(debugUpdate);  // Регистрация обработчика перезагрузки
     // Выводим информацию после перезагрузки
     printDebugInfo();
 
@@ -293,7 +285,7 @@ void setup()
     setup_preferences();
     mqttPrefix = update_token + "/";
     setupMQTT();
-    setupHA_MQTT(); // добавлен вызов функции для настройки MQTT для HA
+    setupHA_MQTT();  // добавлен вызов функции для настройки MQTT для HA
     setupTimers();
     setupSyslog();
     setupWiFi();
@@ -335,9 +327,9 @@ void setup()
     xTimerStart(mqttReconnectTimer, 0);
 #endif
     xTimerStart(mqttReconnectTimerHa, 0);
-    distanceSensor.begin(); // Инициализация датчика
+    distanceSensor.begin();  // Инициализация датчика
     setupDevices();
-    distanceSensor.begin(); // Инициализация датчика
+    distanceSensor.begin();  // Инициализация датчика
     syslog_ng("endsetup");
     // Пример намеренной ошибки для проверки
 
