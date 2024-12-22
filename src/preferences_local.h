@@ -48,7 +48,7 @@ PreferenceItem preferencesArray[] = {
     {"HOSTNAME", DataType::STRING, {"growbox"}, &HOSTNAME, &preferences},
     {"ntc_mea_e", DataType::FLOAT, Data(0.0f), &ntc_mea_e, &preferences},
     {"ntc_est_e", DataType::FLOAT, Data(0.0f), &ntc_est_e, &preferences},
-    {"", DataType::FLOAT, Data(0.0f), &VccRawUser, &preferences},
+    {"VccRU", DataType::FLOAT, Data(2048.0f), &VccRawUser, &preferences},
 
     {"ntc_q", DataType::FLOAT, Data(0.0f), &ntc_q, &preferences},
     {"NTC_KAL_E", DataType::INTEGER, {0}, &NTC_KAL_E, &preferences},
