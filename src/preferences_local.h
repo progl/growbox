@@ -5,37 +5,37 @@ String airStyle;
 
 enum DataType
 {
-  FLOAT,
-  STRING,
-  BOOLEAN,
-  INTEGER
+    FLOAT,
+    STRING,
+    BOOLEAN,
+    INTEGER
 };
 
 struct Data
 {
-  union Value
-  {
-    float fValue;
-    char sValue[50]; // choose an appropriate size
-    bool bValue;
-    int iValue;
-  } value;
+    union Value
+    {
+        float fValue;
+        char sValue[50];  // choose an appropriate size
+        bool bValue;
+        int iValue;
+    } value;
 
-  DataType type;
+    DataType type;
 
-  Data(float f) : type(FLOAT) { value.fValue = f; }
-  Data(const char *s) : type(STRING) { strncpy(value.sValue, s, sizeof(value.sValue)); }
-  Data(bool b) : type(BOOLEAN) { value.bValue = b; }
-  Data(int i) : type(INTEGER) { value.iValue = i; }
+    Data(float f) : type(FLOAT) { value.fValue = f; }
+    Data(const char *s) : type(STRING) { strncpy(value.sValue, s, sizeof(value.sValue)); }
+    Data(bool b) : type(BOOLEAN) { value.bValue = b; }
+    Data(int i) : type(INTEGER) { value.iValue = i; }
 };
 
 struct PreferenceItem
 {
-  const char *key;
-  DataType type;
-  Data defaultValue;
-  void *variable;
-  Preferences *preferences;
+    const char *key;
+    DataType type;
+    Data defaultValue;
+    void *variable;
+    Preferences *preferences;
 };
 
 PreferenceItem preferencesArray[] = {
@@ -220,45 +220,45 @@ PreferenceItem preferencesArray[] = {
     {"PumpA_Step_SUM", DataType::FLOAT, {0.0f}, &PumpA_Step_SUM, &config_preferences},
     {"PumpB_Step_SUM", DataType::FLOAT, {0.0f}, &PumpB_Step_SUM, &config_preferences},
 
-    
-
 };
 
 const int preferencesCount = sizeof(preferencesArray) / sizeof(preferencesArray[0]);
 
 PreferenceItem *findPreferenceByKey(const char *key)
 {
-  if (key == nullptr)
-    return nullptr;
-  for (int i = 0; i < preferencesCount; i++)
-  {
-    if (strcmp(preferencesArray[i].key, key) == 0)
+    if (key == nullptr) return nullptr;
+    for (int i = 0; i < preferencesCount; i++)
     {
-      return &preferencesArray[i];
+        if (strcmp(preferencesArray[i].key, key) == 0)
+        {
+            return &preferencesArray[i];
+        }
     }
-  }
-  return nullptr;
+    return nullptr;
 }
 
 void loadPreferences()
 {
-  for (int i = 0; i < sizeof(preferencesArray) / sizeof(PreferenceItem); ++i)
-  {
-
-    switch (preferencesArray[i].type)
+    for (int i = 0; i < sizeof(preferencesArray) / sizeof(PreferenceItem); ++i)
     {
-    case DataType::FLOAT:
-      *(float *)preferencesArray[i].variable = preferencesArray[i].preferences->getFloat(preferencesArray[i].key, preferencesArray[i].defaultValue.value.fValue);
-      break;
-    case DataType::STRING:
-      *(String *)preferencesArray[i].variable = preferencesArray[i].preferences->getString(preferencesArray[i].key, preferencesArray[i].defaultValue.value.sValue);
-      break;
-    case DataType::BOOLEAN:
-      *(bool *)preferencesArray[i].variable = preferencesArray[i].preferences->getBool(preferencesArray[i].key, preferencesArray[i].defaultValue.value.bValue);
-      break;
-    case DataType::INTEGER:
-      *(int *)preferencesArray[i].variable = preferencesArray[i].preferences->getInt(preferencesArray[i].key, preferencesArray[i].defaultValue.value.iValue);
-      break;
+        switch (preferencesArray[i].type)
+        {
+            case DataType::FLOAT:
+                *(float *)preferencesArray[i].variable = preferencesArray[i].preferences->getFloat(
+                    preferencesArray[i].key, preferencesArray[i].defaultValue.value.fValue);
+                break;
+            case DataType::STRING:
+                *(String *)preferencesArray[i].variable = preferencesArray[i].preferences->getString(
+                    preferencesArray[i].key, preferencesArray[i].defaultValue.value.sValue);
+                break;
+            case DataType::BOOLEAN:
+                *(bool *)preferencesArray[i].variable = preferencesArray[i].preferences->getBool(
+                    preferencesArray[i].key, preferencesArray[i].defaultValue.value.bValue);
+                break;
+            case DataType::INTEGER:
+                *(int *)preferencesArray[i].variable = preferencesArray[i].preferences->getInt(
+                    preferencesArray[i].key, preferencesArray[i].defaultValue.value.iValue);
+                break;
+        }
     }
-  }
 }

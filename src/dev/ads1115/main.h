@@ -1,2 +1,2 @@
-uint8_t ADS1115addr=0x48;
+uint8_t ADS1115addr = 0x48;
 ADS1115_WE adc = ADS1115_WE(ADS1115addr);

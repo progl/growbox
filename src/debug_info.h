@@ -1,8 +1,9 @@
 #include <Arduino.h>
+
 #include "esp_system.h"
 #include "esp_task_wdt.h"
 
-#define STACK_DEPTH 4 // Ограничим глубину стека до 4 уровней
+#define STACK_DEPTH 4  // Ограничим глубину стека до 4 уровней
 
 // Структура для хранения отладочной информации
 typedef struct
@@ -57,7 +58,7 @@ void IRAM_ATTR debugUpdate()
 extern "C" void __real_esp_panic_handler(void *info) __attribute__((noreturn));
 extern "C" void __wrap_esp_panic_handler(void *info)
 {
-    debugUpdate(); // Сохранение отладочной информации перед вызовом оригинального обработчика паники
+    debugUpdate();  // Сохранение отладочной информации перед вызовом оригинального обработчика паники
 
     // Вызов оригинального обработчика паники для завершения обработки ошибки
     __real_esp_panic_handler(info);
@@ -75,8 +76,7 @@ void printDebugInfo()
     size_t length = sizeof(_debug_info.backtrace) / sizeof(_debug_info.backtrace[0]);
     for (size_t i = 0; i < length; ++i)
     {
-        if (_debug_info.backtrace[i] == 0)
-            break; // Если 0 — конец стека.
+        if (_debug_info.backtrace[i] == 0) break;  // Если 0 — конец стека.
         Serial.printf("0x%08x\n", _debug_info.backtrace[i]);
     }
 }
@@ -88,13 +88,13 @@ String getDebugInfoAsString()
     debugInfo += "Heap Info:\n";
     debugInfo += "Total heap: " + String(_debug_info.heap_total) + "\n";
     debugInfo += "Free heap: " + String(_debug_info.heap_free) + "\n";
-    debugInfo += "Minimum free heap: " + String(_debug_info.heap_free_min) + " at time " + String(_debug_info.heap_min_time) + "\n";
+    debugInfo += "Minimum free heap: " + String(_debug_info.heap_free_min) + " at time " +
+                 String(_debug_info.heap_min_time) + "\n";
 
     debugInfo += "Backtrace:\n";
     for (int i = 0; i < 4; ++i)
     {
-        if (_debug_info.backtrace[i] == 0)
-            break;
+        if (_debug_info.backtrace[i] == 0) break;
         debugInfo += "0x" + String(_debug_info.backtrace[i], HEX) + "\n";
     }
 

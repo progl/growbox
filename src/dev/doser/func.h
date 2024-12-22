@@ -184,7 +184,6 @@ void StepBF(bool phase1, bool phase2, bool cool)
 // Шаг насоса А назад
 void StepAB(bool phase1, bool phase2, bool cool)
 {
-
     // vier
 
     if (phase2 == true)
@@ -271,7 +270,6 @@ void StepAB(bool phase1, bool phase2, bool cool)
 // Шаг насоса B назад
 void StepBB(bool phase1, bool phase2, bool cool)
 {
-
     // vier
     if (phase2 == true)
     {
@@ -364,11 +362,9 @@ void StepTwoDrvForward(int AA, int AB, int AC, int AD, int BA, int BB, int BC, i
     BOn = StPumpB_On;
 
     // enn
-    if (AOn != 0)
-        bitW4(AA, AB, AC, AD, 0, 1, 1, 0);
+    if (AOn != 0) bitW4(AA, AB, AC, AD, 0, 1, 1, 0);
 
-    if (BOn != 0)
-        bitW4(BA, BB, BC, BD, 0, 1, 1, 0);
+    if (BOn != 0) bitW4(BA, BB, BC, BD, 0, 1, 1, 0);
 
     mcp.writeGPIOAB(bitw);
     delayMicroseconds(ret);
@@ -379,11 +375,9 @@ void StepTwoDrvForward(int AA, int AB, int AC, int AD, int BA, int BB, int BC, i
     delayMicroseconds(del);
 
     // twee
-    if (AOn != 0)
-        bitW4(AA, AB, AC, AD, 0, 1, 0, 1);
+    if (AOn != 0) bitW4(AA, AB, AC, AD, 0, 1, 0, 1);
 
-    if (BOn != 0)
-        bitW4(BA, BB, BC, BD, 0, 1, 0, 1);
+    if (BOn != 0) bitW4(BA, BB, BC, BD, 0, 1, 0, 1);
 
     mcp.writeGPIOAB(bitw);
     delayMicroseconds(ret);
@@ -393,10 +387,8 @@ void StepTwoDrvForward(int AA, int AB, int AC, int AD, int BA, int BB, int BC, i
     delayMicroseconds(del);
 
     // drie
-    if (AOn != 0)
-        bitW4(AA, AB, AC, AD, 1, 0, 0, 1);
-    if (BOn != 0)
-        bitW4(BA, BB, BC, BD, 1, 0, 0, 1);
+    if (AOn != 0) bitW4(AA, AB, AC, AD, 1, 0, 0, 1);
+    if (BOn != 0) bitW4(BA, BB, BC, BD, 1, 0, 0, 1);
 
     mcp.writeGPIOAB(bitw);
     delayMicroseconds(ret);
@@ -405,11 +397,9 @@ void StepTwoDrvForward(int AA, int AB, int AC, int AD, int BA, int BB, int BC, i
     mcp.writeGPIOAB(bitw);
     delayMicroseconds(del);
     // vier
-    if (AOn != 0)
-        bitW4(AA, AB, AC, AD, 1, 0, 1, 0);
+    if (AOn != 0) bitW4(AA, AB, AC, AD, 1, 0, 1, 0);
 
-    if (BOn != 0)
-        bitW4(BA, BB, BC, BD, 1, 0, 1, 0);
+    if (BOn != 0) bitW4(BA, BB, BC, BD, 1, 0, 1, 0);
 
     mcp.writeGPIOAB(bitw);
     delayMicroseconds(ret);
@@ -428,11 +418,9 @@ void StepTwoDrvBackward(int AA, int AB, int AC, int AD, int BA, int BB, int BC, 
     BOn = StPumpB_On;
     // enn
 
-    if (AOn != 0)
-        bitW4(AA, AB, AC, AD, 0, 1, 1, 0);
+    if (AOn != 0) bitW4(AA, AB, AC, AD, 0, 1, 1, 0);
 
-    if (BOn != 0)
-        bitW4(BA, BB, BC, BD, 0, 1, 1, 0);
+    if (BOn != 0) bitW4(BA, BB, BC, BD, 0, 1, 1, 0);
 
     mcp.writeGPIOAB(bitw);
     delayMicroseconds(ret);
@@ -441,11 +429,9 @@ void StepTwoDrvBackward(int AA, int AB, int AC, int AD, int BA, int BB, int BC, 
     mcp.writeGPIOAB(bitw);
     delayMicroseconds(del);
     // twee
-    if (AOn != 0)
-        bitW4(AA, AB, AC, AD, 1, 0, 1, 0);
+    if (AOn != 0) bitW4(AA, AB, AC, AD, 1, 0, 1, 0);
 
-    if (BOn != 0)
-        bitW4(BA, BB, BC, BD, 1, 0, 1, 0);
+    if (BOn != 0) bitW4(BA, BB, BC, BD, 1, 0, 1, 0);
 
     mcp.writeGPIOAB(bitw);
     delayMicroseconds(ret);
@@ -454,11 +440,9 @@ void StepTwoDrvBackward(int AA, int AB, int AC, int AD, int BA, int BB, int BC, 
     mcp.writeGPIOAB(bitw);
     delayMicroseconds(del);
     // drie
-    if (AOn != 0)
-        bitW4(AA, AB, AC, AD, 1, 0, 0, 1);
+    if (AOn != 0) bitW4(AA, AB, AC, AD, 1, 0, 0, 1);
 
-    if (BOn != 0)
-        bitW4(BA, BB, BC, BD, 1, 0, 0, 1);
+    if (BOn != 0) bitW4(BA, BB, BC, BD, 1, 0, 0, 1);
 
     mcp.writeGPIOAB(bitw);
     delayMicroseconds(ret);
@@ -469,11 +453,9 @@ void StepTwoDrvBackward(int AA, int AB, int AC, int AD, int BA, int BB, int BC, 
 
     // vier
 
-    if (AOn != 0)
-        bitW4(AA, AB, AC, AD, 0, 1, 0, 1);
+    if (AOn != 0) bitW4(AA, AB, AC, AD, 0, 1, 0, 1);
 
-    if (BOn != 0)
-        bitW4(BA, BB, BC, BD, 0, 1, 0, 1);
+    if (BOn != 0) bitW4(BA, BB, BC, BD, 0, 1, 0, 1);
     mcp.writeGPIOAB(bitw);
     delayMicroseconds(ret);
     bitW4(AA, AB, AC, AD, 0, 0, 0, 0);

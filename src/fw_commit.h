@@ -1,1 +1,1 @@
-String firmware_commit="testing";
+String firmware_commit = "testing";

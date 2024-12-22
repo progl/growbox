@@ -20,7 +20,7 @@ String stages[] = {"Start", "Vega", "Fruit"};
 struct Group
 {
     const char *caption;
-    int numParams; // Количество действительных параметров
+    int numParams;  // Количество действительных параметров
     Param params[30];
 };
 int sensorCount;
@@ -62,17 +62,17 @@ float pR_Rx, pR_T, pR_x, pR_DAC, pR1;
 float wPR;
 bool first_time = true;
 TaskHandle_t xHandleUpdate = NULL;
-int RDDelayOn = 60;   // Задержка в секундах для включения
-int RDDelayOff = 300; // Задержка в секундах для выключения
+int RDDelayOn = 60;    // Задержка в секундах для включения
+int RDDelayOff = 300;  // Задержка в секундах для выключения
 int RDEnable = 0;
 int RDPWD = 256;
 int RDWorkNight = 1;
 int RDSelectedRP = 0;
 
-int KickOnce = 0;      // Пинок для насоса
-int KickUpMax = 255;   // максимум мощности пинка
-int KickUpStrart = 10; // начальная можность пинка
-int KickUpTime = 300;  // Время пинка в миллисекундах
+int KickOnce = 0;       // Пинок для насоса
+int KickUpMax = 255;    // максимум мощности пинка
+int KickUpStrart = 10;  // начальная можность пинка
+int KickUpTime = 300;   // Время пинка в миллисекундах
 const char *pref_reset_reason = "ResetReason";
 boolean log_debug = false;
 
@@ -86,17 +86,15 @@ GKalman KalmanEcUsual(ec_mea_e, ec_est_e, ec_q);
 boolean first_EC = true;
 const int DRV_COUNT = 4;
 const int BITS_PER_DRV = 4;
-String DRV_Keys[DRV_COUNT][BITS_PER_DRV] = {
-    {"DRV1_A_State", "DRV1_B_State", "DRV1_C_State", "DRV1_D_State"},
-    {"DRV2_A_State", "DRV2_B_State", "DRV2_C_State", "DRV2_D_State"},
-    {"DRV3_A_State", "DRV3_B_State", "DRV3_C_State", "DRV3_D_State"},
-    {"DRV4_A_State", "DRV4_B_State", "DRV4_C_State", "DRV4_D_State"}};
+String DRV_Keys[DRV_COUNT][BITS_PER_DRV] = {{"DRV1_A_State", "DRV1_B_State", "DRV1_C_State", "DRV1_D_State"},
+                                            {"DRV2_A_State", "DRV2_B_State", "DRV2_C_State", "DRV2_D_State"},
+                                            {"DRV3_A_State", "DRV3_B_State", "DRV3_C_State", "DRV3_D_State"},
+                                            {"DRV4_A_State", "DRV4_B_State", "DRV4_C_State", "DRV4_D_State"}};
 
-String DRV_PK_On_Keys[DRV_COUNT][BITS_PER_DRV] = {
-    {"DRV1_A_PK_On", "DRV1_B_PK_On", "DRV1_C_PK_On", "DRV1_D_PK_On"},
-    {"DRV2_A_PK_On", "DRV2_B_PK_On", "DRV2_C_PK_On", "DRV2_D_PK_On"},
-    {"DRV3_A_PK_On", "DRV3_B_PK_On", "DRV3_C_PK_On", "DRV3_D_PK_On"},
-    {"DRV4_A_PK_On", "DRV4_B_PK_On", "DRV4_C_PK_On", "DRV4_D_PK_On"}};
+String DRV_PK_On_Keys[DRV_COUNT][BITS_PER_DRV] = {{"DRV1_A_PK_On", "DRV1_B_PK_On", "DRV1_C_PK_On", "DRV1_D_PK_On"},
+                                                  {"DRV2_A_PK_On", "DRV2_B_PK_On", "DRV2_C_PK_On", "DRV2_D_PK_On"},
+                                                  {"DRV3_A_PK_On", "DRV3_B_PK_On", "DRV3_C_PK_On", "DRV3_D_PK_On"},
+                                                  {"DRV4_A_PK_On", "DRV4_B_PK_On", "DRV4_C_PK_On", "DRV4_D_PK_On"}};
 
 int DRV1_A_PK_On = 0;
 int DRV1_B_PK_On = 0;
@@ -115,8 +113,8 @@ int DRV4_B_PK_On = 0;
 int DRV4_C_PK_On = 0;
 int DRV4_D_PK_On = 0;
 
-unsigned long NextRootDrivePwdOn;  // Сохраняем текущее время для включения
-unsigned long NextRootDrivePwdOff; // Время для выключения
+unsigned long NextRootDrivePwdOn;   // Сохраняем текущее время для включения
+unsigned long NextRootDrivePwdOff;  // Время для выключения
 
 WiFiClientSecure client;
 HTTPClient http;
@@ -141,31 +139,11 @@ RunningMedian AirHumRM = RunningMedian(4);
 RunningMedian AirPressRM = RunningMedian(4);
 RunningMedian PRRM = RunningMedian(4);
 
-PreferenceSetting preferenceSettings[] = {
-    {"PWDport1", 16},
-    {"PWD1", 0},
-    {"FREQ1", 5000},
-    {"PWDport2", 17},
-    {"PWD2", 0},
-    {"FREQ2", 5000}};
+PreferenceSetting preferenceSettings[] = {{"PWDport1", 16}, {"PWD1", 0}, {"FREQ1", 5000},
+                                          {"PWDport2", 17}, {"PWD2", 0}, {"FREQ2", 5000}};
 
-String options[] = {
-    "DRV1_A",
-    "DRV1_B",
-    "DRV1_C",
-    "DRV1_D",
-    "DRV2_A",
-    "DRV2_B",
-    "DRV2_C",
-    "DRV2_D",
-    "DRV3_A",
-    "DRV3_B",
-    "DRV3_C",
-    "DRV3_D",
-    "DRV4_A",
-    "DRV4_B",
-    "DRV4_C",
-    "DRV4_D"};
+String options[] = {"DRV1_A", "DRV1_B", "DRV1_C", "DRV1_D", "DRV2_A", "DRV2_B", "DRV2_C", "DRV2_D",
+                    "DRV3_A", "DRV3_B", "DRV3_C", "DRV3_D", "DRV4_A", "DRV4_B", "DRV4_C", "DRV4_D"};
 
 String escapeHTML(String input)
 {
@@ -176,24 +154,24 @@ String escapeHTML(String input)
         char c = input[i];
         switch (c)
         {
-        case '<':
-            output += "&lt;";
-            break;
-        case '>':
-            output += "&gt;";
-            break;
-        case '&':
-            output += "&amp;";
-            break;
-        case '"':
-            output += "&quot;";
-            break;
-        case '\'':
-            output += "&#39;";
-            break;
-        default:
-            output += c;
-            break;
+            case '<':
+                output += "&lt;";
+                break;
+            case '>':
+                output += "&gt;";
+                break;
+            case '&':
+                output += "&amp;";
+                break;
+            case '"':
+                output += "&quot;";
+                break;
+            case '\'':
+                output += "&#39;";
+                break;
+            default:
+                output += c;
+                break;
         }
     }
 
@@ -204,15 +182,15 @@ String generateTableRow(const Param &p)
     String value;
     switch (p.type)
     {
-    case Param::INT:
-        value = String(preferences.getInt(p.name, p.defaultInt));
-        break;
-    case Param::FLOAT:
-        value = fFTS(preferences.getFloat(p.name, p.defaultFloat), 3);
-        break;
-    case Param::STRING:
-        value = preferences.getString(p.name, p.defaultString);
-        break;
+        case Param::INT:
+            value = String(preferences.getInt(p.name, p.defaultInt));
+            break;
+        case Param::FLOAT:
+            value = fFTS(preferences.getFloat(p.name, p.defaultFloat), 3);
+            break;
+        case Param::STRING:
+            value = preferences.getString(p.name, p.defaultString);
+            break;
     }
 
     String row = "";
@@ -261,14 +239,16 @@ String generateTableRow(const Param &p)
         }
         else
         {
-            row = "<tr><td>" + escapeHTML(String(p.label)) + "\n<td><input type='text' name='" + escapeHTML(String(p.name)) + "' value='" + escapeHTML(value) + "' form='set'></tr>\n";
+            row = "<tr><td>" + escapeHTML(String(p.label)) + "\n<td><input type='text' name='" +
+                  escapeHTML(String(p.name)) + "' value='" + escapeHTML(value) + "' form='set'></tr>\n";
         }
     }
     return row;
 }
 
 // Переменные
-float AirTemp, AirHum, AirPress, RootTemp, hall, pHmV, pHraw, NTC, NTC_RAW, Ap, An, Dist, DstRAW, CPUTemp, CO2, tVOC, eRAW, Vcc, wNTC, wEC_ususal, wR2, wEC, wpH, PR, EC_R1, EC_R2_p1, EC_R2_p2, Kornevoe;
+float AirTemp, AirHum, AirPress, RootTemp, hall, pHmV, pHraw, NTC, NTC_RAW, Ap, An, Dist, DstRAW, CPUTemp, CO2, tVOC,
+    eRAW, Vcc, wNTC, wEC_ususal, wR2, wEC, wpH, PR, EC_R1, EC_R2_p1, EC_R2_p2, Kornevoe;
 float rootVPD;
 float airVPD;
 bool OtaStart, ECwork, USwork = false;
@@ -276,10 +256,11 @@ bool RootTempFound;
 uint16_t readGPIO;
 int PWD1, PWD2, totalLength;
 long ECStabOn;
-int currentLength = 0; // current size of written firmware
+int currentLength = 0;  // current size of written firmware
 int ECStabEnable, ECStabPomp, ECStabTime, ECStabInterval;
 float ECStabValue, ECStabMinDist, ECStabMaxDist;
-float tR_DAC, restart, tR_B, tR_val_korr, A1, A2, R1, Rx1, Rx2, Dr, R2p, R2n, py1, py2, py3, px1, px2, px3, pH_lkorr, ec1, ec2, ex1, ex2, eckorr, kt;
+float tR_DAC, restart, tR_B, tR_val_korr, A1, A2, R1, Rx1, Rx2, Dr, R2p, R2n, py1, py2, py3, px1, px2, px3, pH_lkorr,
+    ec1, ec2, ex1, ex2, eckorr, kt;
 float max_l_level, max_l_raw, min_l_level, min_l_raw, wLevel, twLevel;
 
 boolean server_make_update;
@@ -291,29 +272,15 @@ String A1name, A2name, wegareply, err_wegaapi_json, dt, Reset_reason0, Reset_rea
 // Структура для хранения информации о датчике
 typedef struct
 {
-    char name[50];    // Название датчика
-    uint8_t detected; // Статус детектирования: 0 - не детектирован, 1 - детектирован
+    char name[50];     // Название датчика
+    uint8_t detected;  // Статус детектирования: 0 - не детектирован, 1 - детектирован
 } Sensor;
 
 // Массив датчиков
 Sensor sensors[] = {
-    {"VL53L0X", 0},
-    {"MCP23017", 0},
-    {"HX710B", 0},
-    {"Dallas", 0},
-    {"US025", 0},
-    {"AHT10", 0},
-    {"AM2320", 0},
-    {"EC", 0},
-    {"PR", 0},
-    {"ADS1115", 0},
-    {"MCP3421", 0},
-    {"VL6180X", 0},
-    {"SDC30", 0},
-    {"NTC", 0},
-    {"LCD", 0},
-    {"BMx280", 0},
-    {"CCS811", 0},
+    {"VL53L0X", 0}, {"MCP23017", 0}, {"HX710B", 0}, {"Dallas", 0},  {"US025", 0},   {"AHT10", 0},
+    {"AM2320", 0},  {"EC", 0},       {"PR", 0},     {"ADS1115", 0}, {"MCP3421", 0}, {"VL6180X", 0},
+    {"SDC30", 0},   {"NTC", 0},      {"LCD", 0},    {"BMx280", 0},  {"CCS811", 0},
 };
 const int sensorsCount = sizeof(sensors) / sizeof(sensors[0]);
 

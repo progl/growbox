@@ -1,10 +1,9 @@
 
 void lcd(String x)
 {
+    oled.clear();
 
-      oled.clear();
-
-      oled.home();
-      oled.println(x);
-      oled.update();
+    oled.home();
+    oled.println(x);
+    oled.update();
 }

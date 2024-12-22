@@ -7,7 +7,7 @@ struct UltrasonicMeasurement
     float distanceCm_25;
     uint32_t pulseStartUs;
     uint32_t pulseEndUs;
-    float temperatureC; // Температура в градусах Цельсия
+    float temperatureC;  // Температура в градусах Цельсия
 };
 
 // Объявление внешней функции обработчика прерывания
@@ -16,18 +16,26 @@ void IRAM_ATTR ultrasonicISR(void *arg);
 // Класс ультразвукового датчика
 class UltrasonicSensor
 {
-public:
+   public:
     UltrasonicSensor(uint8_t triggerPin, uint8_t echoPin, uint32_t timeoutUs)
-        : triggerPin_(triggerPin), echoPin_(echoPin), timeoutUs_(timeoutUs),
-          pulseStartUs_(0), pulseEndUs_(0), newMeasurementAvailable_(false), temperatureC_(20.0) {} // По умолчанию 20°C
+        : triggerPin_(triggerPin),
+          echoPin_(echoPin),
+          timeoutUs_(timeoutUs),
+          pulseStartUs_(0),
+          pulseEndUs_(0),
+          newMeasurementAvailable_(false),
+          temperatureC_(20.0)
+    {
+    }  // По умолчанию 20°C
 
     void begin()
     {
         pinMode(triggerPin_, OUTPUT);
-        digitalWrite(triggerPin_, LOW); // Установить триггер пин в LOW
+        digitalWrite(triggerPin_, LOW);  // Установить триггер пин в LOW
 
         pinMode(echoPin_, INPUT);
-        attachInterruptArg(digitalPinToInterrupt(echoPin_), ultrasonicISR, this, CHANGE); // Прерывание на изменение состояния
+        attachInterruptArg(digitalPinToInterrupt(echoPin_), ultrasonicISR, this,
+                           CHANGE);  // Прерывание на изменение состояния
     }
 
     void measureDistanceCm(UltrasonicMeasurement &outputMeasurement)
@@ -47,8 +55,8 @@ public:
 
         if (!newMeasurementAvailable_)
         {
-            outputMeasurement.distanceCm = NAN;    // Таймау
-            outputMeasurement.distanceCm_25 = NAN; // Таймау
+            outputMeasurement.distanceCm = NAN;     // Таймау
+            outputMeasurement.distanceCm_25 = NAN;  // Таймау
 
             return;
         }
@@ -57,8 +65,8 @@ public:
         uint32_t durationUs = getPulseEndUs() - getPulseStartUs();
         if (durationUs >= timeoutUs_)
         {
-            outputMeasurement.distanceCm = NAN;    // Таймаут
-            outputMeasurement.distanceCm_25 = NAN; // Таймау
+            outputMeasurement.distanceCm = NAN;     // Таймаут
+            outputMeasurement.distanceCm_25 = NAN;  // Таймау
         }
         else
         {
@@ -74,15 +82,9 @@ public:
         outputMeasurement.temperatureC = temperatureC_;
     }
 
-    void setTemperature(float temperatureC)
-    {
-        temperatureC_ = temperatureC;
-    }
+    void setTemperature(float temperatureC) { temperatureC_ = temperatureC; }
 
-    float getTemperature() const
-    {
-        return temperatureC_;
-    }
+    float getTemperature() const { return temperatureC_; }
 
     void triggerPulse()
     {
@@ -102,53 +104,32 @@ public:
         return newMeasurementAvailable_;
     }
 
-    bool isMeasurementAvailable() const
-    {
-        return newMeasurementAvailable_;
-    }
+    bool isMeasurementAvailable() const { return newMeasurementAvailable_; }
 
     // Getter and Setter for pulseStartUs_
-    uint32_t getPulseStartUs() const
-    {
-        return pulseStartUs_;
-    }
+    uint32_t getPulseStartUs() const { return pulseStartUs_; }
 
-    void setPulseStartUs(uint32_t value)
-    {
-        pulseStartUs_ = value;
-    }
+    void setPulseStartUs(uint32_t value) { pulseStartUs_ = value; }
 
     // Getter and Setter for pulseEndUs_
-    uint32_t getPulseEndUs() const
-    {
-        return pulseEndUs_;
-    }
+    uint32_t getPulseEndUs() const { return pulseEndUs_; }
 
-    void setPulseEndUs(uint32_t value)
-    {
-        pulseEndUs_ = value;
-    }
+    void setPulseEndUs(uint32_t value) { pulseEndUs_ = value; }
 
     // Setter for newMeasurementAvailable_
-    void setMeasurementAvailable(bool value)
-    {
-        newMeasurementAvailable_ = value;
-    }
+    void setMeasurementAvailable(bool value) { newMeasurementAvailable_ = value; }
 
     // Getter for echoPin_
-    uint8_t getEchoPin() const
-    {
-        return echoPin_;
-    }
+    uint8_t getEchoPin() const { return echoPin_; }
 
-private:
+   private:
     uint8_t triggerPin_;
     uint8_t echoPin_;
     uint32_t timeoutUs_;
-    volatile uint32_t pulseStartUs_;        // Keep as volatile but no need for IRAM_ATTR
-    volatile uint32_t pulseEndUs_;          // Keep as volatile but no need for IRAM_ATTR
-    volatile bool newMeasurementAvailable_; // Keep as volatile but no need for IRAM_ATTR
-    float temperatureC_;                    // Температура в градусах Цельсия
+    volatile uint32_t pulseStartUs_;         // Keep as volatile but no need for IRAM_ATTR
+    volatile uint32_t pulseEndUs_;           // Keep as volatile but no need for IRAM_ATTR
+    volatile bool newMeasurementAvailable_;  // Keep as volatile but no need for IRAM_ATTR
+    float temperatureC_;                     // Температура в градусах Цельсия
 };
 
 // Реализация функции обработчика прерывания (ISR) за пределами класса
@@ -156,7 +137,7 @@ void IRAM_ATTR ultrasonicISR(void *arg)
 {
     UltrasonicSensor *sensor = static_cast<UltrasonicSensor *>(arg);
 
-    uint32_t currentMicros = (uint32_t)(esp_timer_get_time()); // Используем безопасный таймер ESP32
+    uint32_t currentMicros = (uint32_t)(esp_timer_get_time());  // Используем безопасный таймер ESP32
     if (digitalRead(sensor->getEchoPin()) == HIGH)
     {
         sensor->setPulseStartUs(currentMicros);

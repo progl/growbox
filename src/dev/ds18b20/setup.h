@@ -1,6 +1,5 @@
 sens18b20.begin();
-while (xSemaphoreTake(xSemaphore_C, (TickType_t)1) == pdFALSE)
-    ;
+while (xSemaphoreTake(xSemaphore_C, (TickType_t)1) == pdFALSE);
 
 sensorCount = sens18b20.getDeviceCount();
 for (int attempt = 0; attempt < 10; ++attempt)

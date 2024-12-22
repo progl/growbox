@@ -1,8 +1,6 @@
 
 #include "esp32-hal.h"
 
- 
-
 /*
  * Get ADC value for pin
  * */
@@ -95,7 +93,3 @@ bool wega_adcBusy(uint8_t pin);
  * Get the result of the conversion (will wait if it have not finished)
  * */
 uint16_t wega_adcEnd(uint8_t pin);
-
- 
-
- 

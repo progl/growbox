@@ -26,7 +26,7 @@ void TaskCPUTEMP()
     syslog_ng("CPUTemp-Core1:" + fFTS(CpuTempRM_AVG[0].getAverage(5), 3));
     syslog_ng("CPUTemp-Core2:" + fFTS(CpuTempRM_AVG[1].getAverage(5), 3));
     syslog_ng("CPUTemp:" + fFTS(CPUTemp, 3));
-    
+
     publish_parameter("CPUTemp", CPUTemp, 3, 1);
     publish_parameter("CPUTemp1", CpuTempRM_AVG[0].getAverage(5), 3, 1);
     publish_parameter("CPUTemp2", CpuTempRM_AVG[1].getAverage(5), 3, 1);
