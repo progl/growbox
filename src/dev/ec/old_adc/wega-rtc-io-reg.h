@@ -104,8 +104,8 @@
 #define RTC_GPIO_PIN0_WAKEUP_ENABLE_S 10
 /* RTC_GPIO_PIN0_INT_TYPE : R/W ;bitpos:[9:7] ;default: 0 ; */
 /*description: if set to 0: GPIO interrupt disable  if set to 1: rising edge
- trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if set to 4: low level trigger  if set to 5:
- high level trigger*/
+ trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if
+ set to 4: low level trigger  if set to 5: high level trigger*/
 #define RTC_GPIO_PIN0_INT_TYPE 0x00000007
 #define RTC_GPIO_PIN0_INT_TYPE_M ((RTC_GPIO_PIN0_INT_TYPE_V) << (RTC_GPIO_PIN0_INT_TYPE_S))
 #define RTC_GPIO_PIN0_INT_TYPE_V 0x7
@@ -126,8 +126,8 @@
 #define RTC_GPIO_PIN1_WAKEUP_ENABLE_S 10
 /* RTC_GPIO_PIN1_INT_TYPE : R/W ;bitpos:[9:7] ;default: 0 ; */
 /*description: if set to 0: GPIO interrupt disable  if set to 1: rising edge
- trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if set to 4: low level trigger  if set to 5:
- high level trigger*/
+ trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if
+ set to 4: low level trigger  if set to 5: high level trigger*/
 #define RTC_GPIO_PIN1_INT_TYPE 0x00000007
 #define RTC_GPIO_PIN1_INT_TYPE_M ((RTC_GPIO_PIN1_INT_TYPE_V) << (RTC_GPIO_PIN1_INT_TYPE_S))
 #define RTC_GPIO_PIN1_INT_TYPE_V 0x7
@@ -148,8 +148,8 @@
 #define RTC_GPIO_PIN2_WAKEUP_ENABLE_S 10
 /* RTC_GPIO_PIN2_INT_TYPE : R/W ;bitpos:[9:7] ;default: 0 ; */
 /*description: if set to 0: GPIO interrupt disable  if set to 1: rising edge
- trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if set to 4: low level trigger  if set to 5:
- high level trigger*/
+ trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if
+ set to 4: low level trigger  if set to 5: high level trigger*/
 #define RTC_GPIO_PIN2_INT_TYPE 0x00000007
 #define RTC_GPIO_PIN2_INT_TYPE_M ((RTC_GPIO_PIN2_INT_TYPE_V) << (RTC_GPIO_PIN2_INT_TYPE_S))
 #define RTC_GPIO_PIN2_INT_TYPE_V 0x7
@@ -170,8 +170,8 @@
 #define RTC_GPIO_PIN3_WAKEUP_ENABLE_S 10
 /* RTC_GPIO_PIN3_INT_TYPE : R/W ;bitpos:[9:7] ;default: 0 ; */
 /*description: if set to 0: GPIO interrupt disable  if set to 1: rising edge
- trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if set to 4: low level trigger  if set to 5:
- high level trigger*/
+ trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if
+ set to 4: low level trigger  if set to 5: high level trigger*/
 #define RTC_GPIO_PIN3_INT_TYPE 0x00000007
 #define RTC_GPIO_PIN3_INT_TYPE_M ((RTC_GPIO_PIN3_INT_TYPE_V) << (RTC_GPIO_PIN3_INT_TYPE_S))
 #define RTC_GPIO_PIN3_INT_TYPE_V 0x7
@@ -192,8 +192,8 @@
 #define RTC_GPIO_PIN4_WAKEUP_ENABLE_S 10
 /* RTC_GPIO_PIN4_INT_TYPE : R/W ;bitpos:[9:7] ;default: 0 ; */
 /*description: if set to 0: GPIO interrupt disable  if set to 1: rising edge
- trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if set to 4: low level trigger  if set to 5:
- high level trigger*/
+ trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if
+ set to 4: low level trigger  if set to 5: high level trigger*/
 #define RTC_GPIO_PIN4_INT_TYPE 0x00000007
 #define RTC_GPIO_PIN4_INT_TYPE_M ((RTC_GPIO_PIN4_INT_TYPE_V) << (RTC_GPIO_PIN4_INT_TYPE_S))
 #define RTC_GPIO_PIN4_INT_TYPE_V 0x7
@@ -214,8 +214,8 @@
 #define RTC_GPIO_PIN5_WAKEUP_ENABLE_S 10
 /* RTC_GPIO_PIN5_INT_TYPE : R/W ;bitpos:[9:7] ;default: 0 ; */
 /*description: if set to 0: GPIO interrupt disable  if set to 1: rising edge
- trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if set to 4: low level trigger  if set to 5:
- high level trigger*/
+ trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if
+ set to 4: low level trigger  if set to 5: high level trigger*/
 #define RTC_GPIO_PIN5_INT_TYPE 0x00000007
 #define RTC_GPIO_PIN5_INT_TYPE_M ((RTC_GPIO_PIN5_INT_TYPE_V) << (RTC_GPIO_PIN5_INT_TYPE_S))
 #define RTC_GPIO_PIN5_INT_TYPE_V 0x7
@@ -236,8 +236,8 @@
 #define RTC_GPIO_PIN6_WAKEUP_ENABLE_S 10
 /* RTC_GPIO_PIN6_INT_TYPE : R/W ;bitpos:[9:7] ;default: 0 ; */
 /*description: if set to 0: GPIO interrupt disable  if set to 1: rising edge
- trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if set to 4: low level trigger  if set to 5:
- high level trigger*/
+ trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if
+ set to 4: low level trigger  if set to 5: high level trigger*/
 #define RTC_GPIO_PIN6_INT_TYPE 0x00000007
 #define RTC_GPIO_PIN6_INT_TYPE_M ((RTC_GPIO_PIN6_INT_TYPE_V) << (RTC_GPIO_PIN6_INT_TYPE_S))
 #define RTC_GPIO_PIN6_INT_TYPE_V 0x7
@@ -258,8 +258,8 @@
 #define RTC_GPIO_PIN7_WAKEUP_ENABLE_S 10
 /* RTC_GPIO_PIN7_INT_TYPE : R/W ;bitpos:[9:7] ;default: 0 ; */
 /*description: if set to 0: GPIO interrupt disable  if set to 1: rising edge
- trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if set to 4: low level trigger  if set to 5:
- high level trigger*/
+ trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if
+ set to 4: low level trigger  if set to 5: high level trigger*/
 #define RTC_GPIO_PIN7_INT_TYPE 0x00000007
 #define RTC_GPIO_PIN7_INT_TYPE_M ((RTC_GPIO_PIN7_INT_TYPE_V) << (RTC_GPIO_PIN7_INT_TYPE_S))
 #define RTC_GPIO_PIN7_INT_TYPE_V 0x7
@@ -280,8 +280,8 @@
 #define RTC_GPIO_PIN8_WAKEUP_ENABLE_S 10
 /* RTC_GPIO_PIN8_INT_TYPE : R/W ;bitpos:[9:7] ;default: 0 ; */
 /*description: if set to 0: GPIO interrupt disable  if set to 1: rising edge
- trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if set to 4: low level trigger  if set to 5:
- high level trigger*/
+ trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if
+ set to 4: low level trigger  if set to 5: high level trigger*/
 #define RTC_GPIO_PIN8_INT_TYPE 0x00000007
 #define RTC_GPIO_PIN8_INT_TYPE_M ((RTC_GPIO_PIN8_INT_TYPE_V) << (RTC_GPIO_PIN8_INT_TYPE_S))
 #define RTC_GPIO_PIN8_INT_TYPE_V 0x7
@@ -302,8 +302,8 @@
 #define RTC_GPIO_PIN9_WAKEUP_ENABLE_S 10
 /* RTC_GPIO_PIN9_INT_TYPE : R/W ;bitpos:[9:7] ;default: 0 ; */
 /*description: if set to 0: GPIO interrupt disable  if set to 1: rising edge
- trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if set to 4: low level trigger  if set to 5:
- high level trigger*/
+ trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if
+ set to 4: low level trigger  if set to 5: high level trigger*/
 #define RTC_GPIO_PIN9_INT_TYPE 0x00000007
 #define RTC_GPIO_PIN9_INT_TYPE_M ((RTC_GPIO_PIN9_INT_TYPE_V) << (RTC_GPIO_PIN9_INT_TYPE_S))
 #define RTC_GPIO_PIN9_INT_TYPE_V 0x7
@@ -324,8 +324,8 @@
 #define RTC_GPIO_PIN10_WAKEUP_ENABLE_S 10
 /* RTC_GPIO_PIN10_INT_TYPE : R/W ;bitpos:[9:7] ;default: 0 ; */
 /*description: if set to 0: GPIO interrupt disable  if set to 1: rising edge
- trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if set to 4: low level trigger  if set to 5:
- high level trigger*/
+ trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if
+ set to 4: low level trigger  if set to 5: high level trigger*/
 #define RTC_GPIO_PIN10_INT_TYPE 0x00000007
 #define RTC_GPIO_PIN10_INT_TYPE_M ((RTC_GPIO_PIN10_INT_TYPE_V) << (RTC_GPIO_PIN10_INT_TYPE_S))
 #define RTC_GPIO_PIN10_INT_TYPE_V 0x7
@@ -346,8 +346,8 @@
 #define RTC_GPIO_PIN11_WAKEUP_ENABLE_S 10
 /* RTC_GPIO_PIN11_INT_TYPE : R/W ;bitpos:[9:7] ;default: 0 ; */
 /*description: if set to 0: GPIO interrupt disable  if set to 1: rising edge
- trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if set to 4: low level trigger  if set to 5:
- high level trigger*/
+ trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if
+ set to 4: low level trigger  if set to 5: high level trigger*/
 #define RTC_GPIO_PIN11_INT_TYPE 0x00000007
 #define RTC_GPIO_PIN11_INT_TYPE_M ((RTC_GPIO_PIN11_INT_TYPE_V) << (RTC_GPIO_PIN11_INT_TYPE_S))
 #define RTC_GPIO_PIN11_INT_TYPE_V 0x7
@@ -368,8 +368,8 @@
 #define RTC_GPIO_PIN12_WAKEUP_ENABLE_S 10
 /* RTC_GPIO_PIN12_INT_TYPE : R/W ;bitpos:[9:7] ;default: 0 ; */
 /*description: if set to 0: GPIO interrupt disable  if set to 1: rising edge
- trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if set to 4: low level trigger  if set to 5:
- high level trigger*/
+ trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if
+ set to 4: low level trigger  if set to 5: high level trigger*/
 #define RTC_GPIO_PIN12_INT_TYPE 0x00000007
 #define RTC_GPIO_PIN12_INT_TYPE_M ((RTC_GPIO_PIN12_INT_TYPE_V) << (RTC_GPIO_PIN12_INT_TYPE_S))
 #define RTC_GPIO_PIN12_INT_TYPE_V 0x7
@@ -390,8 +390,8 @@
 #define RTC_GPIO_PIN13_WAKEUP_ENABLE_S 10
 /* RTC_GPIO_PIN13_INT_TYPE : R/W ;bitpos:[9:7] ;default: 0 ; */
 /*description: if set to 0: GPIO interrupt disable  if set to 1: rising edge
- trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if set to 4: low level trigger  if set to 5:
- high level trigger*/
+ trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if
+ set to 4: low level trigger  if set to 5: high level trigger*/
 #define RTC_GPIO_PIN13_INT_TYPE 0x00000007
 #define RTC_GPIO_PIN13_INT_TYPE_M ((RTC_GPIO_PIN13_INT_TYPE_V) << (RTC_GPIO_PIN13_INT_TYPE_S))
 #define RTC_GPIO_PIN13_INT_TYPE_V 0x7
@@ -412,8 +412,8 @@
 #define RTC_GPIO_PIN14_WAKEUP_ENABLE_S 10
 /* RTC_GPIO_PIN14_INT_TYPE : R/W ;bitpos:[9:7] ;default: 0 ; */
 /*description: if set to 0: GPIO interrupt disable  if set to 1: rising edge
- trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if set to 4: low level trigger  if set to 5:
- high level trigger*/
+ trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if
+ set to 4: low level trigger  if set to 5: high level trigger*/
 #define RTC_GPIO_PIN14_INT_TYPE 0x00000007
 #define RTC_GPIO_PIN14_INT_TYPE_M ((RTC_GPIO_PIN14_INT_TYPE_V) << (RTC_GPIO_PIN14_INT_TYPE_S))
 #define RTC_GPIO_PIN14_INT_TYPE_V 0x7
@@ -434,8 +434,8 @@
 #define RTC_GPIO_PIN15_WAKEUP_ENABLE_S 10
 /* RTC_GPIO_PIN15_INT_TYPE : R/W ;bitpos:[9:7] ;default: 0 ; */
 /*description: if set to 0: GPIO interrupt disable  if set to 1: rising edge
- trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if set to 4: low level trigger  if set to 5:
- high level trigger*/
+ trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if
+ set to 4: low level trigger  if set to 5: high level trigger*/
 #define RTC_GPIO_PIN15_INT_TYPE 0x00000007
 #define RTC_GPIO_PIN15_INT_TYPE_M ((RTC_GPIO_PIN15_INT_TYPE_V) << (RTC_GPIO_PIN15_INT_TYPE_S))
 #define RTC_GPIO_PIN15_INT_TYPE_V 0x7
@@ -456,8 +456,8 @@
 #define RTC_GPIO_PIN16_WAKEUP_ENABLE_S 10
 /* RTC_GPIO_PIN16_INT_TYPE : R/W ;bitpos:[9:7] ;default: 0 ; */
 /*description: if set to 0: GPIO interrupt disable  if set to 1: rising edge
- trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if set to 4: low level trigger  if set to 5:
- high level trigger*/
+ trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if
+ set to 4: low level trigger  if set to 5: high level trigger*/
 #define RTC_GPIO_PIN16_INT_TYPE 0x00000007
 #define RTC_GPIO_PIN16_INT_TYPE_M ((RTC_GPIO_PIN16_INT_TYPE_V) << (RTC_GPIO_PIN16_INT_TYPE_S))
 #define RTC_GPIO_PIN16_INT_TYPE_V 0x7
@@ -478,8 +478,8 @@
 #define RTC_GPIO_PIN17_WAKEUP_ENABLE_S 10
 /* RTC_GPIO_PIN17_INT_TYPE : R/W ;bitpos:[9:7] ;default: 0 ; */
 /*description: if set to 0: GPIO interrupt disable  if set to 1: rising edge
- trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if set to 4: low level trigger  if set to 5:
- high level trigger*/
+ trigger  if set to 2: falling edge trigger  if set to 3: any edge trigger  if
+ set to 4: low level trigger  if set to 5: high level trigger*/
 #define RTC_GPIO_PIN17_INT_TYPE 0x00000007
 #define RTC_GPIO_PIN17_INT_TYPE_M ((RTC_GPIO_PIN17_INT_TYPE_V) << (RTC_GPIO_PIN17_INT_TYPE_S))
 #define RTC_GPIO_PIN17_INT_TYPE_V 0x7
@@ -556,25 +556,29 @@
 
 #define RTC_IO_SENSOR_PADS_REG (DR_REG_RTCIO_BASE + 0x7c)
 /* RTC_IO_SENSE1_HOLD : R/W ;bitpos:[31] ;default: 1'd0 ; */
-/*description: hold the current value of the output when setting the hold to Ò1Ó*/
+/*description: hold the current value of the output when setting the hold to
+ * Ò1Ó*/
 #define RTC_IO_SENSE1_HOLD (BIT(31))
 #define RTC_IO_SENSE1_HOLD_M (BIT(31))
 #define RTC_IO_SENSE1_HOLD_V 0x1
 #define RTC_IO_SENSE1_HOLD_S 31
 /* RTC_IO_SENSE2_HOLD : R/W ;bitpos:[30] ;default: 1'd0 ; */
-/*description: hold the current value of the output when setting the hold to Ò1Ó*/
+/*description: hold the current value of the output when setting the hold to
+ * Ò1Ó*/
 #define RTC_IO_SENSE2_HOLD (BIT(30))
 #define RTC_IO_SENSE2_HOLD_M (BIT(30))
 #define RTC_IO_SENSE2_HOLD_V 0x1
 #define RTC_IO_SENSE2_HOLD_S 30
 /* RTC_IO_SENSE3_HOLD : R/W ;bitpos:[29] ;default: 1'd0 ; */
-/*description: hold the current value of the output when setting the hold to Ò1Ó*/
+/*description: hold the current value of the output when setting the hold to
+ * Ò1Ó*/
 #define RTC_IO_SENSE3_HOLD (BIT(29))
 #define RTC_IO_SENSE3_HOLD_M (BIT(29))
 #define RTC_IO_SENSE3_HOLD_V 0x1
 #define RTC_IO_SENSE3_HOLD_S 29
 /* RTC_IO_SENSE4_HOLD : R/W ;bitpos:[28] ;default: 1'd0 ; */
-/*description: hold the current value of the output when setting the hold to Ò1Ó*/
+/*description: hold the current value of the output when setting the hold to
+ * Ò1Ó*/
 #define RTC_IO_SENSE4_HOLD (BIT(28))
 #define RTC_IO_SENSE4_HOLD_M (BIT(28))
 #define RTC_IO_SENSE4_HOLD_V 0x1
@@ -702,13 +706,15 @@
 
 #define RTC_IO_ADC_PAD_REG (DR_REG_RTCIO_BASE + 0x80)
 /* RTC_IO_ADC1_HOLD : R/W ;bitpos:[31] ;default: 1'd0 ; */
-/*description: hold the current value of the output when setting the hold to Ò1Ó*/
+/*description: hold the current value of the output when setting the hold to
+ * Ò1Ó*/
 #define RTC_IO_ADC1_HOLD (BIT(31))
 #define RTC_IO_ADC1_HOLD_M (BIT(31))
 #define RTC_IO_ADC1_HOLD_V 0x1
 #define RTC_IO_ADC1_HOLD_S 31
 /* RTC_IO_ADC2_HOLD : R/W ;bitpos:[30] ;default: 1'd0 ; */
-/*description: hold the current value of the output when setting the hold to Ò1Ó*/
+/*description: hold the current value of the output when setting the hold to
+ * Ò1Ó*/
 #define RTC_IO_ADC2_HOLD (BIT(30))
 #define RTC_IO_ADC2_HOLD_M (BIT(30))
 #define RTC_IO_ADC2_HOLD_V 0x1
@@ -782,7 +788,8 @@
 #define RTC_IO_PDAC1_DRV_V 0x3
 #define RTC_IO_PDAC1_DRV_S 30
 /* RTC_IO_PDAC1_HOLD : R/W ;bitpos:[29] ;default: 1'd0 ; */
-/*description: hold the current value of the output when setting the hold to Ò1Ó*/
+/*description: hold the current value of the output when setting the hold to
+ * Ò1Ó*/
 #define RTC_IO_PDAC1_HOLD (BIT(29))
 #define RTC_IO_PDAC1_HOLD_M (BIT(29))
 #define RTC_IO_PDAC1_HOLD_V 0x1
@@ -864,7 +871,8 @@
 #define RTC_IO_PDAC2_DRV_V 0x3
 #define RTC_IO_PDAC2_DRV_S 30
 /* RTC_IO_PDAC2_HOLD : R/W ;bitpos:[29] ;default: 1'd0 ; */
-/*description: hold the current value of the output when setting the hold to Ò1Ó*/
+/*description: hold the current value of the output when setting the hold to
+ * Ò1Ó*/
 #define RTC_IO_PDAC2_HOLD (BIT(29))
 #define RTC_IO_PDAC2_HOLD_M (BIT(29))
 #define RTC_IO_PDAC2_HOLD_V 0x1
@@ -946,7 +954,8 @@
 #define RTC_IO_X32N_DRV_V 0x3
 #define RTC_IO_X32N_DRV_S 30
 /* RTC_IO_X32N_HOLD : R/W ;bitpos:[29] ;default: 1'd0 ; */
-/*description: hold the current value of the output when setting the hold to Ò1Ó*/
+/*description: hold the current value of the output when setting the hold to
+ * Ò1Ó*/
 #define RTC_IO_X32N_HOLD (BIT(29))
 #define RTC_IO_X32N_HOLD_M (BIT(29))
 #define RTC_IO_X32N_HOLD_V 0x1
@@ -970,7 +979,8 @@
 #define RTC_IO_X32P_DRV_V 0x3
 #define RTC_IO_X32P_DRV_S 25
 /* RTC_IO_X32P_HOLD : R/W ;bitpos:[24] ;default: 1'd0 ; */
-/*description: hold the current value of the output when setting the hold to Ò1Ó*/
+/*description: hold the current value of the output when setting the hold to
+ * Ò1Ó*/
 #define RTC_IO_X32P_HOLD (BIT(24))
 #define RTC_IO_X32P_HOLD_M (BIT(24))
 #define RTC_IO_X32P_HOLD_V 0x1
@@ -1110,8 +1120,8 @@
 #define RTC_IO_TOUCH_DRANGE_V 0x3
 #define RTC_IO_TOUCH_DRANGE_S 25
 /* RTC_IO_TOUCH_DCUR : R/W ;bitpos:[24:23] ;default: 2'b00 ; */
-/*description: touch sensor bias current. Should have option to tie with BIAS_SLEEP(When
- BIAS_SLEEP  this setting is available*/
+/*description: touch sensor bias current. Should have option to tie with
+ BIAS_SLEEP(When BIAS_SLEEP  this setting is available*/
 #define RTC_IO_TOUCH_DCUR 0x00000003
 #define RTC_IO_TOUCH_DCUR_M ((RTC_IO_TOUCH_DCUR_V) << (RTC_IO_TOUCH_DCUR_S))
 #define RTC_IO_TOUCH_DCUR_V 0x3
@@ -1119,7 +1129,8 @@
 
 #define RTC_IO_TOUCH_PAD0_REG (DR_REG_RTCIO_BASE + 0x94)
 /* RTC_IO_TOUCH_PAD0_HOLD : R/W ;bitpos:[31] ;default: 1'd0 ; */
-/*description: hold the current value of the output when setting the hold to Ò1Ó*/
+/*description: hold the current value of the output when setting the hold to
+ * Ò1Ó*/
 #define RTC_IO_TOUCH_PAD0_HOLD (BIT(31))
 #define RTC_IO_TOUCH_PAD0_HOLD_M (BIT(31))
 #define RTC_IO_TOUCH_PAD0_HOLD_V 0x1
@@ -1143,7 +1154,8 @@
 #define RTC_IO_TOUCH_PAD0_RUE_V 0x1
 #define RTC_IO_TOUCH_PAD0_RUE_S 27
 /* RTC_IO_TOUCH_PAD0_DAC : R/W ;bitpos:[25:23] ;default: 3'h4 ; */
-/*description: touch sensor slope control. 3-bit for each touch panel  default 100.*/
+/*description: touch sensor slope control. 3-bit for each touch panel  default
+ * 100.*/
 #define RTC_IO_TOUCH_PAD0_DAC 0x00000007
 #define RTC_IO_TOUCH_PAD0_DAC_M ((RTC_IO_TOUCH_PAD0_DAC_V) << (RTC_IO_TOUCH_PAD0_DAC_S))
 #define RTC_IO_TOUCH_PAD0_DAC_V 0x7
@@ -1203,7 +1215,8 @@
 #define RTC_IO_TOUCH_PAD0_FUN_IE_V 0x1
 #define RTC_IO_TOUCH_PAD0_FUN_IE_S 13
 /* RTC_IO_TOUCH_PAD0_TO_GPIO : R/W ;bitpos:[12] ;default: 1'd0 ; */
-/*description: connect the rtc pad input to digital pad input Ó0Ó is availbale GPIO4*/
+/*description: connect the rtc pad input to digital pad input Ó0Ó is availbale
+ * GPIO4*/
 #define RTC_IO_TOUCH_PAD0_TO_GPIO (BIT(12))
 #define RTC_IO_TOUCH_PAD0_TO_GPIO_M (BIT(12))
 #define RTC_IO_TOUCH_PAD0_TO_GPIO_V 0x1
@@ -1235,7 +1248,8 @@
 #define RTC_IO_TOUCH_PAD1_RUE_V 0x1
 #define RTC_IO_TOUCH_PAD1_RUE_S 27
 /* RTC_IO_TOUCH_PAD1_DAC : R/W ;bitpos:[25:23] ;default: 3'h4 ; */
-/*description: touch sensor slope control. 3-bit for each touch panel  default 100.*/
+/*description: touch sensor slope control. 3-bit for each touch panel  default
+ * 100.*/
 #define RTC_IO_TOUCH_PAD1_DAC 0x00000007
 #define RTC_IO_TOUCH_PAD1_DAC_M ((RTC_IO_TOUCH_PAD1_DAC_V) << (RTC_IO_TOUCH_PAD1_DAC_S))
 #define RTC_IO_TOUCH_PAD1_DAC_V 0x7
@@ -1295,7 +1309,8 @@
 #define RTC_IO_TOUCH_PAD1_FUN_IE_V 0x1
 #define RTC_IO_TOUCH_PAD1_FUN_IE_S 13
 /* RTC_IO_TOUCH_PAD1_TO_GPIO : R/W ;bitpos:[12] ;default: 1'd0 ; */
-/*description: connect the rtc pad input to digital pad input Ó0Ó is availbale.GPIO0*/
+/*description: connect the rtc pad input to digital pad input Ó0Ó is
+ * availbale.GPIO0*/
 #define RTC_IO_TOUCH_PAD1_TO_GPIO (BIT(12))
 #define RTC_IO_TOUCH_PAD1_TO_GPIO_M (BIT(12))
 #define RTC_IO_TOUCH_PAD1_TO_GPIO_V 0x1
@@ -1303,7 +1318,8 @@
 
 #define RTC_IO_TOUCH_PAD2_REG (DR_REG_RTCIO_BASE + 0x9c)
 /* RTC_IO_TOUCH_PAD2_HOLD : R/W ;bitpos:[31] ;default: 1'd0 ; */
-/*description: hold the current value of the output when setting the hold to Ò1Ó*/
+/*description: hold the current value of the output when setting the hold to
+ * Ò1Ó*/
 #define RTC_IO_TOUCH_PAD2_HOLD (BIT(31))
 #define RTC_IO_TOUCH_PAD2_HOLD_M (BIT(31))
 #define RTC_IO_TOUCH_PAD2_HOLD_V 0x1
@@ -1327,7 +1343,8 @@
 #define RTC_IO_TOUCH_PAD2_RUE_V 0x1
 #define RTC_IO_TOUCH_PAD2_RUE_S 27
 /* RTC_IO_TOUCH_PAD2_DAC : R/W ;bitpos:[25:23] ;default: 3'h4 ; */
-/*description: touch sensor slope control. 3-bit for each touch panel  default 100.*/
+/*description: touch sensor slope control. 3-bit for each touch panel  default
+ * 100.*/
 #define RTC_IO_TOUCH_PAD2_DAC 0x00000007
 #define RTC_IO_TOUCH_PAD2_DAC_M ((RTC_IO_TOUCH_PAD2_DAC_V) << (RTC_IO_TOUCH_PAD2_DAC_S))
 #define RTC_IO_TOUCH_PAD2_DAC_V 0x7
@@ -1387,7 +1404,8 @@
 #define RTC_IO_TOUCH_PAD2_FUN_IE_V 0x1
 #define RTC_IO_TOUCH_PAD2_FUN_IE_S 13
 /* RTC_IO_TOUCH_PAD2_TO_GPIO : R/W ;bitpos:[12] ;default: 1'd0 ; */
-/*description: connect the rtc pad input to digital pad input Ó0Ó is availbale.GPIO2*/
+/*description: connect the rtc pad input to digital pad input Ó0Ó is
+ * availbale.GPIO2*/
 #define RTC_IO_TOUCH_PAD2_TO_GPIO (BIT(12))
 #define RTC_IO_TOUCH_PAD2_TO_GPIO_M (BIT(12))
 #define RTC_IO_TOUCH_PAD2_TO_GPIO_V 0x1
@@ -1395,7 +1413,8 @@
 
 #define RTC_IO_TOUCH_PAD3_REG (DR_REG_RTCIO_BASE + 0xa0)
 /* RTC_IO_TOUCH_PAD3_HOLD : R/W ;bitpos:[31] ;default: 1'd0 ; */
-/*description: hold the current value of the output when setting the hold to Ò1Ó*/
+/*description: hold the current value of the output when setting the hold to
+ * Ò1Ó*/
 #define RTC_IO_TOUCH_PAD3_HOLD (BIT(31))
 #define RTC_IO_TOUCH_PAD3_HOLD_M (BIT(31))
 #define RTC_IO_TOUCH_PAD3_HOLD_V 0x1
@@ -1419,7 +1438,8 @@
 #define RTC_IO_TOUCH_PAD3_RUE_V 0x1
 #define RTC_IO_TOUCH_PAD3_RUE_S 27
 /* RTC_IO_TOUCH_PAD3_DAC : R/W ;bitpos:[25:23] ;default: 3'h4 ; */
-/*description: touch sensor slope control. 3-bit for each touch panel  default 100.*/
+/*description: touch sensor slope control. 3-bit for each touch panel  default
+ * 100.*/
 #define RTC_IO_TOUCH_PAD3_DAC 0x00000007
 #define RTC_IO_TOUCH_PAD3_DAC_M ((RTC_IO_TOUCH_PAD3_DAC_V) << (RTC_IO_TOUCH_PAD3_DAC_S))
 #define RTC_IO_TOUCH_PAD3_DAC_V 0x7
@@ -1479,7 +1499,8 @@
 #define RTC_IO_TOUCH_PAD3_FUN_IE_V 0x1
 #define RTC_IO_TOUCH_PAD3_FUN_IE_S 13
 /* RTC_IO_TOUCH_PAD3_TO_GPIO : R/W ;bitpos:[12] ;default: 1'd0 ; */
-/*description: connect the rtc pad input to digital pad input Ó0Ó is availbale.MTDO*/
+/*description: connect the rtc pad input to digital pad input Ó0Ó is
+ * availbale.MTDO*/
 #define RTC_IO_TOUCH_PAD3_TO_GPIO (BIT(12))
 #define RTC_IO_TOUCH_PAD3_TO_GPIO_M (BIT(12))
 #define RTC_IO_TOUCH_PAD3_TO_GPIO_V 0x1
@@ -1487,7 +1508,8 @@
 
 #define RTC_IO_TOUCH_PAD4_REG (DR_REG_RTCIO_BASE + 0xa4)
 /* RTC_IO_TOUCH_PAD4_HOLD : R/W ;bitpos:[31] ;default: 1'd0 ; */
-/*description: hold the current value of the output when setting the hold to Ò1Ó*/
+/*description: hold the current value of the output when setting the hold to
+ * Ò1Ó*/
 #define RTC_IO_TOUCH_PAD4_HOLD (BIT(31))
 #define RTC_IO_TOUCH_PAD4_HOLD_M (BIT(31))
 #define RTC_IO_TOUCH_PAD4_HOLD_V 0x1
@@ -1511,7 +1533,8 @@
 #define RTC_IO_TOUCH_PAD4_RUE_V 0x1
 #define RTC_IO_TOUCH_PAD4_RUE_S 27
 /* RTC_IO_TOUCH_PAD4_DAC : R/W ;bitpos:[25:23] ;default: 3'h4 ; */
-/*description: touch sensor slope control. 3-bit for each touch panel  default 100.*/
+/*description: touch sensor slope control. 3-bit for each touch panel  default
+ * 100.*/
 #define RTC_IO_TOUCH_PAD4_DAC 0x00000007
 #define RTC_IO_TOUCH_PAD4_DAC_M ((RTC_IO_TOUCH_PAD4_DAC_V) << (RTC_IO_TOUCH_PAD4_DAC_S))
 #define RTC_IO_TOUCH_PAD4_DAC_V 0x7
@@ -1571,7 +1594,8 @@
 #define RTC_IO_TOUCH_PAD4_FUN_IE_V 0x1
 #define RTC_IO_TOUCH_PAD4_FUN_IE_S 13
 /* RTC_IO_TOUCH_PAD4_TO_GPIO : R/W ;bitpos:[12] ;default: 1'd0 ; */
-/*description: connect the rtc pad input to digital pad input Ó0Ó is availbale.MTCK*/
+/*description: connect the rtc pad input to digital pad input Ó0Ó is
+ * availbale.MTCK*/
 #define RTC_IO_TOUCH_PAD4_TO_GPIO (BIT(12))
 #define RTC_IO_TOUCH_PAD4_TO_GPIO_M (BIT(12))
 #define RTC_IO_TOUCH_PAD4_TO_GPIO_V 0x1
@@ -1579,7 +1603,8 @@
 
 #define RTC_IO_TOUCH_PAD5_REG (DR_REG_RTCIO_BASE + 0xa8)
 /* RTC_IO_TOUCH_PAD5_HOLD : R/W ;bitpos:[31] ;default: 1'd0 ; */
-/*description: hold the current value of the output when setting the hold to Ò1Ó*/
+/*description: hold the current value of the output when setting the hold to
+ * Ò1Ó*/
 #define RTC_IO_TOUCH_PAD5_HOLD (BIT(31))
 #define RTC_IO_TOUCH_PAD5_HOLD_M (BIT(31))
 #define RTC_IO_TOUCH_PAD5_HOLD_V 0x1
@@ -1603,7 +1628,8 @@
 #define RTC_IO_TOUCH_PAD5_RUE_V 0x1
 #define RTC_IO_TOUCH_PAD5_RUE_S 27
 /* RTC_IO_TOUCH_PAD5_DAC : R/W ;bitpos:[25:23] ;default: 3'h4 ; */
-/*description: touch sensor slope control. 3-bit for each touch panel  default 100.*/
+/*description: touch sensor slope control. 3-bit for each touch panel  default
+ * 100.*/
 #define RTC_IO_TOUCH_PAD5_DAC 0x00000007
 #define RTC_IO_TOUCH_PAD5_DAC_M ((RTC_IO_TOUCH_PAD5_DAC_V) << (RTC_IO_TOUCH_PAD5_DAC_S))
 #define RTC_IO_TOUCH_PAD5_DAC_V 0x7
@@ -1663,7 +1689,8 @@
 #define RTC_IO_TOUCH_PAD5_FUN_IE_V 0x1
 #define RTC_IO_TOUCH_PAD5_FUN_IE_S 13
 /* RTC_IO_TOUCH_PAD5_TO_GPIO : R/W ;bitpos:[12] ;default: 1'd0 ; */
-/*description: connect the rtc pad input to digital pad input Ó0Ó is availbale.MTDI*/
+/*description: connect the rtc pad input to digital pad input Ó0Ó is
+ * availbale.MTDI*/
 #define RTC_IO_TOUCH_PAD5_TO_GPIO (BIT(12))
 #define RTC_IO_TOUCH_PAD5_TO_GPIO_M (BIT(12))
 #define RTC_IO_TOUCH_PAD5_TO_GPIO_V 0x1
@@ -1671,7 +1698,8 @@
 
 #define RTC_IO_TOUCH_PAD6_REG (DR_REG_RTCIO_BASE + 0xac)
 /* RTC_IO_TOUCH_PAD6_HOLD : R/W ;bitpos:[31] ;default: 1'd0 ; */
-/*description: hold the current value of the output when setting the hold to Ò1Ó*/
+/*description: hold the current value of the output when setting the hold to
+ * Ò1Ó*/
 #define RTC_IO_TOUCH_PAD6_HOLD (BIT(31))
 #define RTC_IO_TOUCH_PAD6_HOLD_M (BIT(31))
 #define RTC_IO_TOUCH_PAD6_HOLD_V 0x1
@@ -1695,7 +1723,8 @@
 #define RTC_IO_TOUCH_PAD6_RUE_V 0x1
 #define RTC_IO_TOUCH_PAD6_RUE_S 27
 /* RTC_IO_TOUCH_PAD6_DAC : R/W ;bitpos:[25:23] ;default: 3'h4 ; */
-/*description: touch sensor slope control. 3-bit for each touch panel  default 100.*/
+/*description: touch sensor slope control. 3-bit for each touch panel  default
+ * 100.*/
 #define RTC_IO_TOUCH_PAD6_DAC 0x00000007
 #define RTC_IO_TOUCH_PAD6_DAC_M ((RTC_IO_TOUCH_PAD6_DAC_V) << (RTC_IO_TOUCH_PAD6_DAC_S))
 #define RTC_IO_TOUCH_PAD6_DAC_V 0x7
@@ -1755,7 +1784,8 @@
 #define RTC_IO_TOUCH_PAD6_FUN_IE_V 0x1
 #define RTC_IO_TOUCH_PAD6_FUN_IE_S 13
 /* RTC_IO_TOUCH_PAD6_TO_GPIO : R/W ;bitpos:[12] ;default: 1'd0 ; */
-/*description: connect the rtc pad input to digital pad input Ó0Ó is availbale.MTMS*/
+/*description: connect the rtc pad input to digital pad input Ó0Ó is
+ * availbale.MTMS*/
 #define RTC_IO_TOUCH_PAD6_TO_GPIO (BIT(12))
 #define RTC_IO_TOUCH_PAD6_TO_GPIO_M (BIT(12))
 #define RTC_IO_TOUCH_PAD6_TO_GPIO_V 0x1
@@ -1763,7 +1793,8 @@
 
 #define RTC_IO_TOUCH_PAD7_REG (DR_REG_RTCIO_BASE + 0xb0)
 /* RTC_IO_TOUCH_PAD7_HOLD : R/W ;bitpos:[31] ;default: 1'd0 ; */
-/*description: hold the current value of the output when setting the hold to Ò1Ó*/
+/*description: hold the current value of the output when setting the hold to
+ * Ò1Ó*/
 #define RTC_IO_TOUCH_PAD7_HOLD (BIT(31))
 #define RTC_IO_TOUCH_PAD7_HOLD_M (BIT(31))
 #define RTC_IO_TOUCH_PAD7_HOLD_V 0x1
@@ -1787,7 +1818,8 @@
 #define RTC_IO_TOUCH_PAD7_RUE_V 0x1
 #define RTC_IO_TOUCH_PAD7_RUE_S 27
 /* RTC_IO_TOUCH_PAD7_DAC : R/W ;bitpos:[25:23] ;default: 3'h4 ; */
-/*description: touch sensor slope control. 3-bit for each touch panel  default 100.*/
+/*description: touch sensor slope control. 3-bit for each touch panel  default
+ * 100.*/
 #define RTC_IO_TOUCH_PAD7_DAC 0x00000007
 #define RTC_IO_TOUCH_PAD7_DAC_M ((RTC_IO_TOUCH_PAD7_DAC_V) << (RTC_IO_TOUCH_PAD7_DAC_S))
 #define RTC_IO_TOUCH_PAD7_DAC_V 0x7
@@ -1847,7 +1879,8 @@
 #define RTC_IO_TOUCH_PAD7_FUN_IE_V 0x1
 #define RTC_IO_TOUCH_PAD7_FUN_IE_S 13
 /* RTC_IO_TOUCH_PAD7_TO_GPIO : R/W ;bitpos:[12] ;default: 1'd0 ; */
-/*description: connect the rtc pad input to digital pad input Ó0Ó is availbale.GPIO27*/
+/*description: connect the rtc pad input to digital pad input Ó0Ó is
+ * availbale.GPIO27*/
 #define RTC_IO_TOUCH_PAD7_TO_GPIO (BIT(12))
 #define RTC_IO_TOUCH_PAD7_TO_GPIO_M (BIT(12))
 #define RTC_IO_TOUCH_PAD7_TO_GPIO_V 0x1
@@ -1855,7 +1888,8 @@
 
 #define RTC_IO_TOUCH_PAD8_REG (DR_REG_RTCIO_BASE + 0xb4)
 /* RTC_IO_TOUCH_PAD8_DAC : R/W ;bitpos:[25:23] ;default: 3'h4 ; */
-/*description: touch sensor slope control. 3-bit for each touch panel  default 100.*/
+/*description: touch sensor slope control. 3-bit for each touch panel  default
+ * 100.*/
 #define RTC_IO_TOUCH_PAD8_DAC 0x00000007
 #define RTC_IO_TOUCH_PAD8_DAC_M ((RTC_IO_TOUCH_PAD8_DAC_V) << (RTC_IO_TOUCH_PAD8_DAC_S))
 #define RTC_IO_TOUCH_PAD8_DAC_V 0x7
@@ -1887,7 +1921,8 @@
 
 #define RTC_IO_TOUCH_PAD9_REG (DR_REG_RTCIO_BASE + 0xb8)
 /* RTC_IO_TOUCH_PAD9_DAC : R/W ;bitpos:[25:23] ;default: 3'h4 ; */
-/*description: touch sensor slope control. 3-bit for each touch panel  default 100.*/
+/*description: touch sensor slope control. 3-bit for each touch panel  default
+ * 100.*/
 #define RTC_IO_TOUCH_PAD9_DAC 0x00000007
 #define RTC_IO_TOUCH_PAD9_DAC_M ((RTC_IO_TOUCH_PAD9_DAC_V) << (RTC_IO_TOUCH_PAD9_DAC_S))
 #define RTC_IO_TOUCH_PAD9_DAC_V 0x7
@@ -1919,7 +1954,8 @@
 
 #define RTC_IO_EXT_WAKEUP0_REG (DR_REG_RTCIO_BASE + 0xbc)
 /* RTC_IO_EXT_WAKEUP0_SEL : R/W ;bitpos:[31:27] ;default: 5'd0 ; */
-/*description: select the wakeup source Ó0Ó select GPIO0 Ó1Ó select GPIO2 ...Ò17Ó select GPIO17*/
+/*description: select the wakeup source Ó0Ó select GPIO0 Ó1Ó select GPIO2
+ * ...Ò17Ó select GPIO17*/
 #define RTC_IO_EXT_WAKEUP0_SEL 0x0000001F
 #define RTC_IO_EXT_WAKEUP0_SEL_M ((RTC_IO_EXT_WAKEUP0_SEL_V) << (RTC_IO_EXT_WAKEUP0_SEL_S))
 #define RTC_IO_EXT_WAKEUP0_SEL_V 0x1F
@@ -1936,13 +1972,15 @@
 
 #define RTC_IO_SAR_I2C_IO_REG (DR_REG_RTCIO_BASE + 0xc4)
 /* RTC_IO_SAR_I2C_SDA_SEL : R/W ;bitpos:[31:30] ;default: 2'd0 ; */
-/*description: Ò0Ó using TOUCH_PAD[1] as i2c sda Ò1Ó using TOUCH_PAD[3] as i2c sda*/
+/*description: Ò0Ó using TOUCH_PAD[1] as i2c sda Ò1Ó using TOUCH_PAD[3] as i2c
+ * sda*/
 #define RTC_IO_SAR_I2C_SDA_SEL 0x00000003
 #define RTC_IO_SAR_I2C_SDA_SEL_M ((RTC_IO_SAR_I2C_SDA_SEL_V) << (RTC_IO_SAR_I2C_SDA_SEL_S))
 #define RTC_IO_SAR_I2C_SDA_SEL_V 0x3
 #define RTC_IO_SAR_I2C_SDA_SEL_S 30
 /* RTC_IO_SAR_I2C_SCL_SEL : R/W ;bitpos:[29:28] ;default: 2'd0 ; */
-/*description: Ò0Ó using TOUCH_PAD[0] as i2c clk Ò1Ó using TOUCH_PAD[2] as i2c clk*/
+/*description: Ò0Ó using TOUCH_PAD[0] as i2c clk Ò1Ó using TOUCH_PAD[2] as i2c
+ * clk*/
 #define RTC_IO_SAR_I2C_SCL_SEL 0x00000003
 #define RTC_IO_SAR_I2C_SCL_SEL_M ((RTC_IO_SAR_I2C_SCL_SEL_V) << (RTC_IO_SAR_I2C_SCL_SEL_S))
 #define RTC_IO_SAR_I2C_SCL_SEL_V 0x3

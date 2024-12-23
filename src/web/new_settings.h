@@ -3,7 +3,8 @@ String formatGPIOStatus(int driverIndex)
 {
     String status = "";
 
-    // Предполагается, что для каждого драйвера есть четыре GPIO-пина, которые нужно проверить
+    // Предполагается, что для каждого драйвера есть четыре GPIO-пина, которые
+    // нужно проверить
     int baseIndex = driverIndex * 4;
 
     status += "A:" + String(bitRead(readGPIO, baseIndex)) + " ";
@@ -60,7 +61,8 @@ void setVPDStyles(String vpdstage)
     }
     else
     {
-        // Значения по умолчанию, если vpdstage не соответствует ни одному из известных значений
+        // Значения по умолчанию, если vpdstage не соответствует ни одному из
+        // известных значений
         rootStyle = getStyle(rootVPD, 1.0, 0.5, 1.6);
         airStyle = getStyle(airVPD, 1.0, 0.5, 1.6);
     }

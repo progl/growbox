@@ -8,5 +8,6 @@ GKalman KalmanDist(dist_mea_e, dist_est_e, dist_q);
 boolean first_Dist = true;
 boolean first_Level = true;
 // Экземпляр и использование
-UltrasonicSensor distanceSensor(13, 14, 200000);  // 200000 мс таймаут - мало ли в потолок смотрим
+UltrasonicSensor distanceSensor(13, 14,
+                                200000);  // 200000 мс таймаут - мало ли в потолок смотрим
 UltrasonicMeasurement measurement;

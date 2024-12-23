@@ -23,7 +23,8 @@
 #define SENS_SAR1_DATA_INV_V 0x1
 #define SENS_SAR1_DATA_INV_S 28
 /* SENS_SAR1_DIG_FORCE : R/W ;bitpos:[27] ;default: 1'd0 ; */
-/*description: 1: SAR ADC1 controlled by DIG ADC1 CTRL  0: SAR ADC1 controlled by RTC ADC1 CTRL*/
+/*description: 1: SAR ADC1 controlled by DIG ADC1 CTRL  0: SAR ADC1 controlled
+ * by RTC ADC1 CTRL*/
 #define SENS_SAR1_DIG_FORCE (BIT(27))
 #define SENS_SAR1_DIG_FORCE_M (BIT(27))
 #define SENS_SAR1_DIG_FORCE_V 0x1
@@ -238,14 +239,15 @@
 #define SENS_SARCLK_EN_V 0x1
 #define SENS_SARCLK_EN_S 10
 /* SENS_ULP_CP_START_TOP : R/W ;bitpos:[9] ;default: 1'b0 ; */
-/*description: Write 1 to start ULP-coprocessor  only active when reg_ulp_cp_force_start_top
- = 1*/
+/*description: Write 1 to start ULP-coprocessor  only active when
+ reg_ulp_cp_force_start_top = 1*/
 #define SENS_ULP_CP_START_TOP (BIT(9))
 #define SENS_ULP_CP_START_TOP_M (BIT(9))
 #define SENS_ULP_CP_START_TOP_V 0x1
 #define SENS_ULP_CP_START_TOP_S 9
 /* SENS_ULP_CP_FORCE_START_TOP : R/W ;bitpos:[8] ;default: 1'b0 ; */
-/*description: 1: ULP-coprocessor is started by SW  0: ULP-coprocessor is started by timer*/
+/*description: 1: ULP-coprocessor is started by SW  0: ULP-coprocessor is
+ * started by timer*/
 #define SENS_ULP_CP_FORCE_START_TOP (BIT(8))
 #define SENS_ULP_CP_FORCE_START_TOP_M (BIT(8))
 #define SENS_ULP_CP_FORCE_START_TOP_V 0x1
@@ -401,7 +403,8 @@
 
 #define SENS_SAR_TSENS_CTRL_REG (DR_REG_SENS_BASE + 0x004c)
 /* SENS_TSENS_DUMP_OUT : R/W ;bitpos:[26] ;default: 1'b0 ; */
-/*description: temperature sensor dump out  only active when reg_tsens_power_up_force = 1*/
+/*description: temperature sensor dump out  only active when
+ * reg_tsens_power_up_force = 1*/
 #define SENS_TSENS_DUMP_OUT (BIT(26))
 #define SENS_TSENS_DUMP_OUT_M (BIT(26))
 #define SENS_TSENS_DUMP_OUT_V 0x1
@@ -484,7 +487,8 @@
 #define SENS_SAR1_EN_PAD_FORCE_V 0x1
 #define SENS_SAR1_EN_PAD_FORCE_S 31
 /* SENS_SAR1_EN_PAD : R/W ;bitpos:[30:19] ;default: 12'b0 ; */
-/*description: SAR ADC1 pad enable bitmap  only active when reg_sar1_en_pad_force = 1*/
+/*description: SAR ADC1 pad enable bitmap  only active when
+ * reg_sar1_en_pad_force = 1*/
 #define SENS_SAR1_EN_PAD 0x00000FFF
 #define SENS_SAR1_EN_PAD_M ((SENS_SAR1_EN_PAD_V) << (SENS_SAR1_EN_PAD_S))
 #define SENS_SAR1_EN_PAD_V 0xFFF
@@ -540,8 +544,8 @@
 #define SENS_TOUCH_OUT_1EN_S 25
 /* SENS_TOUCH_OUT_SEL : R/W ;bitpos:[24] ;default: 1'b0 ; */
 /*description: 1: when the counter is greater then the threshold  the touch
- pad is considered as "touched"  0: when the counter is less than the threshold  the touch pad is considered as
- "touched"*/
+ pad is considered as "touched"  0: when the counter is less than the threshold
+ the touch pad is considered as "touched"*/
 #define SENS_TOUCH_OUT_SEL (BIT(24))
 #define SENS_TOUCH_OUT_SEL_M (BIT(24))
 #define SENS_TOUCH_OUT_SEL_V 0x1
@@ -725,8 +729,8 @@
 #define SENS_TOUCH_START_EN_V 0x1
 #define SENS_TOUCH_START_EN_S 12
 /* SENS_TOUCH_START_FSM_EN : R/W ;bitpos:[11] ;default: 1'h1 ; */
-/*description: 1: TOUCH_START & TOUCH_XPD is controlled by touch fsm  0: TOUCH_START
- & TOUCH_XPD is controlled by registers*/
+/*description: 1: TOUCH_START & TOUCH_XPD is controlled by touch fsm  0:
+ TOUCH_START & TOUCH_XPD is controlled by registers*/
 #define SENS_TOUCH_START_FSM_EN (BIT(11))
 #define SENS_TOUCH_START_FSM_EN_M (BIT(11))
 #define SENS_TOUCH_START_FSM_EN_V 0x1
@@ -827,7 +831,8 @@
 #define SENS_SAR2_EN_PAD_FORCE_V 0x1
 #define SENS_SAR2_EN_PAD_FORCE_S 31
 /* SENS_SAR2_EN_PAD : R/W ;bitpos:[30:19] ;default: 12'b0 ; */
-/*description: SAR ADC2 pad enable bitmap  only active when reg_sar2_en_pad_force = 1*/
+/*description: SAR ADC2 pad enable bitmap  only active when
+ * reg_sar2_en_pad_force = 1*/
 #define SENS_SAR2_EN_PAD 0x00000FFF
 #define SENS_SAR2_EN_PAD_M ((SENS_SAR2_EN_PAD_V) << (SENS_SAR2_EN_PAD_S))
 #define SENS_SAR2_EN_PAD_V 0xFFF
@@ -897,7 +902,8 @@
 #define SENS_SW_TONE_EN_V 0x1
 #define SENS_SW_TONE_EN_S 16
 /* SENS_SW_FSTEP : R/W ;bitpos:[15:0] ;default: 16'b0 ; */
-/*description: frequency step for CW generator  can be used to adjust the frequency*/
+/*description: frequency step for CW generator  can be used to adjust the
+ * frequency*/
 #define SENS_SW_FSTEP 0x0000FFFF
 #define SENS_SW_FSTEP_M ((SENS_SW_FSTEP_V) << (SENS_SW_FSTEP_S))
 #define SENS_SW_FSTEP_V 0xFFFF
