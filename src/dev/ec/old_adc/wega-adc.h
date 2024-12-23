@@ -95,22 +95,30 @@ void IRAM_ATTR __wega_analogInit()
     SET_PERI_REG_MASK(SENS_SAR_READ_CTRL2_REG, SENS_SAR2_DATA_INV);
 
     SET_PERI_REG_MASK(SENS_SAR_MEAS_START1_REG,
-                      SENS_MEAS1_START_FORCE_M);  // SAR ADC1 controller (in RTC) is started by SW
+                      SENS_MEAS1_START_FORCE_M);  // SAR ADC1 controller (in RTC)
+                                                  // is started by SW
     SET_PERI_REG_MASK(SENS_SAR_MEAS_START1_REG,
-                      SENS_SAR1_EN_PAD_FORCE_M);  // SAR ADC1 pad enable bitmap is controlled by SW
+                      SENS_SAR1_EN_PAD_FORCE_M);  // SAR ADC1 pad enable bitmap is
+                                                  // controlled by SW
     SET_PERI_REG_MASK(SENS_SAR_MEAS_START2_REG,
-                      SENS_MEAS2_START_FORCE_M);  // SAR ADC2 controller (in RTC) is started by SW
+                      SENS_MEAS2_START_FORCE_M);  // SAR ADC2 controller (in RTC)
+                                                  // is started by SW
     SET_PERI_REG_MASK(SENS_SAR_MEAS_START2_REG,
-                      SENS_SAR2_EN_PAD_FORCE_M);  // SAR ADC2 pad enable bitmap is controlled by SW
+                      SENS_SAR2_EN_PAD_FORCE_M);  // SAR ADC2 pad enable bitmap is
+                                                  // controlled by SW
 
-    CLEAR_PERI_REG_MASK(SENS_SAR_MEAS_WAIT2_REG, SENS_FORCE_XPD_SAR_M);  // force XPD_SAR=0, use XPD_FSM
-    SET_PERI_REG_BITS(SENS_SAR_MEAS_WAIT2_REG, SENS_FORCE_XPD_AMP, 0x2, SENS_FORCE_XPD_AMP_S);  // force XPD_AMP=0
+    CLEAR_PERI_REG_MASK(SENS_SAR_MEAS_WAIT2_REG,
+                        SENS_FORCE_XPD_SAR_M);  // force XPD_SAR=0, use XPD_FSM
+    SET_PERI_REG_BITS(SENS_SAR_MEAS_WAIT2_REG, SENS_FORCE_XPD_AMP, 0x2,
+                      SENS_FORCE_XPD_AMP_S);  // force XPD_AMP=0
 
-    CLEAR_PERI_REG_MASK(SENS_SAR_MEAS_CTRL_REG, 0xfff << SENS_AMP_RST_FB_FSM_S);  // clear FSM
+    CLEAR_PERI_REG_MASK(SENS_SAR_MEAS_CTRL_REG,
+                        0xfff << SENS_AMP_RST_FB_FSM_S);  // clear FSM
     SET_PERI_REG_BITS(SENS_SAR_MEAS_WAIT1_REG, SENS_SAR_AMP_WAIT1, 0x1, SENS_SAR_AMP_WAIT1_S);
     SET_PERI_REG_BITS(SENS_SAR_MEAS_WAIT1_REG, SENS_SAR_AMP_WAIT2, 0x1, SENS_SAR_AMP_WAIT2_S);
     SET_PERI_REG_BITS(SENS_SAR_MEAS_WAIT2_REG, SENS_SAR_AMP_WAIT3, 0x1, SENS_SAR_AMP_WAIT3_S);
-    while (GET_PERI_REG_BITS2(SENS_SAR_SLAVE_ADDR1_REG, 0x7, SENS_MEAS_STATUS_S) != 0);  // wait det_fsm==
+    while (GET_PERI_REG_BITS2(SENS_SAR_SLAVE_ADDR1_REG, 0x7,
+                              SENS_MEAS_STATUS_S) != 0);  // wait det_fsm==
 
     initialized = true;
 }
@@ -154,11 +162,13 @@ bool IRAM_ATTR __wega_adcAttachPin(uint8_t pin)
     }
     else if (pin == 25)
     {
-        CLEAR_PERI_REG_MASK(RTC_IO_PAD_DAC1_REG, RTC_IO_PDAC1_XPD_DAC | RTC_IO_PDAC1_DAC_XPD_FORCE);  // stop dac1
+        CLEAR_PERI_REG_MASK(RTC_IO_PAD_DAC1_REG,
+                            RTC_IO_PDAC1_XPD_DAC | RTC_IO_PDAC1_DAC_XPD_FORCE);  // stop dac1
     }
     else if (pin == 26)
     {
-        CLEAR_PERI_REG_MASK(RTC_IO_PAD_DAC2_REG, RTC_IO_PDAC2_XPD_DAC | RTC_IO_PDAC2_DAC_XPD_FORCE);  // stop dac2
+        CLEAR_PERI_REG_MASK(RTC_IO_PAD_DAC2_REG,
+                            RTC_IO_PDAC2_XPD_DAC | RTC_IO_PDAC2_DAC_XPD_FORCE);  // stop dac2
     }
 
     pinMode(pin, ANALOG);
@@ -269,10 +279,12 @@ int __wega_hallRead()  // hall sensor without LNA
 
     pinMode(36, ANALOG);
     pinMode(39, ANALOG);
-    SET_PERI_REG_MASK(SENS_SAR_TOUCH_CTRL1_REG, SENS_XPD_HALL_FORCE_M);    // hall sens force enable
-    SET_PERI_REG_MASK(RTC_IO_HALL_SENS_REG, RTC_IO_XPD_HALL);              // xpd hall
-    SET_PERI_REG_MASK(SENS_SAR_TOUCH_CTRL1_REG, SENS_HALL_PHASE_FORCE_M);  // phase force
-    CLEAR_PERI_REG_MASK(RTC_IO_HALL_SENS_REG, RTC_IO_HALL_PHASE);          // hall phase
+    SET_PERI_REG_MASK(SENS_SAR_TOUCH_CTRL1_REG,
+                      SENS_XPD_HALL_FORCE_M);                  // hall sens force enable
+    SET_PERI_REG_MASK(RTC_IO_HALL_SENS_REG, RTC_IO_XPD_HALL);  // xpd hall
+    SET_PERI_REG_MASK(SENS_SAR_TOUCH_CTRL1_REG,
+                      SENS_HALL_PHASE_FORCE_M);                    // phase force
+    CLEAR_PERI_REG_MASK(RTC_IO_HALL_SENS_REG, RTC_IO_HALL_PHASE);  // hall phase
     Sens_Vp0 = __wega_analogRead(36);
     Sens_Vn0 = __wega_analogRead(39);
     SET_PERI_REG_MASK(RTC_IO_HALL_SENS_REG, RTC_IO_HALL_PHASE);

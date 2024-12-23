@@ -2,7 +2,8 @@
 
 void configAP()
 {
-    WiFi.mode(WIFI_AP_STA);  // starts the default AP (factory default or setup as persistent)
+    WiFi.mode(WIFI_AP_STA);  // starts the default AP (factory default or setup as
+                             // persistent)
     Serial.print("Connect your computer to the WiFi network ");
     Serial.print("to SSID of you ESP32");                 // no getter for SoftAP SSID
     server.on("/generate_204", handleRoot);               // Для Android

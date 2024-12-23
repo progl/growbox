@@ -7,9 +7,9 @@
 uint16_t wega_analogRead(uint8_t pin);
 
 /*
- * Set the resolution of analogRead return values. Default is 12 bits (range from 0 to 4096).
- * If between 9 and 12, it will equal the set hardware resolution, else value will be shifted.
- * Range is 1 - 16
+ * Set the resolution of analogRead return values. Default is 12 bits (range
+ * from 0 to 4096). If between 9 and 12, it will equal the set hardware
+ * resolution, else value will be shifted. Range is 1 - 16
  *
  * Note: compatibility with Arduino SAM
  */
@@ -57,7 +57,8 @@ uint16_t wega_analogRead(uint8_t pin);
  * Set the attenuation for particular pin
  * Default is 11db
  * */
-// void wega_analogSetPinAttenuation(uint8_t pin, adc_attenuation_t attenuation);
+// void wega_analogSetPinAttenuation(uint8_t pin, adc_attenuation_t
+// attenuation);
 
 /*
  * Get value for HALL sensor (without LNA)

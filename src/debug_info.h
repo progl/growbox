@@ -15,7 +15,8 @@ typedef struct
     uint32_t backtrace[STACK_DEPTH];
 } re_restart_debug_t;
 
-// Переменная для хранения отладочной информации (сохраняется между перезагрузками)
+// Переменная для хранения отладочной информации (сохраняется между
+// перезагрузками)
 __NOINIT_ATTR static re_restart_debug_t _debug_info;
 
 // Функция для захвата трейса стека
@@ -58,7 +59,8 @@ void IRAM_ATTR debugUpdate()
 extern "C" void __real_esp_panic_handler(void *info) __attribute__((noreturn));
 extern "C" void __wrap_esp_panic_handler(void *info)
 {
-    debugUpdate();  // Сохранение отладочной информации перед вызовом оригинального обработчика паники
+    debugUpdate();  // Сохранение отладочной информации перед вызовом оригинального
+                    // обработчика паники
 
     // Вызов оригинального обработчика паники для завершения обработки ошибки
     __real_esp_panic_handler(info);

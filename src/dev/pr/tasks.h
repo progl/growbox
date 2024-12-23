@@ -73,7 +73,8 @@ void PR_void()
     unsigned long PR0 = 0;
     syslog_ng("PR: " + fFTS(pr_probe_time, 0) + "ms start.");
     // Начало работы с АЦП
-    adc_power_acquire();  // Без проверки на SUCCESS, т.к. функция ничего не возвращает
+    adc_power_acquire();  // Без проверки на SUCCESS, т.к. функция ничего не
+                          // возвращает
     SAR_ADC1_LOCK_ACQUIRE();
     delay(1);  // Подождите 1 мс для стабилизации
 

@@ -6,7 +6,8 @@ void EC_void()
     unsigned long ec_probe_time = micros();
 
     // Начало работы с АЦП
-    adc_power_acquire();  // Без проверки на SUCCESS, т.к. функция ничего не возвращает
+    adc_power_acquire();  // Без проверки на SUCCESS, т.к. функция ничего не
+                          // возвращает
     SAR_ADC1_LOCK_ACQUIRE();
     delay(1);  // Подождите 1 мс для стабилизации
 
