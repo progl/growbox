@@ -1,0 +1,5 @@
+.pio**
+.github**
+.vscode**
+src/.DS_Store
+src/ponics.online.h
