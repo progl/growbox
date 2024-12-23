@@ -33,6 +33,20 @@
 #include "ccs811.h"  // CCS811 library
 #include <dev/ccs811/CCS811_FW_App_v2-0-0.h>
 #include "debug_info.h"
+#include "esp_adc_cal.h"
+
+// Настройки ADC
+esp_adc_cal_characteristics_t *adc_chars;
+const adc_bits_width_t width = ADC_WIDTH_BIT_12;  // Разрядность (12 бит)
+const adc_atten_t atten = ADC_ATTEN_DB_11;        // Коэффициент ослабления (0–3.3 В)
+
+// Указываем каналы для ADC1
+const adc1_channel_t channels[] = {
+    ADC1_CHANNEL_5,  // GPIO33
+    ADC1_CHANNEL_6,  // GPIO34
+    ADC1_CHANNEL_7   // GPIO35
+};
+const size_t channel_count = sizeof(channels) / sizeof(channels[0]);
 
 struct TaskParams
 {

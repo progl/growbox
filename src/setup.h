@@ -1,5 +1,22 @@
 
 int stack_size = 4096;
+
+void calibrate_adc()
+{
+    // Настройка разрядности ADC
+    adc1_config_width(width);
+
+    // Инициализация калибровки
+    adc_chars = (esp_adc_cal_characteristics_t *)calloc(1, sizeof(esp_adc_cal_characteristics_t));
+    esp_adc_cal_characterize(ADC_UNIT_1, atten, width, 1100, adc_chars);
+
+    // Конфигурация каждого канала
+    for (size_t i = 0; i < channel_count; i++)
+    {
+        adc1_config_channel_atten(channels[i], atten);  // Здесь исправлен тип
+    }
+}
+
 void setupTimers()
 {
 #if defined(ENABLE_PONICS_ONLINE)
@@ -289,6 +306,7 @@ void setup()
     setupTimers();
     setupSyslog();
     setupWiFi();
+    calibrate_adc();
     int rst_counter = preferences.getInt("rst_counter", 0);
     preferences.putInt("rst_counter", rst_counter + 1);
     preferences.putString("DebugInfo", getDebugInfoAsString());

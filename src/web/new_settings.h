@@ -208,7 +208,7 @@ void handleApiStatuses()
     doc["ec_text"] = "EC";
 
     doc["ec_notermo"] = fFTS(ec_notermo, 2) + " mS/cm";
-    doc["ec_notermo_text"] = "EC mo termo";
+    doc["ec_notermo_text"] = "EC no termo";
 
     doc["r2"] = fFTS(wR2, 2);
     doc["r2_text"] = "R2";
