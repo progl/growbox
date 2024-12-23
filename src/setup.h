@@ -229,7 +229,8 @@ void setupMQTT()
     mqttClient.onMessage(onMqttMessage);  // Set the callback for received messages
     mqttClient.setClientId(wegadb.c_str());
     mqttClient.setServer(MQTT_HOST, MQTT_PORT);
-    mqttClient.setCredentials(mqtt_mqtt_user, mqtt_mqtt_password);  // Set login and password
+    mqttClient.setCredentials(mqtt_mqtt_user,
+                              mqtt_mqtt_password);  // Set login and password
     syslog_ng("mqtt end setupMQTT connected: " + String(mqttClient.connected()));
 #endif
 }

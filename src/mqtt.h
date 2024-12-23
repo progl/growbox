@@ -61,7 +61,10 @@ void publish_switch_discovery_payload(Param param)
     }
     else
     {
-        syslog_ng("ERROR: publish_switch_discovery_payload Could not find preferences for " + String(switch_name));
+        syslog_ng(
+            "ERROR: publish_switch_discovery_payload Could not find "
+            "preferences for " +
+            String(switch_name));
     }
 }
 
@@ -213,7 +216,8 @@ void publishVariablesListToMQTT()
         }
         else
         {
-            JsonObject varObject = root[key].to<JsonObject>();  // Use the new syntax for creating nested objects
+            JsonObject varObject = root[key].to<JsonObject>();  // Use the new syntax for creating nested
+                                                                // objects
             varObject["value"] = "NaN";
             // varObject["type"] = "UNKNOWN";
         }
@@ -326,7 +330,8 @@ void subscribe()
     String mqttPrefixtest = mqttPrefix + "test/#";
     syslog_ng("mqtt subscribe mqttPrefixSet: " + mqttPrefixSet);
     syslog_ng("mqtt subscribe mqttPrefixSet: " + mqttPrefixtest);
-    mqttClient.subscribe(mqttPrefixSet.c_str(), qos);  // Subscribing to topic with prefix
+    mqttClient.subscribe(mqttPrefixSet.c_str(),
+                         qos);  // Subscribing to topic with prefix
     mqttClient.subscribe(mqttPrefixtest.c_str(), qos);
     syslog_ng("mqtt end subscribe");
 }
@@ -767,7 +772,8 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
             // Проверяем, есть ли значение для текущего ключа в JSON
             if (jsonDoc.containsKey(preferencesArray[i].key))
             {
-                // Определяем тип переменной и обновляем ее значение в зависимости от типа
+                // Определяем тип переменной и обновляем ее значение в зависимости от
+                // типа
                 switch (preferencesArray[i].type)
                 {
                     case DataType::FLOAT:

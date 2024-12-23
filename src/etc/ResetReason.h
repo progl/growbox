@@ -45,7 +45,9 @@ String reset_reason(RESET_REASON reason)
             return ("RTCWDT_BROWN_OUT_RESET (15,Reset when the vdd voltage is not stable)");
             break;
         case 16:
-            return ("RTCWDT_RTC_RESET (16,RTC Watch dog reset digital core and rtc module)");
+            return (
+                "RTCWDT_RTC_RESET (16,RTC Watch dog reset digital core and rtc "
+                "module)");
             break;
         default:
             return (String(reason) + ",NO_MEAN");

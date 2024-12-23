@@ -1,10 +1,15 @@
 void configureHttpClientForFirefox(HTTPClient &http)
 {
-    // Это пример заголовка User-Agent для Firefox, версия и платформа могут отличаться
-    http.addHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:85.0) Gecko/20100101 Firefox/85.0");
+    // Это пример заголовка User-Agent для Firefox, версия и платформа могут
+    // отличаться
+    http.addHeader("User-Agent",
+                   "Mozilla/5.0 (Windows NT 10.0; Win64; x64; "
+                   "rv:85.0) Gecko/20100101 Firefox/85.0");
 
     // Можно добавить и другие заголовки, которые обычно использует браузер
-    http.addHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
+    http.addHeader("Accept",
+                   "text/html,application/xhtml+xml,application/"
+                   "xml;q=0.9,image/webp,*/*;q=0.8");
     http.addHeader("Accept-Language", "en-US,en;q=0.5");
     http.addHeader("Accept-Encoding", "gzip, deflate, br");
     // Прочие заголовки по необходимости...
@@ -165,7 +170,9 @@ void update_f()
 void update()
 {
     UPDATE_URL = server.arg("update_url");
-    syslog_ng("make_update start update firmware - wait 40-60 seconds, page will reload automatically ");
+    syslog_ng(
+        "make_update start update firmware - wait 40-60 seconds, page will "
+        "reload automatically ");
     syslog_ng("make_update UPDATE_URL " + String(UPDATE_URL) + "?token=" + update_token);
     update_f();
 }
