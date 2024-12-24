@@ -49,6 +49,7 @@ int old_ec;
 Preferences preferences;
 Preferences config_preferences;
 WebServer server(80);
+WebSocketsServer webSocket = WebSocketsServer(81);
 TimerHandle_t mqttReconnectTimer;
 TimerHandle_t mqttReconnectTimerHa;
 TimerHandle_t wifiReconnectTimer;

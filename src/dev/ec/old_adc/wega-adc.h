@@ -123,24 +123,6 @@ void IRAM_ATTR __wega_analogInit()
     initialized = true;
 }
 
-void __wega_analogSetPinAttenuation(uint8_t pin, adc_attenuation_t attenuation)
-{
-    int8_t channel = digitalPinToAnalogChannel(pin);
-    if (channel < 0 || attenuation > 3)
-    {
-        return;
-    }
-    __wega_analogInit();
-    if (channel > 7)
-    {
-        SET_PERI_REG_BITS(SENS_SAR_ATTEN2_REG, 3, attenuation, ((channel - 10) * 2));
-    }
-    else
-    {
-        SET_PERI_REG_BITS(SENS_SAR_ATTEN1_REG, 3, attenuation, (channel * 2));
-    }
-}
-
 bool IRAM_ATTR __wega_adcAttachPin(uint8_t pin)
 {
     int8_t channel = digitalPinToAnalogChannel(pin);
@@ -258,16 +240,6 @@ uint16_t IRAM_ATTR __wega_analogRead(uint8_t pin)
         return 0;
     }
     return __wega_adcEnd(pin);
-}
-
-void __wega_analogReadResolution(uint8_t bits)
-{
-    if (!bits || bits > 16)
-    {
-        return;
-    }
-    __wega_analogSetWidth(bits);        // hadware from 9 to 12
-    __wega_analogReturnedWidth = bits;  // software from 1 to 16
 }
 
 int __wega_hallRead()  // hall sensor without LNA

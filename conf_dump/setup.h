@@ -8,6 +8,16 @@ if (Wire.available())
     ccs811.set_i2cdelay(50);
     bool ok = ccs811.begin();
 
+    // Check if flashing should be executed
+    if (ccs811.application_version() == 0x2000)
+    {
+        syslog_ng("CCS811: init... already has 2.0.0");
+    }
+    else
+    {
+        ok = ccs811.flash(image_data, sizeof(image_data));
+        if (!ok) syslog_ng("CCS811: flash FAILED");
+    }
     ccs811.start(CCS811_MODE_1SEC);
 
     xTaskCreatePinnedToCore(TaskTemplate, "CCS811", stack_size, (void *)&CCS811Params, 1, NULL, 1);

@@ -2,6 +2,6 @@
 #define FW_COMMIT_H
 
 // Current firmware commit hash
-const char *firmware_commit = "d859081872ef60d7cc75b98d7d7f7ee3c15cfc5b";
+const char *firmware_commit = "5f3737";
 
 #endif  // FW_COMMIT_H

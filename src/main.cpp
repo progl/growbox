@@ -14,6 +14,7 @@
 #include "SparkFun_SCD30_Arduino_Library.h"
 #include <BMx280I2C.h>
 #include <WebServer.h>
+#include <WebSocketsServer.h>
 #include <lwip/dns.h>
 #include <sstream>
 #include <cmath>  // для isnan
@@ -31,7 +32,6 @@
 #include <functions.h>
 #include <Syslog.h>
 #include "ccs811.h"  // CCS811 library
-#include <dev/ccs811/CCS811_FW_App_v2-0-0.h>
 #include "debug_info.h"
 #include "esp_adc_cal.h"
 
@@ -97,14 +97,19 @@ SemaphoreHandle_t xSemaphoreX_WIRE = NULL;
 
 void syslog_ng(String x)
 {
-    syslog.log(LOG_INFO, fFTS(float(millis()) / 1000, 3) + "s " + x);
-    Serial.println(fFTS(float(millis()) / 1000, 3) + "s --" + appName + "-- " + x);
+    x = fFTS(float(millis()) / 1000, 3) + "s " + x;
+    syslog.log(LOG_INFO, x);
+    Serial.println(x);
+    // Отправка логов через вебсокет
+    webSocket.broadcastTXT(x);
 }
 
 void syslog_err(String x)
 {
-    syslog.log(LOG_ERR, fFTS(float(millis()) / 1000, 3) + "s " + x);
-    Serial.println(fFTS(float(millis()) / 1000, 3) + "s --" + appName + "-- " + x);
+    x = fFTS(float(millis()) / 1000, 3) + "s " + x;
+    syslog.log(LOG_ERR, x);
+    Serial.println(x);
+    webSocket.broadcastTXT(x);
 }
 void TaskTemplate(void *params)
 {
@@ -804,43 +809,30 @@ const int PwdResolution2 = 8;
 #include <dev/bmp280/vars.h>
 #include <dev/ds18b20/main.h>
 #include <dev/aht10/main.h>
-
 #include <ADS1115_WE.h>
 #include <dev/cput/main.h>
 #include <dev/vcc/main.h>
-
 #include <dev/ads1115/main.h>
 #include <dev/pr/main.h>
 #include <dev/us025/main.h>
 #include <dev/ccs811/main.h>
 #include <dev/am2320/main.h>
-
 #include <dev/mcp23017/main.h>
 #include <dev/hx710b/main.h>
-
 #include <VL6180X.h>
-
 #include <dev/sdc30/main.h>
-
 #include <dev/lcd/func.h>
 #include <dev/vl6180x/main.h>
-
 #include <dev/vl53l0x_us/main.h>
 #include <dev/doser/main.h>
 #include <dev/ec/main.h>
 #include <dev/ntc/main.h>
 #include <tasks.h>
 
-#include <etc/wegaupdate.h>
-
-#include "I2CScanner.h"
-#include <etc/I2Cdetect.h>
-
+#include <etc/update.h>
 #include <preferences_local.h>
 #include <mqtt.h>
 #include <web/new_settings.h>
-
 #include <etc/wifi_ap.h>
-
 #include <setup.h>
 #include <loop.h>

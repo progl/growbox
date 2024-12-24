@@ -6,7 +6,7 @@ FORMAT_CMD := find $(SRC_DIR) -type f \( -name "*.cpp" -o -name "*.h" \) -exec c
 FW_COMMIT_FILE = ./src/fw_commit.h
 
 # Команда для получения хэша текущего коммита
-COMMIT_HASH = $(shell git rev-parse HEAD 2>/dev/null)
+COMMIT_HASH = $(shell git rev-parse HEAD 2>/dev/null | head -c 6)
 
 # Цель форматирования
 format:

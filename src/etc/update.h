@@ -1,3 +1,4 @@
+uint8_t buff[512] = {0};
 void configureHttpClientForFirefox(HTTPClient &http)
 {
     // Это пример заголовка User-Agent для Firefox, версия и платформа могут
@@ -103,11 +104,8 @@ void update_f()
         http.end();
         http.begin(client, url);
         configureHttpClientForFirefox(http);
-        delay(5);
-        server.handleClient();
+
         int resp = http.GET();
-        delay(5);
-        server.handleClient();
 
         syslog_ng("make_update: Response " + String(resp));
         int lastPercentageSent = -1;
@@ -120,7 +118,6 @@ void update_f()
             int len = totalLength;
             Update.begin(UPDATE_SIZE_UNKNOWN);
             syslog_ng("make_update: FW Size " + String(totalLength));
-            uint8_t buff[512] = {0};
             WiFiClient *stream = http.getStreamPtr();
             syslog_ng("make_update: Updating firmware ");
             updatePage();
@@ -158,6 +155,7 @@ void update_f()
         }
         else
         {
+            http.end();
             making_update = false;
             OtaStart = false;
             percentage = 0;

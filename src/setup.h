@@ -1,5 +1,31 @@
 
 int stack_size = 4096;
+// Обработчик событий WebSocket
+void onWebSocketEvent(uint8_t clientNum, WStype_t type, uint8_t *payload, size_t length)
+{
+    switch (type)
+    {
+        case WStype_CONNECTED:
+        {
+            Serial.printf("Client %u connected\n", clientNum);
+            webSocket.sendTXT(clientNum, "Welcome to WebSocket!");
+            break;
+        }
+        case WStype_DISCONNECTED:
+        {
+            Serial.printf("Client %u disconnected\n", clientNum);
+            break;
+        }
+        case WStype_TEXT:
+        {
+            Serial.printf("Client %u sent: %s\n", clientNum, payload);
+            webSocket.sendTXT(clientNum, "Message received: " + String((char *)payload));
+            break;
+        }
+        default:
+            break;
+    }
+}
 
 void calibrate_adc()
 {
@@ -198,14 +224,13 @@ void setupResetReasons()
     syslog_ng("Reset_reason CPU1: " + Reset_reason1);
 }
 
-void setupI2C()
-{
-    Wire.begin(I2C_SDA, I2C_SCL);
-    syslog_ng("I2C found devices:" + String(scanner.Devices_Count));
-}
+void setupI2C() { Wire.begin(I2C_SDA, I2C_SCL); }
 
 void setupServer()
 {
+    webSocket.begin();
+    webSocket.onEvent(onWebSocketEvent);
+
     server.on("/", HTTP_GET, handleRoot);
     server.on("/api/status", HTTP_GET, handleApiStatuses);
     server.on("/api/groups", HTTP_GET, handleApiGroups);
