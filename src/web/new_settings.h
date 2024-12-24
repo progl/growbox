@@ -99,7 +99,6 @@ void handleRoot()
                   _Users_mmatveyev_PycharmProjects_web_calc_local_files_api_test_out_html_gz_len);
 }
 
- 
 void handleApiStatuses()
 {
     // Проверка и инициализация списков не обнаруженных и обнаруженных датчиков
