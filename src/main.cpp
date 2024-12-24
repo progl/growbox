@@ -317,8 +317,16 @@ void addParameter(String &str, const String &key, float value, int precision)
     }
 }
 
-void enqueueMessage(const char *topic, const char *payload)
+void enqueueMessage(const char *topic, const char *payload, String key = "")
 {
+    if (!key.isEmpty())
+    {
+        // Формируем сообщение в формате "key:payload"
+        String websocket_msg = ":::" + key + ":" + String(payload);
+
+        // Рассылаем сообщение всем подключённым WebSocket-клиентам
+        webSocket.broadcastTXT(websocket_msg);
+    }
 #if defined(ENABLE_PONICS_ONLINE)
     if (mqttClient.connected())
     {
@@ -418,14 +426,14 @@ void publish_parameter(const String &key, float value, int precision, int timesc
         if (log_debug) syslog_ng("publish_parameter topic " + topic + " value: " + String(value));
         dtostrf(value, 1, precision, valueStr);  // Convert float to string with precision
         if (log_debug) syslog_ng("published topic " + topic + " value: " + String(value));
-        enqueueMessage(topic.c_str(), valueStr);
+        enqueueMessage(topic.c_str(), valueStr, key);
     }
     else
     {
         String topic = mqttPrefix + data_prefix + key;  // Use appropriate topic prefix
         char valueStr[32];
         dtostrf(value, 1, precision, valueStr);  // Convert float to string with precision
-        enqueueMessage(topic.c_str(), valueStr);
+        enqueueMessage(topic.c_str(), valueStr, key);
     }
 }
 void publish_parameter(const String &key, const String &value, int timescale)
@@ -435,14 +443,14 @@ void publish_parameter(const String &key, const String &value, int timescale)
         String topic = mqttPrefix + timescale_prefix + key;  // Use appropriate topic prefix
         if (log_debug) syslog_ng("publish_parameter topic " + topic + " value: " + String(value));
 
-        enqueueMessage(topic.c_str(), String(value).c_str());
+        enqueueMessage(topic.c_str(), String(value).c_str(), key);
         if (log_debug) syslog_ng("published topic " + topic + " value: " + String(value));
     }
     else
     {
         String topic = mqttPrefix + data_prefix + key;  // Use appropriate topic prefix
 
-        enqueueMessage(topic.c_str(), String(value).c_str());
+        enqueueMessage(topic.c_str(), String(value).c_str(), key);
     }
 }
 
