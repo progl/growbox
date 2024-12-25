@@ -5,3 +5,4 @@ src/.DS_Store
 src/ponics.online.h
 scripts/build_ponic.sh
 test/
+scripts/open_chrome.sh
