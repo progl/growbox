@@ -1,47 +1,5 @@
 #include <web/styles.h>
-String formatGPIOStatus(int driverIndex)
-{
-    String status = "";
 
-    // Предполагается, что для каждого драйвера есть четыре GPIO-пина, которые
-    // нужно проверить
-    int baseIndex = driverIndex * 4;
-
-    status += "A:" + String(bitRead(readGPIO, baseIndex)) + " ";
-    status += "B:" + String(bitRead(readGPIO, baseIndex + 1)) + " ";
-    status += "C:" + String(bitRead(readGPIO, baseIndex + 2)) + " ";
-    status += "D:" + String(bitRead(readGPIO, baseIndex + 3));
-
-    return status;
-}
-String calculateUptime(unsigned long t_millis)
-{
-    unsigned long seconds = t_millis / 1000;
-    unsigned long minutes = seconds / 60;
-    unsigned long hours = minutes / 60;
-    unsigned long days = hours / 24;
-
-    String uptime = "";
-
-    if (days > 0)
-    {
-        uptime += String(days) + "d ";
-    }
-    if (hours % 24 > 0)
-    {
-        uptime += String(hours % 24) + "h ";
-    }
-    if (minutes % 60 > 0)
-    {
-        uptime += String(minutes % 60) + "m ";
-    }
-    if (seconds % 60 > 0 || uptime == "")
-    {  // Показываем секунды только если нет других значений
-        uptime += String(seconds % 60) + "s";
-    }
-
-    return uptime;
-}
 void setVPDStyles(String vpdstage)
 {
     if (vpdstage == "Start")
@@ -168,7 +126,7 @@ void handleApiStatuses()
         doc["updating_text"] = "Update";
     }
 
-    doc["uptime"] = calculateUptime(t_millis);
+    doc["uptime"] = float(t_millis) / 1000;
     doc["uptime_text"] = "Uptime";
 
     // VPD Styles
@@ -186,53 +144,50 @@ void handleApiStatuses()
     doc["rootTemp"] = fFTS(RootTemp, 1);
     doc["rootTemp_text"] = "RootTemp";
 
-    doc["airTemp"] = fFTS(AirTemp, 1);
-    doc["airTemp_text"] = "AirTemp";
+    doc["AirTemp"] = fFTS(AirTemp, 1);
+    doc["AirTemp_text"] = "AirTemp";
 
-    doc["airTempRootTemp"] = fFTS(AirTemp - RootTemp, 1);
-    doc["airTempRootTemp_text"] = "TempDiff";
+    doc["Dist"] = fFTS(Dist, 1);
+    doc["Dist_text"] = "Distance";
 
-    doc["ntcRootTemp"] = fFTS(wNTC - RootTemp, 2);
-    doc["ntcRootTemp_text"] = "NTCDiff";
+    doc["wPR"] = fFTS(wPR, 1);
+    doc["wPR_text"] = "Light";
 
-    doc["dist"] = fFTS(Dist, 1);
-    doc["dist_text"] = "Distance";
-
-    doc["lightSensor"] = fFTS(wPR, 1);
-    doc["lightSensor_text"] = "Light";
-
-    doc["ec"] = fFTS(wEC, 2) + " mS/cm";
-    doc["ec_text"] = "EC";
+    doc["wEC"] = fFTS(wEC, 2) + " mS/cm";
+    doc["wEC_text"] = "EC";
 
     doc["ec_notermo"] = fFTS(ec_notermo, 2) + " mS/cm";
     doc["ec_notermo_text"] = "EC no termo";
 
-    doc["r2"] = fFTS(wR2, 2);
-    doc["r2_text"] = "R2";
+    doc["wR2"] = fFTS(wR2, 2);
+    doc["wR2_text"] = "R2";
 
-    doc["ntc"] = fFTS(wNTC, 1);
-    doc["ntc_text"] = "NTC";
+    doc["wNTC"] = fFTS(wNTC, 1);
+    doc["wNTC_text"] = "NTC";
 
-    doc["cpuTemp"] = fFTS(CPUTemp, 1);
-    doc["cpuTemp_text"] = "CPU";
+    doc["wLevel"] = fFTS(wLevel, 1);
+    doc["wLevel_text"] = "Уровень литры";
 
-    doc["airPress"] = fFTS(AirPress, 1);
-    doc["airPress_text"] = "Pressure";
+    doc["CPUTemp"] = fFTS(CPUTemp, 1);
+    doc["CPUTemp_text"] = "CPU Temp";
 
-    doc["tvoc"] = fFTS(tVOC, 1);
-    doc["tvoc_text"] = "TVOC";
+    doc["AirPress"] = fFTS(AirPress, 1);
+    doc["AirPress_text"] = "Pressure";
 
-    doc["co2"] = fFTS(CO2, 1);
-    doc["co2_text"] = "CO2";
+    doc["tVOC"] = fFTS(tVOC, 1);
+    doc["tVOC_text"] = "TVOC";
 
-    doc["ph"] = fFTS(wpH, 1);
-    doc["ph_text"] = "pH";
+    doc["CO2"] = fFTS(CO2, 1);
+    doc["CO2_text"] = "CO2";
 
-    doc["pwd1"] = String(PWD1);
-    doc["pwd1_text"] = "PWD1";
+    doc["wpH"] = fFTS(wpH, 1);
+    doc["wpH_text"] = "pH";
 
-    doc["pwd2"] = String(PWD2);
-    doc["pwd2_text"] = "PWD2";
+    doc["PWD1"] = String(PWD1);
+    doc["PWD1_text"] = "PWD1";
+
+    doc["PWD2"] = String(PWD2);
+    doc["PWD2_text"] = "PWD2";
 
     // Датчики
     JsonArray sensorsArray = doc.createNestedArray("sensors");
@@ -253,23 +208,17 @@ void handleApiStatuses()
     doc["calibration_text"] = "Calibration";
 
     // Управление драйверами
-    doc["drv1"] = formatGPIOStatus(0);
-    doc["drv1_text"] = "DRV1";
+    doc["DRV1"] = readGPIO;
+    doc["DRV1_text"] = "DRV1";
 
-    doc["drv2"] = formatGPIOStatus(1);
-    doc["drv2_text"] = "DRV2";
+    doc["DRV2"] = readGPIO;
+    doc["DRV2_text"] = "DRV2";
 
-    doc["drv3"] = formatGPIOStatus(2);
-    doc["drv3_text"] = "DRV3";
+    doc["DRV3"] = readGPIO;
+    doc["DRV3_text"] = "DRV3";
 
-    doc["drv4"] = formatGPIOStatus(3);
-    doc["drv4_text"] = "DRV4";
-
-    doc["nextPompOff"] = fFTS((NextRootDrivePwdOff - t_millis) / 1000, 1);
-    doc["nextPompOff_text"] = "PompOff";
-
-    doc["nextPompOn"] = fFTS((NextRootDrivePwdOn - t_millis) / 1000, 1);
-    doc["nextPompOn_text"] = "PompOn";
+    doc["DRV4"] = readGPIO;
+    doc["DRV4_text"] = "DRV4";
 
     doc["update_link"] = "/?make_update=1";
     doc["update_link_text"] = "Update";
