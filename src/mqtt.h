@@ -55,7 +55,7 @@ void publish_switch_discovery_payload(Param param)
         String value = (item->variable != nullptr && strlen((const char *)item->variable) > 0)
                            ? String((const char *)item->variable)
                            : "0";
-        syslog_ng("publish_switch_discovery_payload  state " + String(switch_name) + " state_topic " +
+        syslog_ng("mqttClientHA publish_switch_discovery_payload  state " + String(switch_name) + " state_topic " +
                   String(state_topic) + " (const char *)item->variable " + value);
         enqueueMessage(state_topic.c_str(), value.c_str());
     }
@@ -99,23 +99,23 @@ void onMqttDisconnect(AsyncMqttClientDisconnectReason reason)
 
 void onMqttDisconnectHA(AsyncMqttClientDisconnectReason reason)
 {
-    syslog_ng("HA Disconnected. Reason: " + String((int)reason));
+    syslog_ng("mqttClientHA Disconnected. Reason: " + String((int)reason));
     if (reason == AsyncMqttClientDisconnectReason::TCP_DISCONNECTED)
     {
-        syslog_ng("TCP_DISCONNECTED: клиент сам разорвал соединение.");
+        syslog_ng("mqttClientHA TCP_DISCONNECTED: клиент сам разорвал соединение.");
     }
     else if (reason == AsyncMqttClientDisconnectReason::MQTT_UNACCEPTABLE_PROTOCOL_VERSION)
     {
-        syslog_ng("Ошибка: неверная версия протокола.");
+        syslog_ng("mqttClientHA Ошибка: неверная версия протокола.");
     }
     else if (reason == AsyncMqttClientDisconnectReason::MQTT_IDENTIFIER_REJECTED)
     {
-        syslog_ng("Ошибка: идентификатор клиента отклонен.");
+        syslog_ng("mqttClientHA Ошибка: идентификатор клиента отклонен.");
     }
     // Добавьте дополнительные случаи для анализа
 
-    syslog_ng("mqtt: Disconnected. Reason: " + String(static_cast<int>(reason)));
-    syslog_ng("mqtt: WiFi isConnected: " + String(static_cast<int>(WiFi.isConnected())));
+    syslog_ng("mqttClientHA: Disconnected. Reason: " + String(static_cast<int>(reason)));
+    syslog_ng("mqttClientHA: WiFi isConnected: " + String(static_cast<int>(WiFi.isConnected())));
     if (WiFi.isConnected())
     {
         if (not mqttClientHA.connected())
@@ -840,7 +840,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
         {
             Param &param = group.params[i];
 
-            String paramTopic = mqttPrefix + "set/" + "main/" + String(group.caption) + "/" + String(param.name);
+            String paramTopic = mqttPrefix + "set/" + String(group.caption) + "/" + String(param.name);
             if (String(topic).startsWith(mqttPrefix) && paramTopic == topic)  // Check if topic starts with prefix
             {
                 PreferenceItem *item = findPreferenceByKey(param.name);
@@ -852,37 +852,40 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
                         {  // Add your own validation function isInteger
 
                             item->preferences->putInt(param.name, message.toInt());
+                            syslog_ng("mqtt " + String(param.name) + " message " + message);
                             publish_switch_discovery_payload(param);
                         }
                         else
                         {
-                            syslog_ng("Received INT message is invalid");
+                            syslog_ng("mqtt Received INT message is invalid");
                         }
                         break;
                     case Param::FLOAT:
                         if (message.length() > 0)
                         {  // Add your own validation function isFloat
                             item->preferences->putFloat(param.name, message.toFloat());
+                            syslog_ng("mqtt " + String(param.name) + " message " + message);
                             publish_switch_discovery_payload(param);
                         }
                         else
                         {
-                            syslog_ng("Received FLOAT message is invalid");
+                            syslog_ng("mqtt Received FLOAT message is invalid");
                         }
                         break;
                     case Param::STRING:
                         if (message.length() > 0)
                         {
                             item->preferences->putString(param.name, message);
+                            syslog_ng("mqtt " + String(param.name) + " message " + message);
                             publish_switch_discovery_payload(param);
                         }
                         else
                         {
-                            syslog_ng("Received STRING message is empty");
+                            syslog_ng("mqtt Received STRING message is empty");
                         }
                         break;
                     default:
-                        syslog_ng("Unknown parameter type");
+                        syslog_ng("mqtt Unknown parameter type");
                         break;
                 }
             }

@@ -1,4 +1,4 @@
-#include <web/styles.h>
+
 
 void setVPDStyles(String vpdstage)
 {
@@ -36,26 +36,6 @@ void handleReset()
 }
 
 // index
-void handleRoot()
-{
-    syslog_ng("WEB /root");
-
-    if (server.arg("make_update") != "" and server.arg("make_update").toInt() == 1)
-    {
-        syslog_ng("handleRoot - make_update");
-        OtaStart = true;
-        force_update = true;
-        percentage = 1;
-        server.sendHeader("Location", "/");
-        server.send(302);
-        update_f();
-    }
-    server.sendHeader("Content-Encoding", "gzip");
-    server.sendHeader("Cache-Control", "no-store, no-cache, must-revalidate");
-    // Отправляем сжатый файл из PROGMEM
-    server.send_P(200, "text/html", _Users_mmatveyev_PycharmProjects_web_calc_local_files_api_test_out_html_gz,
-                  _Users_mmatveyev_PycharmProjects_web_calc_local_files_api_test_out_html_gz_len);
-}
 
 void handleApiStatuses()
 {
@@ -402,6 +382,16 @@ void saveSettings()
                     NextRootDrivePwdOn = millis() + (RDDelayOff * 1000);            // Set timer for turning on
                     NextRootDrivePwdOff = NextRootDrivePwdOn + (RDDelayOn * 1000);  // Set timer for turning off
                 }
+
+                else if (strcmp(settingName, "ssid") == 0)
+                {
+                    setupWiFi();
+                }
+                else if (strcmp(settingName, "password") == 0)
+                {
+                    setupWiFi();
+                }
+
                 else if (strcmp(settingName, "SetPumpA_Ml") == 0 || strcmp(settingName, "SetPumpB_Ml") == 0)
                 {
                     if (kv.value().as<int>() > 0)

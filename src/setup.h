@@ -92,31 +92,6 @@ void setup_preferences()
         HOSTNAME = wegadb;
     }
 }
-void setupWiFi()
-{
-    Serial.println("Start wifi config");
-
-    syslog.deviceHostname(HOSTNAME.c_str());
-    syslog.appName(appName.c_str());
-    WiFi.setHostname(HOSTNAME.c_str());
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(ssid.c_str(), password.c_str());
-
-    if (WiFi.waitForConnectResult() != WL_CONNECTED)
-    {
-        Serial.println("Error connecting to WiFi");
-        configAP();
-    }
-    else
-    {
-        Serial.println("WIFI connected");
-    }
-
-    wifiIp = WiFi.localIP().toString();
-    syslog_ng("wifiIp " + String(wifiIp) + " HOSTNAME " + String(WiFi.getHostname()));
-    Serial.println("after wifi config");
-    Serial.println(WiFi.localIP());
-}
 
 void setupOTA()
 {
@@ -259,18 +234,20 @@ void setupMQTT()
     syslog_ng("mqtt end setupMQTT connected: " + String(mqttClient.connected()));
 #endif
 }
+
 void setupHA_MQTT()
 {
     if (e_ha == 1)
     {
+        String client_id = wegadb + "_ha";
         static const char *a_ha_c = a_ha.c_str();
         static const char *p_ha_c = p_ha.c_str();
         static const char *u_ha_c = u_ha.c_str();
         mqttClientHA.onConnect(onMqttConnectHA);
         mqttClientHA.onMessage(onMqttMessageHA);
-        // mqttClientHA.setKeepAlive(60);
         mqttClientHA.onDisconnect(onMqttDisconnectHA);
-        mqttClientHA.setClientId((wegadb + "_ha").c_str());
+        mqttClientHA.setClientId(client_id.c_str());
+        IPAddress serverIP;
         mqttClientHA.setServer(a_ha_c, uint16_t(port_ha));
         mqttClientHA.setCredentials(u_ha_c, p_ha_c);  // Set login and password
     }

@@ -15,3 +15,29 @@ void configAP()
     Serial.print(ip);
     Serial.println(" in a Web browser");
 }
+
+void setupWiFi()
+{
+    Serial.println("Start wifi config");
+
+    syslog.deviceHostname(HOSTNAME.c_str());
+    syslog.appName(appName.c_str());
+    WiFi.setHostname(HOSTNAME.c_str());
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(ssid.c_str(), password.c_str());
+
+    if (WiFi.waitForConnectResult() != WL_CONNECTED)
+    {
+        Serial.println("Error connecting to WiFi");
+        configAP();
+    }
+    else
+    {
+        Serial.println("WIFI connected");
+    }
+
+    wifiIp = WiFi.localIP().toString();
+    syslog_ng("wifiIp " + String(wifiIp) + " HOSTNAME " + String(WiFi.getHostname()));
+    Serial.println("after wifi config");
+    Serial.println(WiFi.localIP());
+}

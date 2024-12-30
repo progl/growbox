@@ -335,7 +335,6 @@ void enqueueMessage(const char *topic, const char *payload, String key = "")
         if (packet_id == 0)
         {
             int payloadSize = strlen(payload);
-
             syslog_ng("Payload size: " + String(payloadSize));
             syslog_ng(" error enqueueMessage: publish packet_id " + String(packet_id) + " topic " + String(topic) +
                       " payload " + String(payload));
@@ -840,7 +839,11 @@ const int PwdResolution2 = 8;
 #include <etc/update.h>
 #include <preferences_local.h>
 #include <mqtt.h>
-#include <web/new_settings.h>
+#include <web/styles.h>
+#include <web/root.h>
+
 #include <etc/wifi_ap.h>
+#include <web/new_settings.h>
+
 #include <setup.h>
 #include <loop.h>
