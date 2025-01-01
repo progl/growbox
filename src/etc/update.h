@@ -63,7 +63,9 @@ void update_f()
     {
         syslog_ng("make_update: starting ");
         client.stop();
+        delay(5);
         client.setInsecure();
+        delay(5);
 
         // Ограничение на количество попыток подключения
         const int maxRetries = 5;
@@ -72,6 +74,7 @@ void update_f()
         while (retryCount < maxRetries)
         {
             con_c = client.connect("ponics.online", 443, 10000);
+            delay(10);
             if (con_c)
             {
                 syslog_ng("make_update: Successfully connected to server.");
