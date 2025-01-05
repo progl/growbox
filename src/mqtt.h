@@ -381,7 +381,6 @@ void publish_params_all(int all = 1)
     {
         syslog_ng("publich calibtate params");
 
-
         publish_parameter("local_ip", String(HOSTNAME) + ".local", 0);
         publish_parameter("commit", String(Firmware), 0);
         // publish_parameter("RSSI", String(WiFi.RSSI()), 0);

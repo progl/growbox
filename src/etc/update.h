@@ -66,105 +66,88 @@ void update_f()
         delay(5);
         client.setInsecure();
         delay(5);
+        int lastPercentageSent = -1;
+        http.end();
 
         // Ограничение на количество попыток подключения
-        const int maxRetries = 5;
+        const int maxRetries = 50;
         int retryCount = 0;
+        String url = UPDATE_URL + "?token=" + update_token;
 
-        while (retryCount < maxRetries)
+        http.begin(client, url);
+        configureHttpClientForFirefox(http);
+        int resp = http.GET();
+        if (!making_update)
         {
-            con_c = client.connect("ponics.online", 443, 10000);
-            delay(10);
-            if (con_c)
+            while (retryCount < maxRetries)
             {
-                syslog_ng("make_update: Successfully connected to server.");
-                break;
+                resp = http.GET();
+                syslog_ng("make_update:  : UPDATE_URL " + String(url) + "Response " + String(resp) + " retryCount " +
+                          String(retryCount));
+                if (resp == 200)
+                {
+                    break;
+                }
             }
-            else
-            {
-                syslog_ng("make_update: Failed to connect, retrying... (" + String(retryCount + 1) + "/" +
-                          String(maxRetries) + ")");
-                retryCount++;
-                vTaskDelay(1000 / portTICK_PERIOD_MS);  // Задержка между попытками
-            }
-        }
-
-        // Если не удалось подключиться после всех попыток
-        if (!con_c)
-        {
-            syslog_err("make_update: Could not connect to server after " + String(maxRetries) + " attempts.");
-            return;
         }
 
         syslog_ng("make_update: UPDATE_URL " + UPDATE_URL);
         force_update = false;
         syslog_ng("make_update: Start TaskUpdate");
         OtaStart = true;
-        String url = UPDATE_URL + "?token=" + update_token;
-        syslog_ng("make_update: UPDATE_URL " + String(url));
 
-        syslog_ng("make_update: con_c " + String(con_c));
-        http.end();
-        http.begin(client, url);
-        configureHttpClientForFirefox(http);
+        
 
-        int resp = http.GET();
+        making_update = true;
+        syslog_ng("make_update starting update");
+        OtaStart = true;
+        totalLength = http.getSize();
+        int len = totalLength;
+        Update.begin(UPDATE_SIZE_UNKNOWN);
+        syslog_ng("make_update: FW Size " + String(totalLength));
+        WiFiClient *stream = http.getStreamPtr();
+        syslog_ng("make_update: Updating firmware ");
+        updatePage();
 
-        syslog_ng("make_update: Response " + String(resp));
-        int lastPercentageSent = -1;
-        if (resp == 200 && !making_update)
+        int bytesDownloaded = 0;
+        while (http.connected() && (len > 0 || len == -1))
         {
-            making_update = true;
-            syslog_ng("make_update starting update");
-            OtaStart = true;
-            totalLength = http.getSize();
-            int len = totalLength;
-            Update.begin(UPDATE_SIZE_UNKNOWN);
-            syslog_ng("make_update: FW Size " + String(totalLength));
-            WiFiClient *stream = http.getStreamPtr();
-            syslog_ng("make_update: Updating firmware ");
-            updatePage();
-
-            int bytesDownloaded = 0;
-            while (http.connected() && (len > 0 || len == -1))
+            server.handleClient();
+            size_t size = stream->available();
+            if (size)
             {
-                server.handleClient();
-                size_t size = stream->available();
-                if (size)
+                int c = stream->readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size));
+                updateFirmware(buff, c);
+                bytesDownloaded += c;
+                if (len > 0)
                 {
-                    int c = stream->readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size));
-                    updateFirmware(buff, c);
-                    bytesDownloaded += c;
-                    if (len > 0)
-                    {
-                        len -= c;
-                    }
-                    percentage = (bytesDownloaded * 100) / totalLength;
-                    if (percentage == 0)
-                    {
-                        percentage = 1;
-                    }
-                    if (percentage != lastPercentageSent)
-                    {
-                        syslog_ng("make_update: Updating: " + String(percentage) + "%");
-                        lastPercentageSent = percentage;
-                    }
-                    vTaskDelay(1);
+                    len -= c;
                 }
+                percentage = (bytesDownloaded * 100) / totalLength;
+                if (percentage == 0)
+                {
+                    percentage = 1;
+                }
+                if (percentage != lastPercentageSent)
+                {
+                    syslog_ng("make_update: Updating: " + String(percentage) + "%");
+                    lastPercentageSent = percentage;
+                }
+                vTaskDelay(1);
             }
-            making_update = false;
-            http.end();
-            OtaStart = false;
         }
-        else
-        {
-            http.end();
-            making_update = false;
-            OtaStart = false;
-            percentage = 0;
-            syslog_ng("make_update: error response code ");
-            syslog_ng("make_update:END TaskUpdate");
-        }
+        making_update = false;
+        http.end();
+        OtaStart = false;
+    }
+    else
+    {
+        http.end();
+        making_update = false;
+        OtaStart = false;
+        percentage = 0;
+        syslog_ng("make_update: error response code ");
+        syslog_ng("make_update:END TaskUpdate");
     }
 }
 

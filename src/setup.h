@@ -87,7 +87,6 @@ void setup_preferences()
     loadPreferences();
 
     appName = update_token + ":::" + HOSTNAME;
-  
 }
 
 void setupOTA()
