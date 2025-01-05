@@ -381,7 +381,7 @@ void publish_params_all(int all = 1)
     {
         syslog_ng("publich calibtate params");
 
-        publish_parameter("wegadb", wegadb, 0);
+
         publish_parameter("local_ip", String(HOSTNAME) + ".local", 0);
         publish_parameter("commit", String(Firmware), 0);
         // publish_parameter("RSSI", String(WiFi.RSSI()), 0);
@@ -431,7 +431,7 @@ void onMqttConnect(bool sessionPresent)
     {
         String statusTopic = mqttPrefix + "status";
         enqueueMessage(statusTopic.c_str(), "connected");
-        publish_parameter("wegadb", wegadb, 1);
+
         publish_parameter("DebugInfo", getDebugInfoAsString(), 1);
 
         publish_parameter("commit", String(Firmware), 1);
@@ -490,7 +490,7 @@ void mqttTask(void *parameter)
     publish_discovery_payload("wNTC");
     publish_discovery_payload("wPR");
     publish_discovery_payload("wR2");
-    publish_discovery_payload("wegadb");
+
     publish_discovery_payload("wpH");
 
     processToggleParameters();

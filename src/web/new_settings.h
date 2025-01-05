@@ -91,9 +91,6 @@ void handleApiStatuses()
     doc["firmware"] = String(Firmware);
     doc["firmware_text"] = "Firmware";
 
-    doc["name"] = wegadb;
-    doc["name_text"] = "DB";
-
     doc["vpdstage"] = vpdstage;
     doc["vpdstage_text"] = "VPD";
 

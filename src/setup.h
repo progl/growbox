@@ -86,11 +86,8 @@ void setup_preferences()
 
     loadPreferences();
 
-    appName = update_token + ":::" + wegadb;
-    if (wegadb == "default_wegadb" && !wegadb.isEmpty())
-    {
-        HOSTNAME = wegadb;
-    }
+    appName = update_token + ":::" + HOSTNAME;
+  
 }
 
 void setupOTA()
@@ -227,7 +224,7 @@ void setupMQTT()
     mqttClient.onConnect(onMqttConnect);
     mqttClient.onDisconnect(onMqttDisconnect);
     mqttClient.onMessage(onMqttMessage);  // Set the callback for received messages
-    mqttClient.setClientId(wegadb.c_str());
+    mqttClient.setClientId(HOSTNAME.c_str());
     mqttClient.setServer(MQTT_HOST, MQTT_PORT);
     mqttClient.setCredentials(mqtt_mqtt_user,
                               mqtt_mqtt_password);  // Set login and password
@@ -239,7 +236,7 @@ void setupHA_MQTT()
 {
     if (e_ha == 1)
     {
-        String client_id = wegadb + "_ha";
+        String client_id = HOSTNAME + "_ha";
         static const char *a_ha_c = a_ha.c_str();
         static const char *p_ha_c = p_ha.c_str();
         static const char *u_ha_c = u_ha.c_str();

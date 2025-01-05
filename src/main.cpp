@@ -626,7 +626,7 @@ Group groups[] = {
      {
          {"UPDATE_URL", "Ссылка на прошивку", Param::STRING, .defaultString = UPDATE_URL.c_str()},
          {"update_token", "Ключ обновления", Param::STRING, .defaultString = update_token.c_str()},
-         {"wegadb", "База", Param::STRING, .defaultString = wegadb.c_str()},
+
          {"HOSTNAME", "Имя хоста", Param::STRING, .defaultString = HOSTNAME.c_str()},
          {"vpdstage", "VPD стадия", Param::STRING, .defaultString = vpdstage.c_str()},
          {"disable_ntc", "Отключить NTC(0-off, 1-on)", Param::INT, .defaultInt = 0},

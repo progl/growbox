@@ -6,7 +6,7 @@ String AP_SSID = "ESP32WEGA56";
 String AP_PASS = "ESP32WEGA56";
 
 String update_token = "";
-String wegadb = "";
+
 
 String ssid = AP_SSID;
 String password = AP_PASS;

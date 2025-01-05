@@ -41,7 +41,7 @@ struct PreferenceItem
 PreferenceItem preferencesArray[] = {
     {"UPDATE_URL", DataType::STRING, {"default_url"}, &UPDATE_URL, &preferences},
     {"update_token", DataType::STRING, {"default_token"}, &update_token, &preferences},
-    {"wegadb", DataType::STRING, {"default_wegadb"}, &wegadb, &preferences},
+
     {"ssid", DataType::STRING, {"ESP32"}, &ssid, &preferences},
     {"password", DataType::STRING, {"ESP32"}, &password, &preferences},
     {"appName", DataType::STRING, {"appName"}, &appName, &preferences},
