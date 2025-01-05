@@ -96,8 +96,6 @@ void update_f()
         syslog_ng("make_update: Start TaskUpdate");
         OtaStart = true;
 
-        
-
         making_update = true;
         syslog_ng("make_update starting update");
         OtaStart = true;
