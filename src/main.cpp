@@ -121,13 +121,16 @@ void TaskTemplate(void *params)
     unsigned long lastExecutionTime = millis();
     for (int i = 0; i < taskCount; i++)
     {
-        if (strcmp(tasks[i].taskName, taskParams->taskName) == 0)
+        if (tasks[i].taskName != NULL && taskParams->taskName != NULL &&
+            strcmp(tasks[i].taskName, taskParams->taskName) == 0)
         {
-            counter = i;
-            syslog_ng("TaskTemplate already found task! " + String(taskParams->taskName) + " TaskTemplateCounter " +
-                      String(counter));
-            currentTask = &tasks[i];
-            break;
+            {
+                counter = i;
+                syslog_ng("TaskTemplate already found task! " + String(taskParams->taskName) + " TaskTemplateCounter " +
+                          String(counter));
+                currentTask = &tasks[i];
+                break;
+            }
         }
     }
 

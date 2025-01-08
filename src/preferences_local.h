@@ -39,7 +39,8 @@ struct PreferenceItem
 };
 
 PreferenceItem preferencesArray[] = {
-    {"UPDATE_URL", DataType::STRING, {"default_url"}, &UPDATE_URL, &preferences},
+    {"UPDATE_URL", DataType::STRING, Data{"https://ponics.online/static/wegabox/esp32-local/firmware.bin"}, &UPDATE_URL,
+     &preferences},
     {"update_token", DataType::STRING, {"default_token"}, &update_token, &preferences},
 
     {"ssid", DataType::STRING, {"ESP32"}, &ssid, &preferences},

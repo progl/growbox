@@ -380,10 +380,10 @@ void saveSettings()
                     NextRootDrivePwdOff = NextRootDrivePwdOn + (RDDelayOn * 1000);  // Set timer for turning off
                 }
 
-                else if (strcmp(settingName, "ssid") == 0)
-                {
-                    setupWiFi();
-                }
+                // else if (strcmp(settingName, "ssid") == 0)
+                // {
+                //     setupWiFi();
+                // }
                 else if (strcmp(settingName, "password") == 0)
                 {
                     setupWiFi();

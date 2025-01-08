@@ -3,10 +3,26 @@ void TaskUS()
     // Измеряем время в микросекундах
 
     distanceSensor.triggerPulse();
-    while (!distanceSensor.waitForMeasurement())
+    int maxAttempts = 5;  // Максимальное количество попыток
+    int attempts = 0;     // Текущий счётчик попыток
+
+    while (!distanceSensor.waitForMeasurement() && attempts < maxAttempts)
     {
-        vTaskDelay(100);
-    };
+        attempts++;
+        vTaskDelay(100 / portTICK_PERIOD_MS);  // Ожидание 100 мс
+    }
+
+    if (attempts >= maxAttempts)
+    {
+        // Обработка ошибки: сенсор не ответил за 5 попыток
+        Serial.println("Error: Distance sensor measurement failed after 5 attempts.");
+    }
+    else
+    {
+        // Успешное завершение
+        Serial.println("Distance measurement successful!");
+    }
+
     if (AirTemp)
     {
         distanceSensor.setTemperature(AirTemp);
