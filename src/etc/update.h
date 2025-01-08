@@ -75,6 +75,7 @@ void update_f()
         String url = UPDATE_URL + "?token=" + update_token;
 
         http.begin(client, url);
+        delay(100);
         configureHttpClientForFirefox(http);
         int resp = http.GET();
         if (!making_update)
@@ -82,8 +83,9 @@ void update_f()
             while (retryCount < maxRetries)
             {
                 resp = http.GET();
-                syslog_ng("make_update:  : UPDATE_URL " + String(url) + "Response " + String(resp) + " retryCount " +
-                          String(retryCount));
+                delay(50);
+                syslog_ng("make_update:  Response " + String(resp) + " retryCount " + String(retryCount) +
+                          " UPDATE_URL " + String(url));
                 if (resp == 200)
                 {
                     break;
