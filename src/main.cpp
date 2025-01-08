@@ -175,8 +175,8 @@ void TaskTemplate(void *params)
     {
         if (OtaStart == true)
         {
-            syslog_ng(String(taskParams->taskName) + " OTA start detected, deleting task");
-            vTaskDelete(NULL);
+            syslog_ng(String(taskParams->taskName) + " OTA start detected, pause task");
+            while (OtaStart == true) vTaskDelay(1000);
         }
 
         unsigned long currentTime = millis();

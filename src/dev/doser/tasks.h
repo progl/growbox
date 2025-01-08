@@ -75,7 +75,7 @@ void run_doser_now()
                     preferences.putFloat("SetPumpA_Ml", SetPumpA_Ml - (StPumpA_cMl / StPumpA_cStepMl * i));
                     preferences.putFloat("SetPumpA_Ml_SUM", SetPumpA_Ml_SUM + (StPumpA_cMl / StPumpA_cStepMl * i));
                     preferences.putLong("PumpA_Step_SUM", PumpA_Step_SUM + i);
-                    vTaskDelete(NULL);
+                    while (OtaStart == true) vTaskDelay(1000);
                 }
             }
             preferences.putFloat("SetPumpA_Ml", SetPumpA_Ml - (StPumpA_cMl / StPumpA_cStepMl * StPumpA_cStep));
@@ -112,7 +112,7 @@ void run_doser_now()
                     preferences.putFloat("SetPumpB_Ml", SetPumpB_Ml - (StPumpB_cMl / StPumpB_cStepMl * i));
                     preferences.putFloat("SetPumpB_Ml_SUM", SetPumpB_Ml_SUM + (StPumpB_cMl / StPumpB_cStepMl * i));
                     preferences.putLong("PumpB_Step_SUM", PumpB_Step_SUM + i);
-                    vTaskDelete(NULL);
+                    while (OtaStart == true) vTaskDelay(1000);
                 }
             }
             preferences.putFloat("SetPumpB_Ml", SetPumpB_Ml - (StPumpB_cMl / StPumpB_cStepMl * StPumpB_cStep));

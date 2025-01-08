@@ -57,77 +57,88 @@ void updateFirmware(uint8_t *data, size_t len)
     }
 }
 
+bool makeHttpRequest(String url)
+{
+    int retryCount = 0;
+    const int maxRetries = 50;
+
+    while (retryCount < maxRetries)
+    {
+        server.handleClient();
+        http.end();  // Закрываем предыдущее соединение
+        vTaskDelay(50 / portTICK_PERIOD_MS);
+        http.begin(client, url);
+        vTaskDelay(50 / portTICK_PERIOD_MS);
+        int resp = http.GET();
+
+        syslog_ng("make_update: Response " + String(resp) + " Retry " + String(retryCount));
+        if (resp == 200)
+        {
+            return true;  // Успешное соединение
+        }
+        retryCount++;
+        vTaskDelay(50 / portTICK_PERIOD_MS);  // Задержка между попытками
+    }
+
+    syslog_ng("make_update: Failed to connect after " + String(maxRetries) + " retries");
+    return false;  // Соединение не удалось
+}
+
 void update_f()
 {
     if ((server_make_update || force_update) && UPDATE_URL && !making_update)
     {
-        syslog_ng("make_update: starting ");
+        syslog_ng("make_update: Starting...");
+        OtaStart = true;
         client.stop();
+        http.end();
         delay(5);
         client.setInsecure();
-        delay(5);
-        int lastPercentageSent = -1;
-        http.end();
-
-        // Ограничение на количество попыток подключения
-        const int maxRetries = 50;
-        int retryCount = 0;
-        String url = UPDATE_URL + "?token=" + update_token;
-
-        http.begin(client, url);
-        delay(100);
-        configureHttpClientForFirefox(http);
-        int resp = http.GET();
-        if (!making_update)
-        {
-            while (retryCount < maxRetries)
-            {
-                resp = http.GET();
-                delay(50);
-                syslog_ng("make_update:  Response " + String(resp) + " retryCount " + String(retryCount) +
-                          " UPDATE_URL " + String(url));
-                if (resp == 200)
-                {
-                    break;
-                }
-            }
-        }
-
-        syslog_ng("make_update: UPDATE_URL " + UPDATE_URL);
-        force_update = false;
-        syslog_ng("make_update: Start TaskUpdate");
-        OtaStart = true;
-
         making_update = true;
-        syslog_ng("make_update starting update");
-        OtaStart = true;
+        if (!makeHttpRequest(UPDATE_URL))
+        {
+            OtaStart = force_update = server_make_update = making_update = false;
+            syslog_ng("make_update: HTTP request failed.");
+            return;
+        }
+        syslog_ng("make_update: Starting firmware update...");
+
         totalLength = http.getSize();
-        int len = totalLength;
         Update.begin(UPDATE_SIZE_UNKNOWN);
         syslog_ng("make_update: FW Size " + String(totalLength));
-        WiFiClient *stream = http.getStreamPtr();
-        syslog_ng("make_update: Updating firmware ");
-        updatePage();
 
+        WiFiClient *stream = http.getStreamPtr();
+        int len = totalLength;
         int bytesDownloaded = 0;
+        int lastPercentageSent = -1;
+
+        // Засекаем время начала обновления
+        unsigned long updateStartTime = millis();
+
         while (http.connected() && (len > 0 || len == -1))
         {
+            // Проверяем, не превысило ли время обновления лимит (1 минута)
+            if (millis() - updateStartTime > 90000)
+            {
+                syslog_ng("make_update: Timeout exceeded, aborting update");
+                http.end();
+                return;  // Прерываем процесс обновления
+            }
+
             server.handleClient();
             size_t size = stream->available();
             if (size)
             {
-                int c = stream->readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size));
+                int c = stream->readBytes(buff, min(size, sizeof(buff)));
                 updateFirmware(buff, c);
                 bytesDownloaded += c;
+
                 if (len > 0)
                 {
                     len -= c;
                 }
+
                 percentage = (bytesDownloaded * 100) / totalLength;
-                if (percentage == 0)
-                {
-                    percentage = 1;
-                }
                 if (percentage != lastPercentageSent)
                 {
                     syslog_ng("make_update: Updating: " + String(percentage) + "%");
@@ -136,18 +147,28 @@ void update_f()
                 vTaskDelay(1);
             }
         }
-        making_update = false;
+
         http.end();
+        making_update = false;
         OtaStart = false;
+
+        if (bytesDownloaded == totalLength)
+        {
+            syslog_ng("make_update: Update completed successfully.");
+        }
+        else
+        {
+            syslog_ng("make_update: Update incomplete. Downloaded " + String(bytesDownloaded) + "/" +
+                      String(totalLength));
+        }
     }
     else
     {
+        syslog_ng("make_update: Skipping update due to conditions not met.");
         http.end();
         making_update = false;
         OtaStart = false;
         percentage = 0;
-        syslog_ng("make_update: error response code ");
-        syslog_ng("make_update:END TaskUpdate");
     }
 }
 

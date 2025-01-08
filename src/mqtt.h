@@ -898,7 +898,7 @@ void TaskMqtt(void *parameters)
         unsigned long start_mqtt;
         start_mqtt = millis();
         syslog_ng("start mqtt TaskMqtt");
-        if (OtaStart == true) vTaskDelete(NULL);
+        while (OtaStart == true) vTaskDelay(1000);
         publish_params_all();
         update_f();
         syslog_ng("mqtt TaskMqtt end " + fFTS((millis() - start_mqtt), 0) + " ms");
