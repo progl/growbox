@@ -197,9 +197,6 @@ void handleApiStatuses()
     doc["DRV4"] = readGPIO;
     doc["DRV4_text"] = "DRV4";
 
-    doc["update_link"] = "/?make_update=1";
-    doc["update_link_text"] = "Update";
-
     doc["old_ec"] = String(old_ec);
     doc["old_ec_text"] = "OldEC";
 
