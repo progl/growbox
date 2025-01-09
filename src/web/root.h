@@ -13,8 +13,5 @@ void handleRoot()
         update_f();
     }
 
-    sendFileSPIFF("index.html");
-
-
-
+    sendFileLittleFS("/index.html");
 }

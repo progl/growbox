@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include <Arduino.h>
-#include "SPIFFS.h"
+#include "LittleFS.h"
 #include <MCP342x.h>
 #include "GyverFilters.h"
 #include <BMx280I2C.h>
@@ -815,25 +815,27 @@ const int PwdResolution1 = 8;
 const int PwdChannel2 = 2;
 const int PwdResolution2 = 8;
 
-void sendFileSPIFF(String path)
+void sendFileLittleFS(String path)
 {
     String contentType = "text/plain";
     File file;
-    if (SPIFFS.exists(path + ".gz"))
+
+    // Проверяем существование сжатого файла
+    if (LittleFS.exists(path + ".gz"))
     {
         Serial.println("File found: " + path + ".gz");
-
-        file = SPIFFS.open(path + ".gz", "r");
+        file = LittleFS.open(path + ".gz", "r");
     }
-    else if (SPIFFS.exists(path))
+    // Проверяем существование несжатого файла
+    else if (LittleFS.exists(path))
     {
-        Serial.println("File found: " + path + ".gz");
-
-        File file = SPIFFS.open(path + ".gz", "r");
+        Serial.println("File found: " + path);
+        file = LittleFS.open(path, "r");
     }
+    // Если файл не найден
     else
     {
-        Serial.println("File not found: " + path + ".gz");
+        Serial.println("File not found: " + path);
         server.send(404, "text/plain", "File Not Found");
         return;
     }
@@ -852,14 +854,12 @@ void sendFileSPIFF(String path)
     else if (path.endsWith(".ico"))
         contentType = "image/x-icon";
 
-    // Отправляем заголовки
-    int fsizeDisk = file.size();
-
-    server.sendHeader("Cache-Control", "max-age=2628000, public");  // cache for 30 days
+    // Отправляем заголовки и поток файла
+    server.sendHeader("Cache-Control", "max-age=2628000, public");  // Кэш на 30 дней
     server.streamFile(file, contentType);
 
-    file.close();
-    delay(100);
+    file.close();  // Закрываем файл
+    delay(100);    // Задержка для стабильности отправки
 }
 
 #include <rom/rtc.h>

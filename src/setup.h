@@ -201,7 +201,7 @@ void handleFileRequest()
 {
     String path = server.uri();  // Получаем запрошенный путь
     Serial.println("Requested file: " + path);
-    sendFileSPIFF(path);
+    sendFileLittleFS(path);
 }
 
 void setupServer()
@@ -209,13 +209,13 @@ void setupServer()
     webSocket.begin();
     webSocket.onEvent(onWebSocketEvent);
 
-    if (!SPIFFS.begin())
+    if (!LittleFS.begin())
     {
-        Serial.println("Failed to mount SPIFFS");
+        Serial.println("Failed to mount LittleFS");
     }
     else
     {
-        Serial.println("SPIFFS mounted successfully");
+        Serial.println("LittleFS mounted successfully");
     }
 
     server.on("/", HTTP_GET, handleRoot);
