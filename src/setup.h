@@ -197,10 +197,26 @@ void setupResetReasons()
 
 void setupI2C() { Wire.begin(I2C_SDA, I2C_SCL); }
 
+void handleFileRequest()
+{
+    String path = server.uri();  // Получаем запрошенный путь
+    Serial.println("Requested file: " + path);
+    sendFileSPIFF(path);
+}
+
 void setupServer()
 {
     webSocket.begin();
     webSocket.onEvent(onWebSocketEvent);
+
+    if (!SPIFFS.begin())
+    {
+        Serial.println("Failed to mount SPIFFS");
+    }
+    else
+    {
+        Serial.println("SPIFFS mounted successfully");
+    }
 
     server.on("/", HTTP_GET, handleRoot);
     server.on("/api/status", HTTP_GET, handleApiStatuses);
@@ -208,7 +224,7 @@ void setupServer()
     server.on("/save-settings", HTTP_POST, saveSettings);
     server.on("/reset", handleReset);
     server.on("/update", update);
-    server.onNotFound([]() { server.send(404, "text/plain", "FileNotFound"); });
+    server.onNotFound([]() { handleFileRequest(); });
     server.begin();
 
     http.setConnectTimeout(10000);

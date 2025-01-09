@@ -1,4 +1,6 @@
 #include <stdint.h>
+#include <Arduino.h>
+#include "SPIFFS.h"
 #include <MCP342x.h>
 #include "GyverFilters.h"
 #include <BMx280I2C.h>
@@ -812,6 +814,53 @@ const int PwdChannel1 = 1;
 const int PwdResolution1 = 8;
 const int PwdChannel2 = 2;
 const int PwdResolution2 = 8;
+
+void sendFileSPIFF(String path)
+{
+    String contentType = "text/plain";
+    File file;
+    if (SPIFFS.exists(path + ".gz"))
+    {
+        Serial.println("File found: " + path + ".gz");
+
+        file = SPIFFS.open(path + ".gz", "r");
+    }
+    else if (SPIFFS.exists(path))
+    {
+        Serial.println("File found: " + path + ".gz");
+
+        File file = SPIFFS.open(path + ".gz", "r");
+    }
+    else
+    {
+        Serial.println("File not found: " + path + ".gz");
+        server.send(404, "text/plain", "File Not Found");
+        return;
+    }
+
+    // Определяем MIME-тип по расширению файла
+    if (path.endsWith(".html"))
+        contentType = "text/html";
+    else if (path.endsWith(".css"))
+        contentType = "text/css";
+    else if (path.endsWith(".js"))
+        contentType = "application/javascript";
+    else if (path.endsWith(".json"))
+        contentType = "application/json";
+    else if (path.endsWith(".png"))
+        contentType = "image/png";
+    else if (path.endsWith(".ico"))
+        contentType = "image/x-icon";
+
+    // Отправляем заголовки
+    int fsizeDisk = file.size();
+
+    server.sendHeader("Cache-Control", "max-age=2628000, public");  // cache for 30 days
+    server.streamFile(file, contentType);
+
+    file.close();
+    delay(100);
+}
 
 #include <rom/rtc.h>
 #include <etc/ResetReason.h>

@@ -26,7 +26,6 @@ void updatePage() { server.send_P(200, PSTR("text/html"), UPDATE_page); }
 
 const char ERROR_page[] PROGMEM = R"=====(
 <!DOCTYPE html>
- 
 ERROR
 )=====";
 

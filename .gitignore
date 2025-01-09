@@ -6,3 +6,4 @@ src/ponics.online.h
 scripts/build_ponic.sh
 test/
 scripts/open_chrome.sh
+scripts/merge_firmware.py
