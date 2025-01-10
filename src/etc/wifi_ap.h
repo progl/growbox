@@ -17,7 +17,7 @@ void configAP()
 
 void setupWiFi()
 {
-    Serial.println("Start wifi config");
+    Serial.println("Start wifi config ssid " + String(ssid) + " password " + String(password));
 
     syslog.deviceHostname(HOSTNAME.c_str());
     syslog.appName(appName.c_str());

@@ -74,7 +74,7 @@ void setupSyslog()
 void setup_preferences()
 {
     preferences.begin("settings", false);
-    config_preferences.begin("config", false, "config");
+    config_preferences.begin("config", false);
 
     for (const auto &setting : preferenceSettings)
     {
