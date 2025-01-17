@@ -150,12 +150,14 @@ void MCP23017()
     }
 
     // Коррекция ЕС путем разбавления
-    if (ECStabEnable == 1 && wEC > ECStabValue && millis() - ECStabTimeStart > ECStabInterval * 1000 &&
+    if (ECStabEnable == 1 && wEC > ECStabValue && 
+    millis() - ECStabTimeStart > ECStabInterval * 1000 &&
         Dist >= ECStabMinDist && Dist < ECStabMaxDist
 
     )
     {
-        syslog_ng("MCP23017 WATERING");
+        syslog_ng("MCP23017 WATERING ECStabTime " +String(ECStabTime) + " ECStabInterval " +String(ECStabInterval)
+        );
         mcp.digitalWrite(ECStabPomp, 1);
         readGPIO = mcp.readGPIOAB();
         publish_parameter("readGPIO", readGPIO, 3, 1);
@@ -170,12 +172,12 @@ void MCP23017()
     else
     {
         syslog_ng(
-            "MCP23017 "
-            " ECStabEnable " +
-            String(ECStabEnable == 1) + " wEC > ECStabValue  " + String(wEC > ECStabValue) +
+            "MCP23017 ECStabEnable " +  String(ECStabEnable == 1) + 
+            " wEC > ECStabValue  " + String(wEC > ECStabValue) +
             " millis() - ECStabTimeStart  > ECStabInterval * 1000  " +
-            String(millis() - ECStabTimeStart > ECStabInterval * 1000) + "   Dist >= ECStabMinDist  " +
-            String(Dist >= ECStabMinDist) + " Dist < ECStabMaxDist " + String(Dist < ECStabMaxDist));
+            " time: " +  String(millis() - ECStabTimeStart > ECStabInterval * 1000) + 
+            " Dist >= ECStabMinDist  " + String(Dist >= ECStabMinDist) + 
+            " Dist < ECStabMaxDist " + String(Dist < ECStabMaxDist));
 
         mcp.digitalWrite(ECStabPomp, 0);
     }

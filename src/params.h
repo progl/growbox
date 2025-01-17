@@ -302,7 +302,7 @@ bool making_update = false;
 
 long ECDoserTimer;
 boolean make_doser = false;
-
+#define SYSLOG_PORT 514   // Порт SYSLOG сервера
 // ponics.online
 #if __has_include(<ponics.online.h>)
 #include <ponics.online.h>
@@ -310,6 +310,7 @@ boolean make_doser = false;
 #pragma message("Header <ponics.online.h> not found, continuing without it.")
 #define MQTT_HOST IPAddress(8, 8, 8, 8)
 #define MQTT_PORT 1883
+#define SYSLOG_SERVER ""  // Адрес SYSLOG сервера будет переопределен в ponics.online.h
 #define ENABLE_PONICS_ONLINE 1
 const char *mqtt_mqtt_user = "";
 const char *mqtt_mqtt_password = "";
@@ -317,6 +318,10 @@ const char *mqtt_url = "";
 uint16_t mqtt_mqtt_port = 1883;
 String mqttPrefix;
 #endif
+
+
+ 
+
 
 // Переменные для параметров "calE"
 int calE = 0;

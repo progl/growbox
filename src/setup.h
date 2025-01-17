@@ -1,4 +1,3 @@
-
 int stack_size = 4096;
 // Обработчик событий WebSocket
 void onWebSocketEvent(uint8_t clientNum, WStype_t type, uint8_t *payload, size_t length)
@@ -204,6 +203,14 @@ void handleFileRequest()
     sendFileLittleFS(path);
 }
 
+void handleUpdateIndex() {
+    if (downloadAndUpdateIndexFile()) {
+        server.send(200, "text/plain", "Index file updated successfully");
+    } else {
+        server.send(500, "text/plain", "Failed to update index file");
+    }
+}
+
 void setupServer()
 {
     webSocket.begin();
@@ -224,6 +231,7 @@ void setupServer()
     server.on("/save-settings", HTTP_POST, saveSettings);
     server.on("/reset", handleReset);
     server.on("/update", update);
+    server.on("/update-index", HTTP_GET, handleUpdateIndex);  
     server.onNotFound([]() { handleFileRequest(); });
     server.begin();
 
@@ -300,6 +308,8 @@ void setupTaskMqtt()
     xTaskCreate(TaskMqtt, "TaskMqtt", 5000, NULL, 0, NULL);
     syslog_ng("after setupTaskMqtt");
 }
+
+
 
 void setup()
 {

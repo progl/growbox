@@ -40,7 +40,7 @@
 // Настройки ADC
 esp_adc_cal_characteristics_t *adc_chars;
 const adc_bits_width_t width = ADC_WIDTH_BIT_12;  // Разрядность (12 бит)
-const adc_atten_t atten = ADC_ATTEN_DB_11;        // Коэффициент ослабления (0–3.3 В)
+const adc_atten_t atten = ADC_ATTEN_DB_12;        // Коэффициент ослабления (0–3.3 В)
 
 // Указываем каналы для ADC1
 const adc1_channel_t channels[] = {
@@ -499,12 +499,10 @@ void get_ec()
             float eb = (-log10(ec1 / ec2)) / (log10(ex2 / ex1));
             float ea = pow(ex1, -eb) * ec1;
             ec_notermo = ea * pow(wR2, eb);
-            syslog_ng("make_raschet eb: " + fFTS(eb, 3) + " ec: " + fFTS(ec_notermo, 3) + "ea: " + fFTS(ea, 3) +
-                      "wNTC: " + fFTS(wNTC, 3));
+            syslog_ng("make_raschet eb: " + fFTS(eb, 3) + " ec: " + fFTS(ec_notermo, 3) + "ea: " + fFTS(ea, 3) + "wNTC: " + fFTS(wNTC, 3));
             wEC_ususal = ec_notermo / (1 + kt * (wNTC - 25)) + eckorr;
-
             syslog_ng("EC_KAL_E: " + fFTS(EC_KAL_E, 3));
-
+            
             if (EC_KAL_E == 1)
             {
                 EC_Kalman = KalmanEC.filtered(wEC_ususal);
@@ -631,11 +629,9 @@ Group groups[] = {
      {
          {"UPDATE_URL", "Ссылка на прошивку", Param::STRING, .defaultString = UPDATE_URL.c_str()},
          {"update_token", "Ключ обновления", Param::STRING, .defaultString = update_token.c_str()},
-
          {"HOSTNAME", "Имя хоста", Param::STRING, .defaultString = HOSTNAME.c_str()},
          {"vpdstage", "VPD стадия", Param::STRING, .defaultString = vpdstage.c_str()},
          {"disable_ntc", "Отключить NTC(0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"old_ec", "Enable old ec(0-off, 1-on)", Param::INT, .defaultInt = 0},
          {"calE", "Включить калибровку(0-off, 1-on)", Param::INT, .defaultInt = 0},
          {"change_pins", "поменять пины US025(HCR04)(0-off, 1-on)", Param::INT, .defaultInt = 0},
          {"clear_pref", "Сброс ВСЕХ настроек кроме wifi(0-off, 1-on)", Param::INT, .defaultInt = 0},
@@ -891,7 +887,7 @@ void sendFileLittleFS(String path)
 #include <etc/update.h>
 #include <preferences_local.h>
 #include <mqtt.h>
-#include <web/styles.h>
+
 #include <web/root.h>
 
 #include <etc/wifi_ap.h>

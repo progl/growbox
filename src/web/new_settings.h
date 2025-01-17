@@ -1,5 +1,3 @@
-
-
 void setVPDStyles(String vpdstage)
 {
     if (vpdstage == "Start")
@@ -68,13 +66,13 @@ void handleApiStatuses()
     // Создание JSON-объекта
     JsonDocument doc;
 
-    JsonArray tasksArray = doc.createNestedArray("tasks_status");
+    JsonArray tasksArray = doc["tasks_status"].to<JsonArray>();
 
     for (int i = 0; i < MAX_TASKS; i++)
     {
         if (tasks[i].taskName != nullptr)
         {
-            JsonObject taskObj = tasksArray.createNestedObject();
+            JsonObject taskObj = tasksArray.add<JsonObject>();
             taskObj["taskName"] = tasks[i].taskName;
             taskObj["lastExecutionTime"] = tasks[i].lastExecutionTime;
             taskObj["totalExecutionTime"] = tasks[i].totalExecutionTime;
@@ -167,10 +165,10 @@ void handleApiStatuses()
     doc["PWD2_text"] = "PWD2";
 
     // Датчики
-    JsonArray sensorsArray = doc.createNestedArray("sensors");
+    JsonArray sensorsArray = doc["sensors"].to<JsonArray>();
     for (int i = 0; i < sensorCount; i++)
     {
-        JsonObject sensor = sensorsArray.createNestedObject();
+        JsonObject sensor = sensorsArray.add<JsonObject>();
         sensor["name"] = "dallas_" + String(i);
         sensor["address"] = sensorArray[i].addressToString();
         sensor["temperature"] = fFTS(sensorArray[i].temperature, 3) + "°C";
@@ -223,7 +221,7 @@ void handleApiStatuses()
     // Добавление отладочных данных, если включен режим отладки
     if (server.arg("debug").toInt() == 1)
     {
-        JsonObject debug = doc.createNestedObject("debug");
+        JsonObject debug = doc["debug"].to<JsonObject>();
 
         debug["not_detected_sensors"] = not_detected_sensors;
         debug["US025_CHANGED_PORTS"] = String(US025_CHANGE_PORTS);
@@ -254,7 +252,7 @@ void handleApiGroups()
     unsigned long t_millis = millis();
 
     // Создание JSON-объекта
-    DynamicJsonDocument doc(10000);
+    JsonDocument doc;
 
     // Добавление групп настроек
     JsonObject groupsJson = doc.createNestedObject("groups");
@@ -308,7 +306,8 @@ void saveSettings()
     if (server.hasArg("plain"))
     {
         String body = server.arg("plain");
-        DynamicJsonDocument doc(1024);
+        JsonDocument doc;
+
         DeserializationError error = deserializeJson(doc, body);
 
         if (error)
@@ -334,7 +333,7 @@ void saveSettings()
                 nvs_flash_init_partition("nvs");   // Initializes
                 syslog_ng("clear_pref");
                 preferences.begin("settings", false);
-                config_preferences.begin("config", false, "config");
+                config_preferences.begin("config", false);
 
                 preferences.putString("ssid", ssid);
                 preferences.putString("password", password);
@@ -376,11 +375,6 @@ void saveSettings()
                     NextRootDrivePwdOn = millis() + (RDDelayOff * 1000);            // Set timer for turning on
                     NextRootDrivePwdOff = NextRootDrivePwdOn + (RDDelayOn * 1000);  // Set timer for turning off
                 }
-
-                // else if (strcmp(settingName, "ssid") == 0)
-                // {
-                //     setupWiFi();
-                // }
                 else if (strcmp(settingName, "password") == 0)
                 {
                     setupWiFi();
@@ -396,7 +390,6 @@ void saveSettings()
                 else if (strncmp(settingName, "DRV", 3) == 0 || strncmp(settingName, "PWD", 3) == 0 ||
                          strncmp(settingName, "FREQ", 4) == 0)
                 {
-                    // Handle DRV, PWD, FREQ states, etc.
                     MCP23017();
                 }
 

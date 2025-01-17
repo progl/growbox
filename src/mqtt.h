@@ -22,7 +22,7 @@ void publish_switch_discovery_payload(Param param)
 {
     String switch_name = String(param.name);
     syslog_ng("Toggle parameter found: " + switch_name);
-    StaticJsonDocument<512> doc;
+    JsonDocument doc;
     char buffer[512];
     String state_topic = String(mqttPrefix) + "switch/" + switch_name + "/state";
     String command_topic = String(mqttPrefix) + "switch/" + switch_name + "/state";
@@ -769,7 +769,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
         for (int i = 0; i < sizeof(preferencesArray) / sizeof(PreferenceItem); ++i)
         {
             // Проверяем, есть ли значение для текущего ключа в JSON
-            if (jsonDoc.containsKey(preferencesArray[i].key))
+            if (jsonDoc[preferencesArray[i].key].is<JsonVariant>())
             {
                 // Определяем тип переменной и обновляем ее значение в зависимости от
                 // типа

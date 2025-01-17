@@ -1,6 +1,5 @@
 #define DISABLE_TLS
-#define SYSLOG_SERVER ""  // Адрес SYSLOG сервера
-#define SYSLOG_PORT 514   // Порт SYSLOG сервера
+
 String HOSTNAME = "growbox";
 String AP_SSID = "ESP32WEGA56";
 String AP_PASS = "ESP32WEGA56";
