@@ -39,7 +39,7 @@ struct PreferenceItem
 };
 
 PreferenceItem preferencesArray[] = {
-    {"UPDATE_URL", DataType::STRING, Data{UPDATE_URL}, &UPDATE_URL,&preferences},
+    {"UPDATE_URL", DataType::STRING, Data{UPDATE_URL}, &UPDATE_URL, &preferences},
     {"update_token", DataType::STRING, {"default_token"}, &update_token, &preferences},
     {"ssid", DataType::STRING, {"ESP32"}, &ssid, &preferences},
     {"password", DataType::STRING, {"ESP32"}, &password, &preferences},

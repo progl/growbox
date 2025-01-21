@@ -1,4 +1,5 @@
 int stack_size = 4096;
+
 // Обработчик событий WebSocket
 void onWebSocketEvent(uint8_t clientNum, WStype_t type, uint8_t *payload, size_t length)
 {
@@ -203,10 +204,14 @@ void handleFileRequest()
     sendFileLittleFS(path);
 }
 
-void handleUpdateIndex() {
-    if (downloadAndUpdateIndexFile()) {
+void handleUpdateIndex()
+{
+    if (downloadAndUpdateIndexFile())
+    {
         server.send(200, "text/plain", "Index file updated successfully");
-    } else {
+    }
+    else
+    {
         server.send(500, "text/plain", "Failed to update index file");
     }
 }
@@ -231,7 +236,8 @@ void setupServer()
     server.on("/save-settings", HTTP_POST, saveSettings);
     server.on("/reset", handleReset);
     server.on("/update", update);
-    server.on("/update-index", HTTP_GET, handleUpdateIndex);  
+    server.on("/update-index", HTTP_GET, handleUpdateIndex);
+    server.on("/core-dump", HTTP_GET, handleCoreDump);
     server.onNotFound([]() { handleFileRequest(); });
     server.begin();
 
@@ -309,35 +315,27 @@ void setupTaskMqtt()
     syslog_ng("after setupTaskMqtt");
 }
 
-
-
 void setup()
 {
     Serial.begin(115200);
     mcp.writeGPIOAB(0);
     esp_register_shutdown_handler(debugUpdate);  // Регистрация обработчика перезагрузки
-    // Выводим информацию после перезагрузки
-    printDebugInfo();
-
     initializeVariablePointers();
     esp_log_level_set("*", ESP_LOG_VERBOSE);
     xSemaphore_C = xSemaphoreCreateMutex();
 
     client.setInsecure();
     setup_preferences();
-    mqttPrefix = update_token + "/";
-    setupMQTT();
-    setupHA_MQTT();  // добавлен вызов функции для настройки MQTT для HA
-    setupTimers();
     setupSyslog();
     setupWiFi();
-    calibrate_adc();
     int rst_counter = preferences.getInt("rst_counter", 0);
     preferences.putInt("rst_counter", rst_counter + 1);
-    preferences.putString("DebugInfo", getDebugInfoAsString());
+    syslog_ng("before  getDebugInfoAsString ");
+    syslog_ng("getDebugInfoAsString " + getDebugInfoAsString());
+
     setupOTA();
     setupMDNS();
-    setupDisplay();
+
     setupResetReasons();
 
     if (rst_counter > 3)
@@ -353,6 +351,17 @@ void setup()
             }
         }
     }
+
+    syslog_ng("readCoreDump ");
+
+    syslog_ng("esp_core_dump_init ");
+
+    mqttPrefix = update_token + "/";
+    calibrate_adc();
+    setupMQTT();
+    setupHA_MQTT();  // добавлен вызов функции для настройки MQTT для HA
+    setupTimers();
+    setupDisplay();
 
     KalmanNTC.setParameters(ntc_mea_e, ntc_est_e, ntc_q);
     KalmanDist.setParameters(dist_mea_e, dist_est_e, dist_q);

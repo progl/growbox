@@ -46,13 +46,6 @@ uint8_t qos_publish = 0;
 int mqtt_not_connected_counter = 0;
 int con_c;
 int old_ec;
-Preferences preferences;
-Preferences config_preferences;
-WebServer server(80);
-WebSocketsServer webSocket = WebSocketsServer(81);
-TimerHandle_t mqttReconnectTimer;
-TimerHandle_t mqttReconnectTimerHa;
-TimerHandle_t wifiReconnectTimer;
 int is_setup = 1;
 float t_us;
 float ec_notermo;
@@ -62,7 +55,7 @@ float pR_val_p1, pR_val_p2, pR_val_p3;
 float pR_Rx, pR_T, pR_x, pR_DAC, pR1;
 float wPR;
 bool first_time = true;
-TaskHandle_t xHandleUpdate = NULL;
+
 int RDDelayOn = 60;    // Задержка в секундах для включения
 int RDDelayOff = 300;  // Задержка в секундах для выключения
 int RDEnable = 0;
@@ -76,9 +69,7 @@ int KickUpStrart = 10;  // начальная можность пинка
 int KickUpTime = 300;   // Время пинка в миллисекундах
 const char *pref_reset_reason = "ResetReason";
 boolean log_debug = false;
-
 float EC_Kalman, ec_notermo_kalman;
-
 float ec_mea_e = 3;
 float ec_est_e = 3;
 float ec_q = 0.1;
@@ -117,12 +108,6 @@ int DRV4_D_PK_On = 0;
 unsigned long NextRootDrivePwdOn;   // Сохраняем текущее время для включения
 unsigned long NextRootDrivePwdOff;  // Время для выключения
 
-WiFiClientSecure client;
-HTTPClient http;
-
-AsyncMqttClient mqttClient;
-AsyncMqttClient mqttClientHA;
-WiFiEventId_t wifiConnectHandler;
 int mqttHAConnected = 0;
 
 int failedCount = 0;
@@ -302,7 +287,7 @@ bool making_update = false;
 
 long ECDoserTimer;
 boolean make_doser = false;
-#define SYSLOG_PORT 514   // Порт SYSLOG сервера
+#define SYSLOG_PORT 514  // Порт SYSLOG сервера
 // ponics.online
 #if __has_include(<ponics.online.h>)
 #include <ponics.online.h>
@@ -318,10 +303,6 @@ const char *mqtt_url = "";
 uint16_t mqtt_mqtt_port = 1883;
 String mqttPrefix;
 #endif
-
-
- 
-
 
 // Переменные для параметров "calE"
 int calE = 0;

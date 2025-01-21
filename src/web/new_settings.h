@@ -33,7 +33,21 @@ void handleReset()
     ESP.restart();
 }
 
-// index
+// Функция очистки строки
+String sanitizeString(const String &input)
+{
+    String sanitized = input;
+    for (size_t i = 0; i < sanitized.length(); i++)
+    {
+        char c = sanitized[i];
+        if (c < 32 || c == 127)
+        {  // Удаляем символы управления
+            sanitized.remove(i, 1);
+            i--;
+        }
+    }
+    return sanitized;
+}
 
 void handleApiStatuses()
 {
@@ -168,13 +182,15 @@ void handleApiStatuses()
     JsonArray sensorsArray = doc["sensors"].to<JsonArray>();
     for (int i = 0; i < sensorCount; i++)
     {
-          doc.addString("name", "dallas_" + String(i));
-          doc.addString("address", sensorArray[i].addressToString());
-          doc.addString("temperature", fFTS(sensorArray[i].temperature, 3) + "°C");
+        doc["name"] = "dallas_" + String(i);
+        doc["address"] = sensorArray[i].addressToString();
+        doc["temperature"] = fFTS(sensorArray[i].temperature, 3) + "°C";
     }
 
     doc["reset_reason"] = preferences.getString(pref_reset_reason);
     doc["reset_reason_text"] = "Причина перезагрузки";
+    doc["not_detected_sensors"] = not_detected_sensors;
+    doc["not_detected_sensors_text"] = "Не обнаруженные датчики";
     doc["detected_sensors"] = detected_sensors;
     doc["detected_sensors_text"] = "Sensors";
 
@@ -240,7 +256,7 @@ void handleApiStatuses()
     // Сериализация и отправка JSON
     String output;
     serializeJson(doc, output);
-    server.send(200, "application/json", output);
+    server.send(200, "application/json", sanitizeString(output));
 }
 
 void handleApiGroups()
@@ -295,7 +311,7 @@ void handleApiGroups()
     Serial.print("Serialized JSON length: ");
     Serial.println(output.length());
 
-    server.send(200, "application/json", output);
+    server.send(200, "application/json", sanitizeString(output));
 }
 
 void saveSettings()

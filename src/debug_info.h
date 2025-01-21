@@ -1,4 +1,3 @@
-
 #include "esp_system.h"
 #include "esp_task_wdt.h"
 
@@ -58,10 +57,7 @@ void IRAM_ATTR debugUpdate()
 extern "C" void __real_esp_panic_handler(void *info) __attribute__((noreturn));
 extern "C" void __wrap_esp_panic_handler(void *info)
 {
-    debugUpdate();  // Сохранение отладочной информации перед вызовом оригинального
-                    // обработчика паники
-
-    // Вызов оригинального обработчика паники для завершения обработки ошибки
+    debugUpdate();  // Сохранение отладочной информации перед вызовом оригинального обработчика
     __real_esp_panic_handler(info);
 }
 

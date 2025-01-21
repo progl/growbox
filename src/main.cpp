@@ -34,8 +34,8 @@
 #include <functions.h>
 #include <Syslog.h>
 #include "ccs811.h"  // CCS811 library
-#include "debug_info.h"
 #include "esp_adc_cal.h"
+#include "debug_info.h"
 
 // Настройки ADC
 esp_adc_cal_characteristics_t *adc_chars;
@@ -67,27 +67,35 @@ struct TaskInfo
     unsigned int minFreeStackSize;     // Минимальное количество свободной памяти в стеке (в байтах)
     SemaphoreHandle_t xSemaphore;      // Семафор
 };
-
 #define MAX_TASKS 20
+#define US_SDA 13  // SDA
+#define US_SCL 14  // SCL
 
 TaskInfo tasks[MAX_TASKS];
 int taskCount = 0;
 WiFiUDP udpClient;
 Syslog syslog(udpClient, SYSLOG_PROTO_IETF);
-
 uint8_t LCDaddr = 0x3c;
-
 GyverOLED<SSD1306_128x64, OLED_BUFFER> oled;
 SemaphoreHandle_t xSemaphore_C = NULL;
 SemaphoreHandle_t xSemaphoreX_WIRE = NULL;
-
-#define US_SDA 13  // SDA
-#define US_SCL 14  // SCL
+Preferences preferences;
+Preferences config_preferences;
+WebServer server(80);
+WebSocketsServer webSocket = WebSocketsServer(81);
+TimerHandle_t mqttReconnectTimer;
+TimerHandle_t mqttReconnectTimerHa;
+TimerHandle_t wifiReconnectTimer;
+TaskHandle_t xHandleUpdate = NULL;
+WiFiClientSecure client;
+HTTPClient http;
+AsyncMqttClient mqttClient;
+AsyncMqttClient mqttClientHA;
+WiFiEventId_t wifiConnectHandler;
 
 #include <VL53L0X.h>
 #include <map>
 #include <params.h>
-
 #include <driver/adc.h>
 #include <dev/ec/old_adc/wega-adc.h>
 #include <queue>
@@ -96,14 +104,17 @@ SemaphoreHandle_t xSemaphoreX_WIRE = NULL;
 #define SCK_PIN 13
 #define SDI_PIN 14
 #define ADS1115_MiddleCount 10000  // 6236ms за 10 тыс усреднений
-
+#include <debug_info_new.h>
 void syslog_ng(String x)
 {
     x = fFTS(float(millis()) / 1000, 3) + "s " + x;
     syslog.log(LOG_INFO, x);
     Serial.println(x);
     // Отправка логов через вебсокет
-    webSocket.broadcastTXT(x);
+    if (webSocket.connectedClients() > 0)
+    {
+        webSocket.broadcastTXT(x);
+    }
 }
 
 void syslog_err(String x)
@@ -111,7 +122,10 @@ void syslog_err(String x)
     x = fFTS(float(millis()) / 1000, 3) + "s " + x;
     syslog.log(LOG_ERR, x);
     Serial.println(x);
-    webSocket.broadcastTXT(x);
+    if (webSocket.connectedClients() > 0)
+    {
+        webSocket.broadcastTXT(x);
+    }
 }
 void TaskTemplate(void *params)
 {
@@ -328,7 +342,6 @@ void enqueueMessage(const char *topic, const char *payload, String key = "")
     {
         // Формируем сообщение в формате "key:payload"
         String websocket_msg = ":::" + key + ":" + String(payload);
-
         // Рассылаем сообщение всем подключённым WebSocket-клиентам
         webSocket.broadcastTXT(websocket_msg);
     }
@@ -475,6 +488,7 @@ void get_ph()
         preferences.putFloat("wpH", wpH);
     }
 }
+
 void get_ec()
 {
     if (Ap and An and Ap < 4095 and An > 0)
@@ -499,10 +513,11 @@ void get_ec()
             float eb = (-log10(ec1 / ec2)) / (log10(ex2 / ex1));
             float ea = pow(ex1, -eb) * ec1;
             ec_notermo = ea * pow(wR2, eb);
-            syslog_ng("make_raschet eb: " + fFTS(eb, 3) + " ec: " + fFTS(ec_notermo, 3) + "ea: " + fFTS(ea, 3) + "wNTC: " + fFTS(wNTC, 3));
+            syslog_ng("make_raschet eb: " + fFTS(eb, 3) + " ec: " + fFTS(ec_notermo, 3) + "ea: " + fFTS(ea, 3) +
+                      "wNTC: " + fFTS(wNTC, 3));
             wEC_ususal = ec_notermo / (1 + kt * (wNTC - 25)) + eckorr;
             syslog_ng("EC_KAL_E: " + fFTS(EC_KAL_E, 3));
-            
+
             if (EC_KAL_E == 1)
             {
                 EC_Kalman = KalmanEC.filtered(wEC_ususal);
@@ -543,6 +558,7 @@ void get_ec()
         ec_notermo_kalman = 0;
     }
 }
+
 Group groups[] = {
     {"Долив воды",
      7,

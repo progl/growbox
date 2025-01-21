@@ -330,8 +330,7 @@ void subscribe()
     String mqttPrefixtest = mqttPrefix + "test/#";
     syslog_ng("mqtt subscribe mqttPrefixSet: " + mqttPrefixSet);
     syslog_ng("mqtt subscribe mqttPrefixSet: " + mqttPrefixtest);
-    mqttClient.subscribe(mqttPrefixSet.c_str(),
-                         qos);  // Subscribing to topic with prefix
+    mqttClient.subscribe(mqttPrefixSet.c_str(), qos);  // Subscribing to topic with prefix
     mqttClient.subscribe(mqttPrefixtest.c_str(), qos);
     syslog_ng("mqtt end subscribe");
 }

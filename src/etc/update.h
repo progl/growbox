@@ -33,13 +33,15 @@ ERROR
 void errorPage() { server.send_P(400, PSTR("text/html"), ERROR_page); }
 
 // Функция проверки свободного места
-bool checkFreeSpace(size_t requiredSpace) {
+bool checkFreeSpace(size_t requiredSpace)
+{
     size_t totalBytes = LittleFS.totalBytes();
     size_t usedBytes = LittleFS.usedBytes();
     size_t freeSpace = totalBytes - usedBytes;
-    
-    syslog_ng("Storage: Total: " + String(totalBytes) + ", Used: " + String(usedBytes) + ", Free: " + String(freeSpace));
-    
+
+    syslog_ng("Storage: Total: " + String(totalBytes) + ", Used: " + String(usedBytes) +
+              ", Free: " + String(freeSpace));
+
     return freeSpace >= requiredSpace;
 }
 
@@ -98,33 +100,37 @@ bool makeHttpRequest(String url)
 bool downloadAndUpdateIndexFile()
 {
     String indexUrl = "https://ponics.online/static/wegabox/esp32-local/index.html.gz";
-    
+
     http.end();  // Закрываем предыдущее соединение
     http.begin(client, indexUrl);
     configureHttpClientForFirefox(http);
-    
+
     // Получаем размер файла
     int resp = http.GET();
-    if (resp != 200) {
+    if (resp != 200)
+    {
         syslog_ng("Failed to download index.html.gz: " + String(resp));
         return false;
     }
-    
+
     int fileSize = http.getSize();
-    if (fileSize <= 0) {
+    if (fileSize <= 0)
+    {
         syslog_ng("Invalid file size: " + String(fileSize));
         return false;
     }
 
     // Проверяем свободное место
-    if (!checkFreeSpace(fileSize + 1024)) { // +1KB для безопасности
+    if (!checkFreeSpace(fileSize + 1024))
+    {  // +1KB для безопасности
         syslog_ng("Not enough free space for index.html.gz");
         return false;
     }
 
     // Открываем файл для записи
     File file = LittleFS.open("/index.html.gz", "w");
-    if (!file) {
+    if (!file)
+    {
         syslog_ng("Failed to open index.html.gz for writing");
         return false;
     }
@@ -136,34 +142,40 @@ bool downloadAndUpdateIndexFile()
     unsigned long timeout = millis();
 
     // Читаем данные и записываем в файл
-    while (http.connected() && (len > 0 || len == -1)) {
+    while (http.connected() && (len > 0 || len == -1))
+    {
         // Проверка таймаута
-        if (millis() - timeout > 10000) { // 10 секунд таймаут
+        if (millis() - timeout > 10000)
+        {  // 10 секунд таймаут
             syslog_ng("Download timeout");
             file.close();
             return false;
         }
 
         size_t size = stream->available();
-        if (size) {
-            timeout = millis(); // Сброс таймаута при получении данных
+        if (size)
+        {
+            timeout = millis();  // Сброс таймаута при получении данных
             int c = stream->readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size));
-            
+
             // Проверка успешности записи
             size_t bytesWritten = file.write(buff, c);
-            if (bytesWritten != c) {
+            if (bytesWritten != c)
+            {
                 syslog_ng("Write error: expected " + String(c) + " bytes, wrote " + String(bytesWritten));
                 file.close();
                 return false;
             }
-            
+
             written += c;
-            if (len > 0) {
+            if (len > 0)
+            {
                 len -= c;
             }
 
             // Периодически освобождаем процессор
-            if (written % 4096 == 0) {
+            if (written % 4096 == 0)
+            {
                 vTaskDelay(1);
             }
         }
@@ -173,7 +185,8 @@ bool downloadAndUpdateIndexFile()
     file.close();
 
     // Проверяем, что записали ожидаемое количество байт
-    if (written != fileSize) {
+    if (written != fileSize)
+    {
         syslog_ng("Size mismatch: expected " + String(fileSize) + ", got " + String(written));
         return false;
     }
@@ -195,15 +208,17 @@ void update_f()
         making_update = true;
 
         // Проверяем свободное место для прошивки
-        size_t updateSize = UPDATE_SIZE_UNKNOWN; // Можно задать примерный размер
-        if (!checkFreeSpace(updateSize)) {
+        size_t updateSize = UPDATE_SIZE_UNKNOWN;  // Можно задать примерный размер
+        if (!checkFreeSpace(updateSize))
+        {
             syslog_ng("Not enough free space for firmware update");
             OtaStart = force_update = server_make_update = making_update = false;
             return;
         }
 
         // Сначала обновляем index.html.gz
-        if (!downloadAndUpdateIndexFile()) {
+        if (!downloadAndUpdateIndexFile())
+        {
             syslog_ng("Failed to update index.html.gz");
         }
 
@@ -217,14 +232,16 @@ void update_f()
 
         syslog_ng("make_update: Starting firmware update...");
         totalLength = http.getSize();
-        
-        if (totalLength <= 0) {
+
+        if (totalLength <= 0)
+        {
             syslog_ng("make_update: Invalid firmware size");
             OtaStart = force_update = server_make_update = making_update = false;
             return;
         }
 
-        if (!Update.begin(totalLength)) {
+        if (!Update.begin(totalLength))
+        {
             syslog_ng("make_update: Not enough space for update");
             OtaStart = force_update = server_make_update = making_update = false;
             return;
@@ -242,7 +259,7 @@ void update_f()
         while (http.connected() && (len > 0 || len == -1))
         {
             // Проверка общего таймаута
-            if (millis() - updateStartTime > 90000) // 90 секунд
+            if (millis() - updateStartTime > 90000)  // 90 секунд
             {
                 syslog_ng("make_update: Total timeout exceeded");
                 Update.abort();
@@ -251,7 +268,7 @@ void update_f()
             }
 
             // Проверка таймаута прогресса
-            if (millis() - lastProgressTime > 10000) // 10 секунд без прогресса
+            if (millis() - lastProgressTime > 10000)  // 10 секунд без прогресса
             {
                 syslog_ng("make_update: Progress timeout");
                 Update.abort();
@@ -263,10 +280,11 @@ void update_f()
             size_t size = stream->available();
             if (size)
             {
-                lastProgressTime = millis(); // Сброс таймаута прогресса
+                lastProgressTime = millis();  // Сброс таймаута прогресса
                 int c = stream->readBytes(buff, min(size, sizeof(buff)));
-                
-                if (Update.write(buff, c) != c) {
+
+                if (Update.write(buff, c) != c)
+                {
                     syslog_ng("make_update: Write failed");
                     Update.abort();
                     OtaStart = force_update = server_make_update = making_update = false;
@@ -274,7 +292,8 @@ void update_f()
                 }
 
                 bytesDownloaded += c;
-                if (len > 0) {
+                if (len > 0)
+                {
                     len -= c;
                 }
 
@@ -284,23 +303,26 @@ void update_f()
                     syslog_ng("make_update: Updating: " + String(percentage) + "%");
                     lastPercentageSent = percentage;
                 }
-                
+
                 // Периодически освобождаем процессор
-                if (bytesDownloaded % 4096 == 0) {
+                if (bytesDownloaded % 4096 == 0)
+                {
                     vTaskDelay(1);
                 }
             }
             vTaskDelay(1);
         }
 
-        if (len != 0) {
+        if (len != 0)
+        {
             syslog_ng("make_update: Size mismatch");
             Update.abort();
             OtaStart = force_update = server_make_update = making_update = false;
             return;
         }
 
-        if (!Update.end(true)) {
+        if (!Update.end(true))
+        {
             syslog_ng("make_update: Update end failed");
             OtaStart = force_update = server_make_update = making_update = false;
             return;
