@@ -168,10 +168,9 @@ void handleApiStatuses()
     JsonArray sensorsArray = doc["sensors"].to<JsonArray>();
     for (int i = 0; i < sensorCount; i++)
     {
-        JsonObject sensor = sensorsArray.add<JsonObject>();
-        sensor["name"] = "dallas_" + String(i);
-        sensor["address"] = sensorArray[i].addressToString();
-        sensor["temperature"] = fFTS(sensorArray[i].temperature, 3) + "°C";
+          doc.addString("name", "dallas_" + String(i));
+          doc.addString("address", sensorArray[i].addressToString());
+          doc.addString("temperature", fFTS(sensorArray[i].temperature, 3) + "°C");
     }
 
     doc["reset_reason"] = preferences.getString(pref_reset_reason);
