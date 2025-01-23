@@ -233,7 +233,7 @@ void setupServer()
     server.on("/", HTTP_GET, handleRoot);
     server.on("/api/status", HTTP_GET, handleApiStatuses);
     server.on("/api/groups", HTTP_GET, handleApiGroups);
-    server.on("/save-settings", HTTP_POST, saveSettings);
+    server.on("/api/save-settings", HTTP_POST, saveSettings);
     server.on("/reset", handleReset);
     server.on("/update", update);
     server.on("/update-index", HTTP_GET, handleUpdateIndex);
