@@ -208,7 +208,7 @@ void update_f()
         making_update = true;
 
         // Проверяем свободное место для прошивки
-        size_t updateSize = UPDATE_SIZE_UNKNOWN;  // Можно задать примерный размер
+        size_t updateSize = 500;  // Можно задать примерный размер
         if (!checkFreeSpace(updateSize))
         {
             syslog_ng("Not enough free space for firmware update");
