@@ -77,7 +77,12 @@ void EC_void()
         An = Mid_An0;
         Ap = Mid_Ap0;
     }
-
+    float raw_Ap = Ap;
+    float raw_An = An;
+    float mv_ap0 = ___wega_analogReadMilliVolts(EC_AnalogPort, Ap);
+    float mv_an0 = ___wega_analogReadMilliVolts(EC_AnalogPort, An);
+    Ap = mv_ap0;
+    An = mv_an0;
     // Частота измерений
     float EC_Freq = EC_MiddleCount * 1000 / float(ec_probe_time);
 
@@ -91,7 +96,13 @@ void EC_void()
     // Логирование
     syslog_ng("EC Ap:" + fFTS(Ap, 3) + " An:" + fFTS(An, 3) + " probe time micros:" + String(ec_probe_time) +
               " probe count:" + String(EC_MiddleCount) + " Frequency kHz:" + fFTS(EC_Freq, 3) + " wR2:" + fFTS(wR2, 3) +
-              " wNTC:" + fFTS(wNTC, 3) + " wEC:" + fFTS(wEC, 3) + " " + fFTS(EC_time, 0) + "ms end.");
+              " wNTC:" + fFTS(wNTC, 3)
+
+              + " mv_ap0:" + fFTS(mv_ap0, 3) + " mv_an0:" + fFTS(mv_an0, 3)
+
+              + " raw_Ap:" + fFTS(raw_Ap, 3) + " raw_An:" + fFTS(raw_An, 3)
+
+              + " wEC:" + fFTS(wEC, 3) + " ec_notermo " + ec_notermo + " " + fFTS(EC_time, 0) + "ms end.");
 
     // Публикация данных
     publish_parameter("EC_Kalman", EC_Kalman, 3, 1);
@@ -100,6 +111,12 @@ void EC_void()
     publish_parameter("wEC", wEC, 3, 1);
     publish_parameter("Ap", Ap, 3, 1);
     publish_parameter("An", An, 3, 1);
+
+    publish_parameter("raw_Ap", raw_Ap, 3, 1);
+    publish_parameter("raw_An", raw_An, 3, 1);
+
+    publish_parameter("mv_ap0", mv_ap0, 3, 1);
+    publish_parameter("mv_an0", mv_an0, 3, 1);
 }
 
 TaskParams EC_voidParams;

@@ -376,7 +376,7 @@ void initializeVariablePointers()
     variablePointers["DRV4_D_State"] = &DRV4_D_State;
     variablePointers["PWD1"] = &PWD1;
     variablePointers["PWD2"] = &PWD2;
-    variablePointers["FREQ"] = &FREQ1;
+    variablePointers["FREQ1"] = &FREQ1;
     variablePointers["FREQ2"] = &FREQ2;
     variablePointers["KickOnce"] = &KickOnce;
 

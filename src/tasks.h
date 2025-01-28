@@ -1,3 +1,5 @@
+#include <dev/ntc/tasks.h>
+#include <dev/ec/tasks.h>
 #include <dev/ads1115/tasks.h>
 #include <dev/aht10/tasks.h>
 #include <dev/am2320/tasks.h>
@@ -6,12 +8,10 @@
 #include <dev/cput/tasks.h>
 #include <dev/doser/tasks.h>
 #include <dev/ds18b20/tasks.h>
-#include <dev/ec/tasks.h>
 #include <dev/hx710b/tasks.h>
 #include <dev/lcd/tasks.h>
 #include <dev/mcp23017/tasks.h>
 #include <dev/mcp3421/tasks.h>
-#include <dev/ntc/tasks.h>
 #include <dev/pr/tasks.h>
 #include <dev/sdc30/tasks.h>
 #include <dev/us025/tasks.h>

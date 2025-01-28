@@ -28,7 +28,7 @@ void get_acp()
 {
     __wega_adcAttachPin(32);
     adc_power_acquire();
-    delay(1);
+    vTaskDelay(10);
     unsigned long ntc_probe_time = micros();
     for (long i = 0; i < NTC_MiddleCount; i++)
     {
@@ -77,6 +77,7 @@ void NTC_void()
         NTC = NTC_RAW;
     }
     get_ntc();
+
     publish_parameter("NTC", NTC, 3, 1);
     publish_parameter("NTC_RAW", NTC_RAW, 3, 1);
     publish_parameter("NTC_Kalman", NTC_Kalman, 3, 1);

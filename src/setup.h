@@ -281,27 +281,37 @@ void setupHA_MQTT()
 
 void setupDevices()
 {
-#include <dev/mcp23017/setup.h>
+    vTaskDelay(200);
     if (disable_ntc == 0)
     {
+        get_acp();
+        vTaskDelay(10);
 #include <dev/ntc/setup.h>
     }
+#include <dev/ds18b20/setup.h>
+#include <dev/ec/setup.h>
+
+#include <dev/mcp23017/setup.h>
 
 #include <dev/ads1115/setup.h>
+
 #include <dev/aht10/setup.h>
 #include <dev/am2320/setup.h>
 #include <dev/bmp280/setup.h>
 #include <dev/ccs811/setup.h>
+
 #include <dev/cput/setup.h>
 #include <dev/doser/setup.h>
-#include <dev/ds18b20/setup.h>
-#include <dev/ec/setup.h>
+
 #include <dev/hx710b/setup.h>
 #include <dev/lcd/setup.h>
 #include <dev/mcp3421/setup.h>
+
 #include <dev/pr/setup.h>
+
 #include <dev/sdc30/setup.h>
 #include <dev/us025/setup.h>
+
 #include <dev/vcc/setup.h>
 #include <dev/vl53l0x_us/setup.h>
 #include <dev/vl6180x/setup.h>
@@ -319,7 +329,7 @@ void setup()
 {
     Serial.begin(115200);
     mcp.writeGPIOAB(0);
-    esp_register_shutdown_handler(debugUpdate);  // Регистрация обработчика перезагрузки
+
     initializeVariablePointers();
     esp_log_level_set("*", ESP_LOG_VERBOSE);
     xSemaphore_C = xSemaphoreCreateMutex();
@@ -330,8 +340,7 @@ void setup()
     setupWiFi();
     int rst_counter = preferences.getInt("rst_counter", 0);
     preferences.putInt("rst_counter", rst_counter + 1);
-    syslog_ng("before  getDebugInfoAsString ");
-    syslog_ng("getDebugInfoAsString " + getDebugInfoAsString());
+    syslog_ng("before  setupOTA ");
 
     setupOTA();
     setupMDNS();

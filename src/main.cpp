@@ -35,7 +35,6 @@
 #include <Syslog.h>
 #include "ccs811.h"  // CCS811 library
 #include "esp_adc_cal.h"
-#include "debug_info.h"
 
 // Настройки ADC
 esp_adc_cal_characteristics_t *adc_chars;
@@ -97,7 +96,7 @@ WiFiEventId_t wifiConnectHandler;
 #include <map>
 #include <params.h>
 #include <driver/adc.h>
-#include <dev/ec/old_adc/wega-adc.h>
+
 #include <queue>
 #undef NOP
 #include "HX710B.h"
@@ -127,6 +126,8 @@ void syslog_err(String x)
         webSocket.broadcastTXT(x);
     }
 }
+
+#include <dev/ec/old_adc/wega-adc.h>
 void TaskTemplate(void *params)
 {
     TaskParams *taskParams = (TaskParams *)params;
@@ -344,12 +345,13 @@ void enqueueMessage(const char *topic, const char *payload, String key = "")
         String websocket_msg = ":::" + key + ":" + String(payload);
         // Рассылаем сообщение всем подключённым WebSocket-клиентам
         webSocket.broadcastTXT(websocket_msg);
+        vTaskDelay(1);
     }
 #if defined(ENABLE_PONICS_ONLINE)
     if (mqttClient.connected())
     {
         int packet_id = mqttClient.publish(topic, 0, false, payload);
-
+        vTaskDelay(1);
         if (packet_id == 0)
         {
             int payloadSize = strlen(payload);
@@ -362,6 +364,7 @@ void enqueueMessage(const char *topic, const char *payload, String key = "")
     if (e_ha == 1 and mqttClientHA.connected())
     {
         int packet_id = mqttClientHA.publish(topic, 0, false, payload);
+        vTaskDelay(1);
         if (packet_id == 0)
         {
             int payloadSize = strlen(payload);
@@ -514,7 +517,7 @@ void get_ec()
             float ea = pow(ex1, -eb) * ec1;
             ec_notermo = ea * pow(wR2, eb);
             syslog_ng("make_raschet eb: " + fFTS(eb, 3) + " ec: " + fFTS(ec_notermo, 3) + "ea: " + fFTS(ea, 3) +
-                      "wNTC: " + fFTS(wNTC, 3));
+                      " wNTC: " + fFTS(wNTC, 3));
             wEC_ususal = ec_notermo / (1 + kt * (wNTC - 25)) + eckorr;
             syslog_ng("EC_KAL_E: " + fFTS(EC_KAL_E, 3));
 
@@ -696,7 +699,7 @@ Group groups[] = {
      11,
      {
          {"PWDport1", "ШИМ порт ESP", Param::INT, .defaultInt = 16},
-         {"PWD1", "Значение Pulse Width Modulation (PWD). ШИМ", Param::INT, .defaultInt = 255},
+         {"PWD1", "Значение Pulse Width Modulation (PWD). ШИМ", Param::INT, .defaultInt = 256},
          {"FREQ1", "Частота", Param::INT, .defaultInt = 5000},
          {"DRV1_A_State", "DRV1_A (0-off, 1-on)", Param::INT, .defaultInt = 0},
          {"DRV1_B_State", "DRV1_B (0-off, 1-on)", Param::INT, .defaultInt = 0},

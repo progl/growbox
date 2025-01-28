@@ -1,6 +1,15 @@
 #include "soc/rtc_io_reg.h"
 #include "soc/sens_reg.h"
 #include "soc/soc.h"
+
+#define ESP_ADC_CAL_VAL_DEFAULT_VREF 2
+#define DEFAULT_VREF 1100
+static gpio_num_t __analogVRefPin = GPIO_NUM_0;
+
+static adc_attenuation_t __pin_attenuation[SOC_GPIO_PIN_COUNT];
+
+static uint16_t __analogVRef = 0;
+
 #define GET_PERI_REG_MASK(reg, mask)                   \
     ({                                                 \
         ASSERT_IF_DPORT_REG((reg), GET_PERI_REG_MASK); \
@@ -240,4 +249,59 @@ uint16_t IRAM_ATTR __wega_analogRead(uint8_t pin)
         return 0;
     }
     return __wega_adcEnd(pin);
+}
+
+uint32_t IRAM_ATTR ___wega_analogReadMilliVolts(uint8_t pin, uint16_t adc_reading)
+{
+    int8_t channel = digitalPinToAnalogChannel(pin);
+    if (channel < 0)
+    {
+        return 0;
+    }
+
+    if (!__analogVRef)
+    {
+        if (esp_adc_cal_check_efuse(ESP_ADC_CAL_VAL_EFUSE_TP) == ESP_OK)
+        {
+            syslog_ng("eFuse Two Point: Supported");
+            __analogVRef = DEFAULT_VREF;
+        }
+        if (esp_adc_cal_check_efuse(ESP_ADC_CAL_VAL_EFUSE_VREF) == ESP_OK)
+        {
+            syslog_ng("eFuse Vref: Supported");
+            __analogVRef = DEFAULT_VREF;
+        }
+        if (!__analogVRef)
+        {
+            __analogVRef = DEFAULT_VREF;
+#if CONFIG_IDF_TARGET_ESP32
+            if (__analogVRefPin)
+            {
+                esp_adc_cal_characteristics_t chars;
+                if (adc_vref_to_gpio(ADC_UNIT_2, __analogVRefPin) == ESP_OK)
+                {
+                    __analogVRef = __wega_analogRead(__analogVRefPin);
+                    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_12, ADC_WIDTH_BIT_12, DEFAULT_VREF, &chars);
+                    __analogVRef = esp_adc_cal_raw_to_voltage(__analogVRef, &chars);
+                    syslog_ng("Vref to GPIO: " + String(__analogVRefPin) + " mV" + " __analogVRef " +
+                              String(__analogVRef));
+                }
+            }
+#endif
+        }
+    }
+    syslog_ng("wega adc  after");
+    uint8_t unit = (channel > (SOC_ADC_MAX_CHANNEL_NUM - 1)) ? 2 : 1;
+    uint8_t atten = (__pin_attenuation[pin] != ADC_ATTENDB_MAX) ? __pin_attenuation[pin] : __wega_analogAttenuation;
+
+    esp_adc_cal_characteristics_t chars = {};
+    syslog_ng("wega adc before  esp_adc_cal_characterize");
+    esp_adc_cal_value_t val_type =
+        esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_12, ADC_WIDTH_BIT_12, __analogVRef, &chars);
+    syslog_ng("wega adc  esp_adc_cal_characterize");
+
+    uint32_t voltage = esp_adc_cal_raw_to_voltage((uint32_t)adc_reading, &chars);
+    syslog_ng("wega adc  esp_adc_cal_raw_to_voltage");
+
+    return voltage;
 }

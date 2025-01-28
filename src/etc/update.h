@@ -39,7 +39,7 @@ bool checkFreeSpace(size_t requiredSpace)
     size_t usedBytes = LittleFS.usedBytes();
     size_t freeSpace = totalBytes - usedBytes;
 
-    syslog_ng("Storage: Total: " + String(totalBytes) + ", Used: " + String(usedBytes) +
+    syslog_ng("update: Storage: Total: " + String(totalBytes) + ", Used: " + String(usedBytes) +
               ", Free: " + String(freeSpace));
 
     return freeSpace >= requiredSpace;
@@ -56,8 +56,8 @@ void updateFirmware(uint8_t *data, size_t len)
     boolean update_status = Update.end(true);
     if (Update.isFinished())
     {
-        syslog_ng("make_update: update_status " + String(update_status));
-        syslog_ng("make_update: update_status successfully Rebooting");
+        syslog_ng("update: update_status " + String(update_status));
+        syslog_ng("update: update_status successfully Rebooting");
         preferences.putString(pref_reset_reason, "update");
         WiFi.disconnect(true);
         delay(100);
@@ -65,8 +65,8 @@ void updateFirmware(uint8_t *data, size_t len)
     }
     else
     {
-        syslog_ng("make_update: update_status " + String(update_status));
-        syslog_ng("make_update: Update not finished? Something went wrong!");
+        syslog_ng("update: update_status " + String(update_status));
+        syslog_ng("update: Update not finished? Something went wrong!");
     }
 }
 
@@ -84,7 +84,7 @@ bool makeHttpRequest(String url)
         vTaskDelay(50 / portTICK_PERIOD_MS);
         int resp = http.GET();
 
-        syslog_ng("make_update: Response " + String(resp) + " Retry " + String(retryCount));
+        syslog_ng("update: Response " + String(resp) + " Retry " + String(retryCount));
         if (resp == 200)
         {
             return true;  // Успешное соединение
@@ -93,7 +93,7 @@ bool makeHttpRequest(String url)
         vTaskDelay(50 / portTICK_PERIOD_MS);  // Задержка между попытками
     }
 
-    syslog_ng("make_update: Failed to connect after " + String(maxRetries) + " retries");
+    syslog_ng("update: Failed to connect after " + String(maxRetries) + " retries");
     return false;  // Соединение не удалось
 }
 
@@ -109,21 +109,21 @@ bool downloadAndUpdateIndexFile()
     int resp = http.GET();
     if (resp != 200)
     {
-        syslog_ng("Failed to download index.html.gz: " + String(resp));
+        syslog_ng("update: Failed to download index.html.gz: " + String(resp));
         return false;
     }
 
     int fileSize = http.getSize();
     if (fileSize <= 0)
     {
-        syslog_ng("Invalid file size: " + String(fileSize));
+        syslog_ng("update: Invalid file size: " + String(fileSize));
         return false;
     }
 
     // Проверяем свободное место
     if (!checkFreeSpace(fileSize + 1024))
     {  // +1KB для безопасности
-        syslog_ng("Not enough free space for index.html.gz");
+        syslog_ng("update: Not enough free space for index.html.gz");
         return false;
     }
 
@@ -131,7 +131,7 @@ bool downloadAndUpdateIndexFile()
     File file = LittleFS.open("/index.html.gz", "w");
     if (!file)
     {
-        syslog_ng("Failed to open index.html.gz for writing");
+        syslog_ng("update: Failed to open index.html.gz for writing");
         return false;
     }
 
@@ -147,7 +147,7 @@ bool downloadAndUpdateIndexFile()
         // Проверка таймаута
         if (millis() - timeout > 10000)
         {  // 10 секунд таймаут
-            syslog_ng("Download timeout");
+            syslog_ng("update: Download timeout");
             file.close();
             return false;
         }
@@ -162,7 +162,7 @@ bool downloadAndUpdateIndexFile()
             size_t bytesWritten = file.write(buff, c);
             if (bytesWritten != c)
             {
-                syslog_ng("Write error: expected " + String(c) + " bytes, wrote " + String(bytesWritten));
+                syslog_ng("update: Write error: expected " + String(c) + " bytes, wrote " + String(bytesWritten));
                 file.close();
                 return false;
             }
@@ -187,19 +187,19 @@ bool downloadAndUpdateIndexFile()
     // Проверяем, что записали ожидаемое количество байт
     if (written != fileSize)
     {
-        syslog_ng("Size mismatch: expected " + String(fileSize) + ", got " + String(written));
+        syslog_ng("update: Size mismatch: expected " + String(fileSize) + ", got " + String(written));
         return false;
     }
 
-    syslog_ng("Successfully updated index.html.gz, written " + String(written) + " bytes");
+    syslog_ng("update: Successfully updated index.html.gz, written " + String(written) + " bytes");
     return true;
 }
-
 void update_f()
 {
     if ((server_make_update || force_update) && UPDATE_URL && !making_update)
     {
-        syslog_ng("make_update: Starting...");
+        syslog_ng("update: Starting firmware update...");
+        syslog_ng("update: UPDATE_URL " + String(UPDATE_URL) + "?token=" + update_token);  // Log the update URL
         OtaStart = true;
         client.stop();
         http.end();
@@ -208,46 +208,39 @@ void update_f()
         making_update = true;
 
         // Проверяем свободное место для прошивки
-        size_t updateSize = 500;  // Можно задать примерный размер
-        if (!checkFreeSpace(updateSize))
-        {
-            syslog_ng("Not enough free space for firmware update");
-            OtaStart = force_update = server_make_update = making_update = false;
-            return;
-        }
 
         // Сначала обновляем index.html.gz
         if (!downloadAndUpdateIndexFile())
         {
-            syslog_ng("Failed to update index.html.gz");
+            syslog_ng("update: Failed to update index.html.gz");
         }
 
         // Затем обновляем прошивку
         if (!makeHttpRequest(UPDATE_URL))
         {
             OtaStart = force_update = server_make_update = making_update = false;
-            syslog_ng("make_update: HTTP request failed.");
+            syslog_ng("update: HTTP request failed.");
             return;
         }
 
-        syslog_ng("make_update: Starting firmware update...");
+        syslog_ng("update: Starting firmware update...");
         totalLength = http.getSize();
 
         if (totalLength <= 0)
         {
-            syslog_ng("make_update: Invalid firmware size");
+            syslog_ng("update: Invalid firmware size");
             OtaStart = force_update = server_make_update = making_update = false;
             return;
         }
 
         if (!Update.begin(totalLength))
         {
-            syslog_ng("make_update: Not enough space for update");
+            syslog_ng("update: Not enough space for update");
             OtaStart = force_update = server_make_update = making_update = false;
             return;
         }
 
-        syslog_ng("make_update: FW Size " + String(totalLength));
+        syslog_ng("update: FW Size " + String(totalLength));
 
         WiFiClient *stream = http.getStreamPtr();
         int len = totalLength;
@@ -261,7 +254,7 @@ void update_f()
             // Проверка общего таймаута
             if (millis() - updateStartTime > 90000)  // 90 секунд
             {
-                syslog_ng("make_update: Total timeout exceeded");
+                syslog_ng("update: Total timeout exceeded");
                 Update.abort();
                 OtaStart = force_update = server_make_update = making_update = false;
                 return;
@@ -270,7 +263,7 @@ void update_f()
             // Проверка таймаута прогресса
             if (millis() - lastProgressTime > 10000)  // 10 секунд без прогресса
             {
-                syslog_ng("make_update: Progress timeout");
+                syslog_ng("update: Progress timeout");
                 Update.abort();
                 OtaStart = force_update = server_make_update = making_update = false;
                 return;
@@ -285,7 +278,7 @@ void update_f()
 
                 if (Update.write(buff, c) != c)
                 {
-                    syslog_ng("make_update: Write failed");
+                    syslog_ng("update: Write failed");
                     Update.abort();
                     OtaStart = force_update = server_make_update = making_update = false;
                     return;
@@ -300,7 +293,7 @@ void update_f()
                 percentage = (bytesDownloaded * 100) / totalLength;
                 if (percentage != lastPercentageSent)
                 {
-                    syslog_ng("make_update: Updating: " + String(percentage) + "%");
+                    syslog_ng("update: Updating: " + String(percentage) + "%");
                     lastPercentageSent = percentage;
                 }
 
@@ -315,7 +308,7 @@ void update_f()
 
         if (len != 0)
         {
-            syslog_ng("make_update: Size mismatch");
+            syslog_ng("update: Size mismatch");
             Update.abort();
             OtaStart = force_update = server_make_update = making_update = false;
             return;
@@ -323,26 +316,25 @@ void update_f()
 
         if (!Update.end(true))
         {
-            syslog_ng("make_update: Update end failed");
+            syslog_ng("update: Update end failed");
             OtaStart = force_update = server_make_update = making_update = false;
             return;
         }
 
-        syslog_ng("make_update: Update successful, rebooting...");
+        syslog_ng("update: Update successful, rebooting...");
         preferences.putString(pref_reset_reason, "update");
         delay(100);
         ESP.restart();
     }
     else
     {
-        syslog_ng("make_update: Skipping update due to conditions not met.");
+        syslog_ng("update: Skipping update due to conditions not met.");
         http.end();
         making_update = false;
         OtaStart = false;
         percentage = 0;
     }
 }
-
 void update()
 {
     UPDATE_URL = server.arg("update_url");

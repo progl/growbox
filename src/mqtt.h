@@ -153,6 +153,9 @@ void connectToMqttHA()
         if (not mqttClientHA.connected())
         {
             mqttHAConnected = 0;
+            syslog_ng("mqttClientHA a_ha: \"" + String(a_ha) + "\", p_ha: \"" + String(p_ha) + "\", u_ha: \"" +
+                      String(u_ha) + "\"");
+
             syslog_ng("mqttClientHA connectToMqtt Connecting to MQTT...");
             mqttClientHA.connect();
             syslog_ng("mqttClientHA connectToMqtt Connected " + String(mqttClientHA.connected()));
@@ -232,6 +235,7 @@ void publishVariablesListToMQTT()
 
     // Send the JSON payload via MQTT
     enqueueMessage(topic.c_str(), output.c_str());
+    vTaskDelay(10);
 }
 void publish_setting_groups()
 {
@@ -280,6 +284,7 @@ void publish_setting_groups()
     serializeJson(doc, output);
     String topic = mqttPrefix + main_prefix + "all_groups";
     enqueueMessage(topic.c_str(), output.c_str());
+    vTaskDelay(10);
 }
 
 void processToggleParameters()
@@ -430,13 +435,10 @@ void onMqttConnect(bool sessionPresent)
         String statusTopic = mqttPrefix + "status";
         enqueueMessage(statusTopic.c_str(), "connected");
 
-        publish_parameter("DebugInfo", getDebugInfoAsString(), 1);
-
         publish_parameter("commit", String(Firmware), 1);
         syslog_ng("Before publish_setting_groups ");
         publish_setting_groups();
         syslog_ng("Before publishVariablesListToMQTT ");
-        syslog_ng("Before suspected line");
         publishVariablesListToMQTT();
         first_time = false;
         syslog_ng("After suspected line");

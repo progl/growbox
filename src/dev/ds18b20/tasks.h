@@ -34,8 +34,9 @@ void DS18B20()
             syslog_ng("DS18B20 WNTCAddressString: " + WNTCAddressString);
             for (int j = 0; j < 2; j++)
             {
-                syslog_ng("DS18B20 cmp: " + deviceAddressToString(addressesToCompare[j]) + ":" +
-                          deviceAddressToString(currentAddress));
+                syslog_ng("DS18B20 cmp: " + deviceAddressToString(addressesToCompare[j]) + " --- " +
+                          deviceAddressToString(currentAddress) + " cmp " +
+                          String(memcmp(currentAddress, addressesToCompare[j], sizeof(DeviceAddress))));
                 if (memcmp(currentAddress, addressesToCompare[j], sizeof(DeviceAddress)) == 0)
                 {
                     syslog_ng("DS18B20 cmp true: " + deviceAddressToString(addressesToCompare[j]) + ":" +

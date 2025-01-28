@@ -1,0 +1,25 @@
+version: "3.9"
+services:
+  homeassistant:
+    image: "ghcr.io/home-assistant/home-assistant:stable"
+    container_name: homeassistant
+    volumes:
+      - ./homeassistant:/config
+    environment:
+      - TZ=Europe/Moscow # Replace with your timezone, e.g., "Europe/Berlin"
+    ports:
+      - "8123:8123" # Expose Home Assistant on port 8123
+    restart: unless-stopped
+    depends_on:
+      - mqtt
+
+  mqtt:
+    image: eclipse-mosquitto:latest
+    container_name: mosquitto
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    ports:
+      - "1883:1883" # Expose MQTT on port 1883
+    restart: unless-stopped

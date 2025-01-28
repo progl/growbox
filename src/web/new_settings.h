@@ -432,8 +432,4 @@ void saveSettings()
         KalmanEC.setParameters(ec_mea_e, ec_est_e, ec_q);
         KalmanEcUsual.setParameters(ec_mea_e, ec_est_e, ec_q);
     }
-    else
-    {
-        server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"Invalid request\"}");
-    }
 }

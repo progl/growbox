@@ -48,7 +48,7 @@ PreferenceItem preferencesArray[] = {
     {"ntc_mea_e", DataType::FLOAT, Data(0.0f), &ntc_mea_e, &preferences},
     {"ntc_est_e", DataType::FLOAT, Data(0.0f), &ntc_est_e, &preferences},
     {"VccRU", DataType::FLOAT, Data(2048.0f), &VccRawUser, &preferences},
-
+    {"tR_type", DataType::STRING, Data("direct"), &tR_type, &preferences},
     {"ntc_q", DataType::FLOAT, Data(0.0f), &ntc_q, &preferences},
     {"NTC_KAL_E", DataType::INTEGER, {0}, &NTC_KAL_E, &preferences},
     {"dist_mea_e", DataType::FLOAT, Data(0.0f), &dist_mea_e, &preferences},
