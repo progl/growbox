@@ -17,7 +17,6 @@ void get_ntc()
         syslog_ng("make_raschet  EC tR_B:" + fFTS(tR_B, 3) + " EC r:" + fFTS(r, 3) + " NTC " + fFTS(NTC, 3) +
                   " NTC_KAL_E " + fFTS(NTC_KAL_E, 0) + " NTC_Kalman " + fFTS(NTC_Kalman, 2) + " tR_DAC " +
                   fFTS(tR_DAC, 3) + " wNTC " + fFTS(wNTC, 3));
-        preferences.putFloat("wNTC", wNTC);
     }
     else
     {
@@ -35,7 +34,6 @@ void get_acp()
         __wega_adcStart(32);
         delayMicroseconds(ntc_daly_ms);
         NTC_RAW = NTC_RAW + float(__wega_adcEnd(32));
-        delayMicroseconds(ntc_daly_ms / 2);
     }
     adc_power_release();
     ntc_probe_time = micros() - ntc_probe_time;
@@ -49,7 +47,7 @@ void get_acp()
 void NTC_void()
 {
     unsigned long NTC_time = millis();
-    syslog_ng("NTC Start " + fFTS(NTC_LastTime - NTC_Repeat, 0) + "ms");
+    syslog_ng("NTC Start " + fFTS(NTC_LastTime, 0) + "ms");
 
     get_acp();
 

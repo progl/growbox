@@ -1,68 +1,48 @@
+bool first_dallas = true;
+
 void DS18B20()
 {
     sens18b20.requestTemperatures();
-
     for (uint8_t i = 0; i < sensorCount && i < MAX_DS18B20_SENSORS; i++)
     {
-        DeviceAddress currentAddress;
-        sens18b20.getAddress(currentAddress, i);
-
-        float tempC = sens18b20.getTempC(currentAddress);
-
+        float tempC = sens18b20.getTempC(sensorArray[i].address);
+        syslog_ng("DS18B20 Sensor " + String(i) + " adr: " + deviceAddressToString(sensorArray[i].address) +
+                  " Temp: " + fFTS(tempC, 3));
         if (tempC != DEVICE_DISCONNECTED_C)
         {
-            // Сохраняем адрес и температуру в массив
-            memcpy(sensorArray[i].address, currentAddress, sizeof(DeviceAddress));
-            sensorArray[i].temperature = tempC;
-            publish_parameter("dallas__" + deviceAddressToString(currentAddress), tempC, 3, 1);
-
-            // Логируем данные
-            syslog_ng("DS18B20 Sensor " + String(i) + " Temp: " + fFTS(tempC, 3));
-
-            DeviceAddress deviceAdrCompare;
-            DeviceAddress deviceAdrCompare2;
-
-            // Преобразуем строки в адреса устройств
-            stringToDeviceAddress(rootTempAddressString, deviceAdrCompare);
-            stringToDeviceAddress(WNTCAddressString, deviceAdrCompare2);
-
-            // Создаем массив и копируем в него адреса после их инициализации
-            DeviceAddress addressesToCompare[2];
-            memcpy(addressesToCompare[0], deviceAdrCompare, sizeof(DeviceAddress));
-            memcpy(addressesToCompare[1], deviceAdrCompare2, sizeof(DeviceAddress));
-            syslog_ng("DS18B20 rootTempAddressString: " + rootTempAddressString);
-            syslog_ng("DS18B20 WNTCAddressString: " + WNTCAddressString);
-            for (int j = 0; j < 2; j++)
+            if (E_dallas_kalman)
             {
-                syslog_ng("DS18B20 cmp: " + deviceAddressToString(addressesToCompare[j]) + " --- " +
-                          deviceAddressToString(currentAddress) + " cmp " +
-                          String(memcmp(currentAddress, addressesToCompare[j], sizeof(DeviceAddress))));
-                if (memcmp(currentAddress, addressesToCompare[j], sizeof(DeviceAddress)) == 0)
+                if (first_dallas)
                 {
-                    syslog_ng("DS18B20 cmp true: " + deviceAddressToString(addressesToCompare[j]) + ":" +
-                              deviceAddressToString(currentAddress));
-
-                    if (j == 0)
+                    for (int j = 0; j < 100; j++)  // Use a different variable for the inner loop
                     {
-                        syslog_ng("DS18B20 found by adress RootTemp Sensor: " + fFTS(RootTemp, 3));
-                        RootTempRM.add(tempC);
-                        RootTemp = RootTempRM.getAverage(3);
-
-                        publish_parameter("RootTemp", RootTemp, 3, 1);
-                        Kornevoe = AirTemp - RootTemp;
-                        rootVPD = calculateVPD(RootTemp, AirHum);
-                        airVPD = calculateVPD(AirTemp, AirHum);
+                        sensorArray[i].KalmanDallasTmp.filtered(tempC);
                     }
-                    if (j == 1)
-                    {
-                        wNTC = tempC;
-                        syslog_ng("DS18B20 found by adress wNTC Sensor: " + fFTS(wNTC, 3));
-                        publish_parameter("wNTC", wNTC, 3, 1);
-                        preferences.putFloat("wNTC", wNTC);
-                    }
+                    tempC = sensorArray[i].KalmanDallasTmp.filtered(tempC);
                 }
+                tempC = sensorArray[i].KalmanDallasTmp.filtered(tempC);
+            }
+
+            publish_parameter("dallas__" + deviceAddressToString(sensorArray[i].address), tempC, 3, 1);
+
+            if (sensorArray[i].key == "RootTemp")
+            {
+                syslog_ng("DS18B20 found by address RootTemp Sensor: " + fFTS(tempC, 3));
+                RootTemp = tempC;
+                Kornevoe = AirTemp - RootTemp;
+                rootVPD = calculateVPD(RootTemp, AirHum);
+                airVPD = calculateVPD(AirTemp, AirHum);
+                publish_parameter("RootTemp", RootTemp, 3, 1);
+            }
+            if (sensorArray[i].key == "wNTC")
+            {
+                wNTC = tempC;
+                syslog_ng("DS18B20 found by address wNTC Sensor: " + fFTS(tempC, 3));
+                publish_parameter("wNTC", wNTC, 3, 1);
             }
         }
     }
+    first_dallas = false;  // Move this outside the loop to ensure it only runs once
 }
+
 TaskParams DS18B20Params;

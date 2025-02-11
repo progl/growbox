@@ -1,8 +1,20 @@
 while (xSemaphoreTake(xSemaphore_C, (TickType_t)1) == pdFALSE);
-if (adc1_get_raw(NTC_port) > 0)
+
+digitalWrite(EC_DigitalPort1, HIGH);
+digitalWrite(EC_DigitalPort2, LOW);
+
+for (int i = 0; i < 1000; i++)
 {
-    EC_voidParams = {"EC", EC_void, 30000, xSemaphore_C};
-    xTaskCreatePinnedToCore(TaskTemplate, "EC", stack_size, (void *)&EC_voidParams, 1, NULL, 1);
-    setSensorDetected("EC", 1);
+    if (adc1_get_raw(ADC1_CHANNEL_5) > 0)
+    {
+        EC_voidParams = {"EC", EC_void, 30000, xSemaphore_C};
+        xTaskCreatePinnedToCore(TaskTemplate, "EC", stack_size, (void *)&EC_voidParams, 1, NULL, 1);
+        setSensorDetected("EC", 1);
+        break;
+    }
+    delay(1);
 }
+
+digitalWrite(EC_DigitalPort1, LOW);
+
 xSemaphoreGive(xSemaphore_C);

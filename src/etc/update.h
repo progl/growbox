@@ -1,20 +1,16 @@
-uint8_t buff[512] = {0};
 
 void configureHttpClientForFirefox(HTTPClient &http)
 {
-    // Это пример заголовка User-Agent для Firefox, версия и платформа могут
-    // отличаться
-    http.addHeader("User-Agent",
-                   "Mozilla/5.0 (Windows NT 10.0; Win64; x64; "
-                   "rv:85.0) Gecko/20100101 Firefox/85.0");
-
-    // Можно добавить и другие заголовки, которые обычно использует браузер
+    http.addHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:85.0) Gecko/20100101 Firefox/85.0");
     http.addHeader("Accept",
                    "text/html,application/xhtml+xml,application/"
                    "xml;q=0.9,image/webp,*/*;q=0.8");
     http.addHeader("Accept-Language", "en-US,en;q=0.5");
     http.addHeader("Accept-Encoding", "gzip, deflate, br");
-    // Прочие заголовки по необходимости...
+
+    http.setConnectTimeout(100000);
+    uint16_t timeout = 100000;
+    http.setTimeout(timeout);
 }
 
 const char UPDATE_page[] PROGMEM = R"=====(
@@ -52,7 +48,7 @@ void updateFirmware(uint8_t *data, size_t len)
     Serial.print('.');
 
     if (currentLength != totalLength) return;
-    syslog_ng("end update, Rebooting");
+    syslog_ng("update: end update, Rebooting");
     boolean update_status = Update.end(true);
     if (Update.isFinished())
     {
@@ -71,82 +67,109 @@ void updateFirmware(uint8_t *data, size_t len)
 }
 
 bool makeHttpRequest(String url)
+
 {
+    syslog_ng("update: makeHttpRequest start");
     int retryCount = 0;
     const int maxRetries = 50;
+
+    syslog_ng("update: makeHttpRequest ");
+    int resp = 0;
+    int http_begin = 0;
+
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    while (retryCount < maxRetries)
+    {
+        server.handleClient();
+
+        if (!resp or resp == -1)
+        {
+            http_begin = http.begin(url, ca_cert);
+            configureHttpClientForFirefox(http);
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            resp = http.GET();
+        }
+
+        syslog_ng("update: Response " + String(resp) + " Retry " + String(retryCount) + " http_begin " +
+                  String(http_begin) + " resp " + String(resp));
+        if (resp == 200)
+        {
+            return true;  // Successful connection
+        }
+        else
+        {
+            syslog_ng("update:HTTP GET failed: resp " + String(resp) + " error " + http.errorToString(resp));
+        }
+        retryCount++;
+        http.end();
+        vTaskDelay(50 / portTICK_PERIOD_MS);  // Delay between attempts
+    }
+
+    syslog_ng("update: Failed to connect after " + String(maxRetries) + " retries");
+    return false;  // Connection failed
+}
+bool downloadAndUpdateIndexFile()
+{
+    String indexUrl = "https://ponics.online/static/wegabox/esp32-local/index.html.gz";
+
+    int retryCount = 0;
+    const int maxRetries = 50;
+
+    int resp = 0;
+    int http_begin = 0;
 
     while (retryCount < maxRetries)
     {
         server.handleClient();
-        http.end();  // Закрываем предыдущее соединение
-        vTaskDelay(50 / portTICK_PERIOD_MS);
-        http.begin(client, url);
-        vTaskDelay(50 / portTICK_PERIOD_MS);
-        int resp = http.GET();
 
-        syslog_ng("update: Response " + String(resp) + " Retry " + String(retryCount));
+        http_begin = http.begin(indexUrl, ca_cert);
+        configureHttpClientForFirefox(http);
+        syslog_ng("update: http_begin " + String(http_begin));
+
+        vTaskDelay(50 / portTICK_PERIOD_MS);
+
+        if (http_begin)
+        {
+            resp = http.GET();
+            vTaskDelay(50 / portTICK_PERIOD_MS);
+        }
+
+        syslog_ng("update:  index: Response " + String(resp) + " Retry " + String(retryCount));
         if (resp == 200)
         {
-            return true;  // Успешное соединение
+            break;
         }
         retryCount++;
         vTaskDelay(50 / portTICK_PERIOD_MS);  // Задержка между попытками
     }
 
-    syslog_ng("update: Failed to connect after " + String(maxRetries) + " retries");
-    return false;  // Соединение не удалось
-}
-
-bool downloadAndUpdateIndexFile()
-{
-    String indexUrl = "https://ponics.online/static/wegabox/esp32-local/index.html.gz";
-
-    http.end();  // Закрываем предыдущее соединение
-    http.begin(client, indexUrl);
-    configureHttpClientForFirefox(http);
-
-    // Получаем размер файла
-    int resp = http.GET();
     if (resp != 200)
     {
         syslog_ng("update: Failed to download index.html.gz: " + String(resp));
+        http.end();  // Закрываем предыдущее соединение
         return false;
     }
 
-    int fileSize = http.getSize();
-    if (fileSize <= 0)
-    {
-        syslog_ng("update: Invalid file size: " + String(fileSize));
-        return false;
-    }
-
-    // Проверяем свободное место
-    if (!checkFreeSpace(fileSize + 1024))
-    {  // +1KB для безопасности
-        syslog_ng("update: Not enough free space for index.html.gz");
-        return false;
-    }
-
-    // Открываем файл для записи
     File file = LittleFS.open("/index.html.gz", "w");
     if (!file)
     {
         syslog_ng("update: Failed to open index.html.gz for writing");
+        http.end();  // Закрываем предыдущее соединение
         return false;
     }
 
     // Получаем поток данных
     WiFiClient *stream = http.getStreamPtr();
-    int len = fileSize;
+
     int written = 0;
     unsigned long timeout = millis();
 
     // Читаем данные и записываем в файл
-    while (http.connected() && (len > 0 || len == -1))
+    while (http.connected())
     {
         // Проверка таймаута
-        if (millis() - timeout > 10000)
-        {  // 10 секунд таймаут
+        if (millis() - timeout > 100000)
+        {  // 100 секунд таймаут
             syslog_ng("update: Download timeout");
             file.close();
             return false;
@@ -168,10 +191,6 @@ bool downloadAndUpdateIndexFile()
             }
 
             written += c;
-            if (len > 0)
-            {
-                len -= c;
-            }
 
             // Периодически освобождаем процессор
             if (written % 4096 == 0)
@@ -183,38 +202,27 @@ bool downloadAndUpdateIndexFile()
     }
 
     file.close();
-
+    http.end();  // Закрываем предыдущее соединение
     // Проверяем, что записали ожидаемое количество байт
-    if (written != fileSize)
-    {
-        syslog_ng("update: Size mismatch: expected " + String(fileSize) + ", got " + String(written));
-        return false;
-    }
 
     syslog_ng("update: Successfully updated index.html.gz, written " + String(written) + " bytes");
     return true;
 }
-void update_f()
+
+void make_update()
 {
     if ((server_make_update || force_update) && UPDATE_URL && !making_update)
     {
-        syslog_ng("update: Starting firmware update...");
-        syslog_ng("update: UPDATE_URL " + String(UPDATE_URL) + "?token=" + update_token);  // Log the update URL
-        OtaStart = true;
-        client.stop();
-        http.end();
-        delay(5);
-        client.setInsecure();
         making_update = true;
+        syslog_ng("update: Starting firmware update...");
+        syslog_ng("update: UPDATE_URL '" + String(UPDATE_URL) + "'");  // Log the update URL
+        OtaStart = true;
 
-        // Проверяем свободное место для прошивки
-
-        // Сначала обновляем index.html.gz
         if (!downloadAndUpdateIndexFile())
         {
             syslog_ng("update: Failed to update index.html.gz");
         }
-
+        syslog_ng("update: downloadAndUpdateIndexFile done");
         // Затем обновляем прошивку
         if (!makeHttpRequest(UPDATE_URL))
         {
@@ -222,9 +230,9 @@ void update_f()
             syslog_ng("update: HTTP request failed.");
             return;
         }
-
-        syslog_ng("update: Starting firmware update...");
         totalLength = http.getSize();
+        syslog_ng("update: Starting firmware update... UPDATE_URL " + String(UPDATE_URL) + " totalLength " +
+                  String(totalLength));
 
         if (totalLength <= 0)
         {
@@ -232,15 +240,8 @@ void update_f()
             OtaStart = force_update = server_make_update = making_update = false;
             return;
         }
-
-        if (!Update.begin(totalLength))
-        {
-            syslog_ng("update: Not enough space for update");
-            OtaStart = force_update = server_make_update = making_update = false;
-            return;
-        }
-
-        syslog_ng("update: FW Size " + String(totalLength));
+        bool upd = Update.begin(totalLength, U_FLASH);
+        syslog_ng("update: begin " + String(upd));
 
         WiFiClient *stream = http.getStreamPtr();
         int len = totalLength;
@@ -251,8 +252,8 @@ void update_f()
 
         while (http.connected() && (len > 0 || len == -1))
         {
-            // Проверка общего таймаута
-            if (millis() - updateStartTime > 90000)  // 90 секунд
+            // Check total timeout
+            if (millis() - updateStartTime > 900000)  // 90 seconds
             {
                 syslog_ng("update: Total timeout exceeded");
                 Update.abort();
@@ -260,8 +261,8 @@ void update_f()
                 return;
             }
 
-            // Проверка таймаута прогресса
-            if (millis() - lastProgressTime > 10000)  // 10 секунд без прогресса
+            // Check progress timeout
+            if (millis() - lastProgressTime > 10000)  // 10 seconds without progress
             {
                 syslog_ng("update: Progress timeout");
                 Update.abort();
@@ -273,12 +274,20 @@ void update_f()
             size_t size = stream->available();
             if (size)
             {
-                lastProgressTime = millis();  // Сброс таймаута прогресса
+                lastProgressTime = millis();  // Reset progress timeout
                 int c = stream->readBytes(buff, min(size, sizeof(buff)));
+
+                if (c <= 0)  // Check if reading was successful
+                {
+                    syslog_ng("update: Read failed or no data");
+                    Update.abort();
+                    OtaStart = force_update = server_make_update = making_update = false;
+                    return;
+                }
 
                 if (Update.write(buff, c) != c)
                 {
-                    syslog_ng("update: Write failed");
+                    syslog_ng("update: Write failed c " + String(c));
                     Update.abort();
                     OtaStart = force_update = server_make_update = making_update = false;
                     return;
@@ -297,7 +306,7 @@ void update_f()
                     lastPercentageSent = percentage;
                 }
 
-                // Периодически освобождаем процессор
+                // Periodically yield to allow other tasks
                 if (bytesDownloaded % 4096 == 0)
                 {
                     vTaskDelay(1);
@@ -305,7 +314,6 @@ void update_f()
             }
             vTaskDelay(1);
         }
-
         if (len != 0)
         {
             syslog_ng("update: Size mismatch");
@@ -328,21 +336,39 @@ void update_f()
     }
     else
     {
-        syslog_ng("update: Skipping update due to conditions not met.");
-        http.end();
+        syslog_ng("update: auto-update skipping update due to conditions not met. force_update " +
+                  String(force_update) + " server_make_update " + String(server_make_update) + " !making_update " +
+                  String(!making_update) + " OtaStart " + String(OtaStart) + " percentage " + String(percentage) +
+                  " UPDATE_URL " + String(UPDATE_URL));
+
         making_update = false;
         OtaStart = false;
         percentage = 0;
     }
 }
+
+void TaskUP(void *parameters) { make_update(); }
+
 void update()
 {
-    UPDATE_URL = server.arg("update_url");
-    syslog_ng(
-        "make_update start update firmware - wait 40-60 seconds, page will "
-        "reload automatically ");
-    syslog_ng("make_update UPDATE_URL " + String(UPDATE_URL) + "?token=" + update_token);
-    update_f();
-}
+    if (server.arg("test").toInt() == 1)
+    {
+        syslog_ng("update: test - make_update");
+        OtaStart = true;
+        force_update = true;
+        percentage = 1;
+        make_update_send_response();
+        xTaskCreate(TaskUP, "TaskUP", 10000, NULL, 0, NULL);
+    }
+    else
+    {
+        syslog_ng(
+            "update:  make_update start update firmware - wait 40-60 seconds, page will "
+            "reload automatically ");
 
-void TaskUP(void *parameters) { update_f(); }
+        preferences.putInt("upd", 1);
+        make_update_send_response();
+        vTaskDelay(10);
+        ESP.restart();
+    }
+}

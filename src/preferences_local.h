@@ -39,7 +39,8 @@ struct PreferenceItem
 };
 
 PreferenceItem preferencesArray[] = {
-    {"UPDATE_URL", DataType::STRING, Data{UPDATE_URL}, &UPDATE_URL, &preferences},
+    {"UPDATE_URL", DataType::STRING, Data{"https://ponics.online/static/wegabox/esp32-local/firmware.bin"}, &UPDATE_URL,
+     &preferences},
     {"update_token", DataType::STRING, {"default_token"}, &update_token, &preferences},
     {"ssid", DataType::STRING, {"ESP32"}, &ssid, &preferences},
     {"password", DataType::STRING, {"ESP32"}, &password, &preferences},
@@ -50,6 +51,12 @@ PreferenceItem preferencesArray[] = {
     {"VccRU", DataType::FLOAT, Data(2048.0f), &VccRawUser, &preferences},
     {"tR_type", DataType::STRING, Data("direct"), &tR_type, &preferences},
     {"ntc_q", DataType::FLOAT, Data(0.0f), &ntc_q, &preferences},
+
+    {"E_d_k", DataType::INTEGER, {0}, &E_dallas_kalman, &preferences},
+    {"d_mea_e", DataType::FLOAT, Data(1.0f), &dallas_mea_e, &preferences},
+    {"d_est_e", DataType::FLOAT, Data(1.0f), &dallas_est_e, &preferences},
+    {"d_q", DataType::FLOAT, Data(0.3f), &dallas_q, &preferences},
+
     {"NTC_KAL_E", DataType::INTEGER, {0}, &NTC_KAL_E, &preferences},
     {"dist_mea_e", DataType::FLOAT, Data(0.0f), &dist_mea_e, &preferences},
     {"dist_est_e", DataType::FLOAT, Data(0.0f), &dist_est_e, &preferences},
@@ -117,7 +124,7 @@ PreferenceItem preferencesArray[] = {
     {"min_l_level", DataType::FLOAT, Data(0.0f), &min_l_level, &preferences},
     {"min_l_raw", DataType::FLOAT, Data(0.0f), &min_l_raw, &preferences},
     {"server_make_update", DataType::BOOLEAN, {false}, &server_make_update, &preferences},
-    {"old_ec", DataType::INTEGER, {0}, &old_ec, &preferences},
+
     {"DRV1_A_PK_On", DataType::INTEGER, {0}, &DRV1_A_PK_On, &preferences},
     {"DRV1_B_PK_On", DataType::INTEGER, {0}, &DRV1_B_PK_On, &preferences},
     {"DRV1_C_PK_On", DataType::INTEGER, {0}, &DRV1_C_PK_On, &preferences},

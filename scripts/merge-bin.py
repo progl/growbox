@@ -19,7 +19,9 @@ def merge_bin_action(source, target, env):
     flash_images.append(
         f"0x310000 {env.subst('$BUILD_DIR')}/littlefs.bin"
     )
-    print("flash_images", flash_images)
+    print("flash_images")
+    for i in flash_images:
+        print(i)
     merge_cmd = " ".join(
         [   "platformio run --target buildfs --environment esp32-local &&"
             '"$PYTHONEXE"',

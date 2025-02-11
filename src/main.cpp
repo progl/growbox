@@ -8,6 +8,7 @@
 #include <soc/rtc.h>
 #include <AHT10.h>
 #include <WiFiClient.h>
+#include <WiFiClientSecure.h>
 #include <WiFiUdp.h>
 #include <Adafruit_MCP23X17.h>
 #include <ESPmDNS.h>
@@ -35,6 +36,9 @@
 #include <Syslog.h>
 #include "ccs811.h"  // CCS811 library
 #include "esp_adc_cal.h"
+
+uint8_t buff[128] = {0};
+HTTPClient http;
 
 // Настройки ADC
 esp_adc_cal_characteristics_t *adc_chars;
@@ -86,8 +90,7 @@ TimerHandle_t mqttReconnectTimer;
 TimerHandle_t mqttReconnectTimerHa;
 TimerHandle_t wifiReconnectTimer;
 TaskHandle_t xHandleUpdate = NULL;
-WiFiClientSecure client;
-HTTPClient http;
+
 AsyncMqttClient mqttClient;
 AsyncMqttClient mqttClientHA;
 WiFiEventId_t wifiConnectHandler;
@@ -159,6 +162,7 @@ void TaskTemplate(void *params)
         tasks[taskCount].lastExecutionTime = 0;
         tasks[taskCount].totalExecutionTime = 0;
         tasks[taskCount].executionCount = 0;
+
         tasks[taskCount].minFreeStackSize = uxTaskGetStackHighWaterMark(NULL);
         tasks[taskCount].xSemaphore = taskParams->xSemaphore;
         currentTask = &tasks[taskCount];
@@ -263,10 +267,17 @@ float ECDoserValueA;
 float ECDoserValueB;
 int ECDoserInterval, ECDoserEnable, e_ha, port_ha;
 #define MAX_DS18B20_SENSORS 10
+
+int E_dallas_kalman = 0;
+float dallas_mea_e = 1;
+float dallas_est_e = 1;
+float dallas_q = 0.3;
+
 struct SensorData
 {
     DeviceAddress address;
     float temperature;
+    String key;
 
     // Преобразование адреса в строку
     String addressToString() const
@@ -294,6 +305,9 @@ struct SensorData
         }
         return true;
     }
+
+    GKalman KalmanDallasTmp;
+    SensorData() : KalmanDallasTmp(dallas_mea_e, dallas_est_e, dallas_q) {}
 };
 
 SensorData sensorArray[MAX_DS18B20_SENSORS];
@@ -337,9 +351,15 @@ void addParameter(String &str, const String &key, float value, int precision)
     }
 }
 
-void enqueueMessage(const char *topic, const char *payload, String key = "")
+void enqueueMessage(const char *topic, const char *payload, String key = "", bool not_ha_only = true)
 {
-    if (!key.isEmpty())
+    // Проверка на NULL для topic и payload
+    if (topic == nullptr || payload == nullptr)
+    {
+        Serial.println("Ошибка: topic или payload равен NULL");
+        return;
+    }
+    if (!key.isEmpty() and not_ha_only)
     {
         // Формируем сообщение в формате "key:payload"
         String websocket_msg = ":::" + key + ":" + String(payload);
@@ -348,7 +368,7 @@ void enqueueMessage(const char *topic, const char *payload, String key = "")
         vTaskDelay(1);
     }
 #if defined(ENABLE_PONICS_ONLINE)
-    if (mqttClient.connected())
+    if (mqttClient.connected() and not_ha_only)
     {
         int packet_id = mqttClient.publish(topic, 0, false, payload);
         vTaskDelay(1);
@@ -402,23 +422,6 @@ String getStyle(float vpd, float optimal, float goodLower, float goodUpper)
         return "color: green;";  // Если VPD близок к оптимальному значению
     }
     return "color: orange;";  // Если VPD в допустимом диапазоне, но не оптимальный
-}
-
-void sendHTTPRequest(String url)
-{
-    HTTPClient http;
-    http.begin(url);
-    int httpCode = http.GET();
-    if (httpCode > 0)
-    {
-        String payload = http.getString();
-        syslog_ng(payload);
-    }
-    else
-    {
-        syslog_ng("Error on HTTP request");
-    }
-    http.end();
 }
 
 struct ParamSettings
@@ -494,22 +497,17 @@ void get_ph()
 
 void get_ec()
 {
-    if (Ap and An and Ap < 4095 and An > 0)
+    if (Ap < 4095 and Ap > 0 and An > 0 and An < 4095)
     {
-        if (old_ec == 1)
-        {
-            syslog_ng("make_raschet old_ec true:" + fFTS(old_ec, 0));
-            R2p = (-Ap * R1 - Ap * Rx1 + R1 * Dr + Rx1 * Dr) / Ap;
-            R2n = -(-An * R1 - An * Rx2 + Rx2 * Dr) / (-An + Dr);
-        }
-        else
-        {
-            syslog_ng("make_raschet old_ec false:" + fFTS(old_ec, 0));
-            R2p = (-An * R1 - An * Rx1 + R1 * Dr + Rx1 * Dr) / An;
-            R2n = -(-Ap * R1 - Ap * Rx2 + Rx2 * Dr) / (-Ap + Dr);
-        }
+        R2p = (-An * R1 - An * Rx1 + R1 * Dr + Rx1 * Dr) / An;
+        R2n = -(-Ap * R1 - Ap * Rx2 + Rx2 * Dr) / (-Ap + Dr);
+
         wR2 = (R2p + R2n) / 2;
-        syslog_ng("make_raschet EC R2p:" + fFTS(R2p, 3) + " R2n " + fFTS(R2n, 3) + " wR2 " + fFTS(wR2, 3));
+
+        syslog_ng("make_raschet before calculation: An: " + fFTS(An, 3) + ", R1: " + fFTS(R1, 3) +
+                  ", Rx1: " + fFTS(Rx1, 3) + ", Dr: " + fFTS(Dr, 3) + ", Ap: " + fFTS(Ap, 3) +
+                  ", Rx2: " + fFTS(Rx2, 3) + ", R2p: " + fFTS(R2p, 3) + ", R2n: " + fFTS(R2n, 3) +
+                  ", wR2: " + fFTS(wR2, 3) + ", An: " + fFTS(An, 3));
 
         if (wR2 > 0)
         {
@@ -625,28 +623,36 @@ Group groups[] = {
 
      }},
     {"Сглаживание",
-     12,
+     20,
      {
 
          {"NTC_KAL_E", "Включить NTC сглаживание(0-off, 1-on)", Param::INT, .defaultInt = 0},
          {"ntc_mea_e", "NTC measure", Param::FLOAT, .defaultFloat = 40},
          {"ntc_est_e", "NTC estimate", Param::FLOAT, .defaultFloat = 5},
          {"ntc_q", "NTC сила сглаживания ", Param::FLOAT, .defaultFloat = 0.5},
+
          {"EC_KAL_E", "Включить EC сглаживание(0-off, 1-on)", Param::INT, .defaultInt = 0},
          {"ec_mea_e", "EC measure", Param::FLOAT, .defaultFloat = 1},
          {"ec_est_e", "EC estimate", Param::FLOAT, .defaultFloat = 1},
          {"ec_q", "EC сила сглаживания", Param::FLOAT, .defaultFloat = 0.3},
+
          {"DIST_KAL_E", "Включить Уровень сглаживание(0-off, 1-on)", Param::INT, .defaultInt = 0},
          {"dist_mea_e", "DIST measure", Param::FLOAT, .defaultFloat = 10},
          {"dist_est_e", "DIST estimate", Param::FLOAT, .defaultFloat = 10},
          {"dist_q", "DIST сила сглаживания", Param::FLOAT, .defaultFloat = 0.1},
+
+         {"E_d_k", "Включить Dallas сглаживание корни-бак(0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"d_mea_e", "Dallas measure", Param::FLOAT, .defaultFloat = 1},
+         {"d_est_e", "Dallas estimate", Param::FLOAT, .defaultFloat = 1},
+         {"d_q", "Dallas сила сглаживания", Param::FLOAT, .defaultFloat = 0.3},
 
      }},
 
     {"Настройки",
      11,
      {
-         {"UPDATE_URL", "Ссылка на прошивку", Param::STRING, .defaultString = UPDATE_URL.c_str()},
+         {"UPDATE_URL", "Ссылка на прошивку", Param::STRING,
+          .defaultString = "https://ponics.online/static/wegabox/esp32-local/firmware.bin"},
          {"update_token", "Ключ обновления", Param::STRING, .defaultString = update_token.c_str()},
          {"HOSTNAME", "Имя хоста", Param::STRING, .defaultString = HOSTNAME.c_str()},
          {"vpdstage", "VPD стадия", Param::STRING, .defaultString = vpdstage.c_str()},
@@ -654,8 +660,6 @@ Group groups[] = {
          {"calE", "Включить калибровку(0-off, 1-on)", Param::INT, .defaultInt = 0},
          {"change_pins", "поменять пины US025(HCR04)(0-off, 1-on)", Param::INT, .defaultInt = 0},
          {"clear_pref", "Сброс ВСЕХ настроек кроме wifi(0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"RootTempAddress", "Dallas адрес корней", Param::STRING, .defaultString = "28:FF:1C:30:63:17:03:B1"},
-         {"WNTCAddress", "Dallas адрес раствора", Param::STRING, .defaultString = "28:FF:2E:31:63:17:04:C2"},
 
      }},
 
@@ -701,14 +705,14 @@ Group groups[] = {
          {"PWDport1", "ШИМ порт ESP", Param::INT, .defaultInt = 16},
          {"PWD1", "Значение Pulse Width Modulation (PWD). ШИМ", Param::INT, .defaultInt = 256},
          {"FREQ1", "Частота", Param::INT, .defaultInt = 5000},
-         {"DRV1_A_State", "DRV1_A (0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"DRV1_B_State", "DRV1_B (0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"DRV2_A_State", "DRV2_A (0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"DRV2_B_State", "DRV2_B (0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"DRV3_A_State", "DRV3_A (0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"DRV3_B_State", "DRV3_B (0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"DRV4_A_State", "DRV4_A (0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"DRV4_B_State", "DRV4_B (0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV1_A_State", "DRV1_A (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV1_B_State", "DRV1_B (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV2_A_State", "DRV2_A (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV2_B_State", "DRV2_B (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV3_A_State", "DRV3_A (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV3_B_State", "DRV3_B (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV4_A_State", "DRV4_A (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV4_B_State", "DRV4_B (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
      }},
 
     {"ШИМ группа 2",
@@ -717,14 +721,14 @@ Group groups[] = {
          {"PWDport2", "ШИМ порт ESP", Param::INT, .defaultInt = 17},
          {"PWD2", "Значение Pulse Width Modulation (PWD). ШИМ", Param::INT, .defaultInt = 255},
          {"FREQ2", "Частота", Param::INT, .defaultInt = 5000},
-         {"DRV1_C_State", "DRV1_C (0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"DRV1_D_State", "DRV1_D (0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"DRV2_C_State", "DRV2_C (0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"DRV2_D_State", "DRV2_D (0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"DRV3_C_State", "DRV3_C (0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"DRV3_D_State", "DRV3_D (0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"DRV4_C_State", "DRV4_C (0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"DRV4_D_State", "DRV4_D (0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV1_C_State", "DRV1_C (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV1_D_State", "DRV1_D (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV2_C_State", "DRV2_C (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV2_D_State", "DRV2_D (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV3_C_State", "DRV3_C (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV3_D_State", "DRV3_D (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV4_C_State", "DRV4_C (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV4_D_State", "DRV4_D (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
 
      }},
 
@@ -753,7 +757,7 @@ Group groups[] = {
          {"KickUpMax", "Максимум мощности пинка", Param::INT, .defaultInt = 255},
          {"KickUpStrart", "Начальная можность пинка", Param::INT, .defaultInt = 10},
          {"KickUpTime", "Время пинка в миллисекундах", Param::INT, .defaultInt = 300},
-         {"KickOnce", "Разово пнуть", Param::INT, .defaultInt = 0},
+         {"KickOnce", "Разово пнуть (0-off, 1-on)", Param::INT, .defaultInt = 0},
          {"DRV1_A_PK_On", "Вкючить пинок для DRV1 A (0-off, 1-on)", Param::INT, .defaultInt = 0},
          {"DRV1_B_PK_On", "Вкючить пинок для DRV1 B (0-off, 1-on)", Param::INT, .defaultInt = 0},
          {"DRV1_C_PK_On", "Вкючить пинок для DRV1 C (0-off, 1-on)", Param::INT, .defaultInt = 0},
@@ -879,6 +883,8 @@ void sendFileLittleFS(String path)
 
 #include <rom/rtc.h>
 #include <etc/ResetReason.h>
+#include <etc/http_cert.h>
+
 #include <dev/mcp3421/vars.h>
 #include <dev/bmp280/vars.h>
 #include <dev/ds18b20/main.h>
@@ -902,12 +908,10 @@ void sendFileLittleFS(String path)
 #include <dev/ec/main.h>
 #include <dev/ntc/main.h>
 #include <tasks.h>
-
+#include <web/root.h>
 #include <etc/update.h>
 #include <preferences_local.h>
 #include <mqtt.h>
-
-#include <web/root.h>
 
 #include <etc/wifi_ap.h>
 #include <web/new_settings.h>

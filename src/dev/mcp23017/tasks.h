@@ -69,6 +69,10 @@ void MCP23017()
     int t = 0;
     bitw = 0b00000000;
     readGPIO = mcp.readGPIOAB();
+    bool min_light = wPR < MinLightLevel;
+    char bitString[17];    // строка для хранения битов, 16 бит + 1 символ для
+                           // окончания строки
+    bitString[16] = '\0';  // добавляем символ окончания строки
 
     if (pwd_val != PWD1 || pwd_freq != FREQ1 || pwd_port != PWDport1)
     {
@@ -169,15 +173,13 @@ void MCP23017()
     }
     else
     {
-        syslog_ng("MCP23017 ECStabEnable " + String(ECStabEnable == 1) + " wEC > ECStabValue  " +
+        syslog_ng("MCP23017 ECStabEnable==1 " + String(ECStabEnable == 1) + " wEC > ECStabValue  " +
                   String(wEC > ECStabValue) + " millis() - ECStabTimeStart  > ECStabInterval * 1000  " +
                   " time: " + String(millis() - ECStabTimeStart > ECStabInterval * 1000) + " Dist >= ECStabMinDist  " +
                   String(Dist >= ECStabMinDist) + " Dist < ECStabMaxDist " + String(Dist < ECStabMaxDist));
 
         mcp.digitalWrite(ECStabPomp, 0);
     }
-
-    bool min_light = wPR < MinLightLevel;
 
     // Остановка помпы ночью по датчику освещенности
     if (PompNightEnable == 1)
@@ -218,7 +220,8 @@ void MCP23017()
     // Периодическое управление помпой
     if ((RDWorkNight == 1 && min_light && RDEnable == 1) || (RDEnable == 1))
     {
-        syslog_ng("MCP23017 PERIODICA START");
+        syslog_ng("MCP23017 PERIODICA START + RDWorkNight " + String(RDWorkNight == 1) + " min_light " +
+                  String(min_light) + " RDEnable " + String(RDEnable == 1));
         if (millis() > NextRootDrivePwdOn)
         {
             t = preferences.putInt((options[RDSelectedRP] + "_State").c_str(), 1);
@@ -263,16 +266,12 @@ void MCP23017()
         NextRootDrivePwdOn = -1;
         NextRootDrivePwdOff = -1;
     }
-    char bitString[17];  // строка для хранения битов, 16 бит + 1 символ для
-                         // окончания строки
 
     // Управление драйверами
     for (int i = 0; i < 16; i++)
     {
         bitString[15 - i] = (readGPIO & (1 << i)) ? '1' : '0';
     }
-
-    bitString[16] = '\0';  // добавляем символ окончания строки
 
     for (int i = 0; i < DRV_COUNT; i++)
     {
@@ -298,10 +297,10 @@ void MCP23017()
             }
         }
     }
+
     if (readGPIO != bitw)
     {
         mcp.writeGPIOAB(bitw);
-        // vTaskDelay(10);
         readGPIO = mcp.readGPIOAB();
     }
 

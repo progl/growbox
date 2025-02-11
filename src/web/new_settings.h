@@ -210,9 +210,6 @@ void handleApiStatuses()
     doc["DRV4"] = readGPIO;
     doc["DRV4_text"] = "DRV4";
 
-    doc["old_ec"] = String(old_ec);
-    doc["old_ec_text"] = "OldEC";
-
     doc["reboot_link"] = "/reset";
     doc["reboot_link_text"] = "Reboot";
 
@@ -299,7 +296,7 @@ void handleApiGroups()
             }
             else
             {
-                Serial.println("ERROR: Could not find preferences for " + String(param.name));
+                syslog_ng("ERROR: Could not find preferences for " + String(param.name));
             }
         }
     }
@@ -426,10 +423,17 @@ void saveSettings()
         }
 
         publish_setting_groups();
+
         publishVariablesListToMQTT();
+
         KalmanNTC.setParameters(ntc_mea_e, ntc_est_e, ntc_q);
         KalmanDist.setParameters(dist_mea_e, dist_est_e, dist_q);
         KalmanEC.setParameters(ec_mea_e, ec_est_e, ec_q);
         KalmanEcUsual.setParameters(ec_mea_e, ec_est_e, ec_q);
+
+        for (uint8_t i = 0; i < sensorCount && i < MAX_DS18B20_SENSORS; i++)
+        {
+            sensorArray[i].KalmanDallasTmp.setParameters(dallas_mea_e, dallas_est_e, dallas_q);
+        }
     }
 }

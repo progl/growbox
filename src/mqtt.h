@@ -15,7 +15,7 @@ void publish_discovery_payload(const char *sensor_name)
 
     serializeJson(doc, buffer);
     String discovery_topic = "homeassistant/sensor/" + String(sensor_name) + "__" + String(HOSTNAME) + "/config";
-    enqueueMessage(discovery_topic.c_str(), buffer);
+    enqueueMessage(discovery_topic.c_str(), buffer, "", false);
 }
 
 void publish_switch_discovery_payload(Param param)
@@ -46,7 +46,7 @@ void publish_switch_discovery_payload(Param param)
     // Публикуем сообщение в топик Discovery
     String discovery_topic = "homeassistant/switch/" + String(switch_name) + "__" + String(HOSTNAME) + "/config";
 
-    enqueueMessage(discovery_topic.c_str(), buffer);
+    enqueueMessage(discovery_topic.c_str(), buffer, "", false);
     PreferenceItem *item = findPreferenceByKey(switch_name.c_str());
 
     if (item != nullptr && item->variable != nullptr)
@@ -57,7 +57,7 @@ void publish_switch_discovery_payload(Param param)
                            : "0";
         syslog_ng("mqttClientHA publish_switch_discovery_payload  state " + String(switch_name) + " state_topic " +
                   String(state_topic) + " (const char *)item->variable " + value);
-        enqueueMessage(state_topic.c_str(), value.c_str());
+        enqueueMessage(state_topic.c_str(), value.c_str(), "", false);
     }
     else
     {
@@ -234,7 +234,7 @@ void publishVariablesListToMQTT()
     String topic = mqttPrefix + preferences_prefix + "all_variables";
 
     // Send the JSON payload via MQTT
-    enqueueMessage(topic.c_str(), output.c_str());
+    enqueueMessage(topic.c_str(), output.c_str(), "", false);
     vTaskDelay(10);
 }
 void publish_setting_groups()
@@ -323,7 +323,7 @@ void sendToggleState(const char *groupCaption, const Param &param)
 
     // Публикуем состояние
 
-    enqueueMessage(stateTopic.c_str(), state ? "ON" : "OFF");
+    enqueueMessage(stateTopic.c_str(), state ? "ON" : "OFF", "", false);
 
     // Логируем отправку
     syslog_ng("State sent: " + switchName + " = " + (state ? "ON" : "OFF"));
@@ -641,12 +641,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
         if (strcmp("1", message.c_str()) == 0)
         {
             syslog_ng("mqtt update");
-
-            enqueueMessage(topic, "0");
-
-            preferences.putString(pref_reset_reason, "mqtt update");
-            server_make_update = true;
-            xTaskCreate(TaskUP, "TaskUP", 10000, NULL, 0, NULL);
+            update();
         }
     }
 
@@ -901,7 +896,7 @@ void TaskMqtt(void *parameters)
         syslog_ng("start mqtt TaskMqtt");
         while (OtaStart == true) vTaskDelay(1000);
         publish_params_all();
-        update_f();
+        make_update();
         syslog_ng("mqtt TaskMqtt end " + fFTS((millis() - start_mqtt), 0) + " ms");
         vTaskDelay(DEFAULT_DELAY);
     }

@@ -92,7 +92,7 @@ void setup_preferences()
 void setupOTA()
 {
     ArduinoOTA.setHostname(HOSTNAME.c_str());
-    preferences.putInt("rst_counter", 5);
+
     ArduinoOTA
         .onStart(
             []()
@@ -221,15 +221,6 @@ void setupServer()
     webSocket.begin();
     webSocket.onEvent(onWebSocketEvent);
 
-    if (!LittleFS.begin())
-    {
-        Serial.println("Failed to mount LittleFS");
-    }
-    else
-    {
-        Serial.println("LittleFS mounted successfully");
-    }
-
     server.on("/", HTTP_GET, handleRoot);
     server.on("/api/status", HTTP_GET, handleApiStatuses);
     server.on("/api/groups", HTTP_GET, handleApiGroups);
@@ -241,8 +232,6 @@ void setupServer()
     server.onNotFound([]() { handleFileRequest(); });
     server.begin();
 
-    http.setConnectTimeout(10000);
-    http.setTimeout(10000);
     MDNS.addService("http", "tcp", 80);
 }
 
@@ -273,7 +262,6 @@ void setupHA_MQTT()
         mqttClientHA.onMessage(onMqttMessageHA);
         mqttClientHA.onDisconnect(onMqttDisconnectHA);
         mqttClientHA.setClientId(client_id.c_str());
-        IPAddress serverIP;
         mqttClientHA.setServer(a_ha_c, uint16_t(port_ha));
         mqttClientHA.setCredentials(u_ha_c, p_ha_c);  // Set login and password
     }
@@ -330,16 +318,43 @@ void setup()
     Serial.begin(115200);
     mcp.writeGPIOAB(0);
 
+    if (!LittleFS.begin())
+    {
+        Serial.println("Failed to mount LittleFS");
+    }
+    else
+    {
+        Serial.println("LittleFS mounted successfully");
+    }
+
     initializeVariablePointers();
     esp_log_level_set("*", ESP_LOG_VERBOSE);
     xSemaphore_C = xSemaphoreCreateMutex();
 
-    client.setInsecure();
     setup_preferences();
     setupSyslog();
     setupWiFi();
     int rst_counter = preferences.getInt("rst_counter", 0);
+    int upd = preferences.getInt("upd", 0);
+    if (upd != 0)
+    {
+        preferences.putInt("upd", 0);
+    }
     preferences.putInt("rst_counter", rst_counter + 1);
+
+    if (upd == 1)
+    {
+        server_make_update = force_update = true;
+        syslog_ng("update: strting auto update ");
+        make_update();
+        syslog_ng("update: ended auto update ");
+    }
+    else
+    {
+        server_make_update = force_update = false;
+        syslog_ng("update: no auto update ");
+    }
+
     syslog_ng("before  setupOTA ");
 
     setupOTA();
@@ -362,16 +377,17 @@ void setup()
     }
 
     syslog_ng("readCoreDump ");
-
     syslog_ng("esp_core_dump_init ");
 
     mqttPrefix = update_token + "/";
     calibrate_adc();
     setupMQTT();
+    syslog_ng("setupHA_MQTT ");
     setupHA_MQTT();  // добавлен вызов функции для настройки MQTT для HA
     setupTimers();
+    syslog_ng("setupTimers ");
     setupDisplay();
-
+    syslog_ng("setupDisplay ");
     KalmanNTC.setParameters(ntc_mea_e, ntc_est_e, ntc_q);
     KalmanDist.setParameters(dist_mea_e, dist_est_e, dist_q);
     KalmanEC.setParameters(ec_mea_e, ec_est_e, ec_q);

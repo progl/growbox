@@ -94,9 +94,8 @@ void EC_void()
     get_ec();
 
     // Логирование
-    syslog_ng("EC Ap:" + fFTS(Ap, 3) + " An:" + fFTS(An, 3) + " probe time micros:" + String(ec_probe_time) +
-              " probe count:" + String(EC_MiddleCount) + " Frequency kHz:" + fFTS(EC_Freq, 3) + " wR2:" + fFTS(wR2, 3) +
-              " wNTC:" + fFTS(wNTC, 3)
+    syslog_ng("EC probe time micros:" + String(ec_probe_time) + " probe count:" + String(EC_MiddleCount) +
+              " Frequency kHz:" + fFTS(EC_Freq, 3) + " wR2:" + fFTS(wR2, 3) + " wNTC:" + fFTS(wNTC, 3)
 
               + " mv_ap0:" + fFTS(mv_ap0, 3) + " mv_an0:" + fFTS(mv_an0, 3)
 

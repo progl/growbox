@@ -45,7 +45,7 @@ uint8_t qos = 0;
 uint8_t qos_publish = 0;
 int mqtt_not_connected_counter = 0;
 int con_c;
-int old_ec;
+
 int is_setup = 1;
 float t_us;
 float ec_notermo;
