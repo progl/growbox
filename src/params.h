@@ -299,7 +299,6 @@ boolean make_doser = false;
 #define ENABLE_PONICS_ONLINE 1
 const char *mqtt_mqtt_user = "";
 const char *mqtt_mqtt_password = "";
-const char *mqtt_url = "";
 uint16_t mqtt_mqtt_port = 1883;
 String mqttPrefix;
 #endif

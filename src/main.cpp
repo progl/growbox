@@ -109,7 +109,15 @@ WiFiEventId_t wifiConnectHandler;
 #include <debug_info_new.h>
 void syslog_ng(String x)
 {
+    if (x == nullptr)
+    {
+        Serial.println("Ошибка: syslog_ng  x null");
+        return;
+    }
     x = fFTS(float(millis()) / 1000, 3) + "s " + x;
+
+    // Проверка на NULL для topic и payload
+
     syslog.log(LOG_INFO, x);
     Serial.println(x);
     // Отправка логов через вебсокет
@@ -121,6 +129,11 @@ void syslog_ng(String x)
 
 void syslog_err(String x)
 {
+    if (x == nullptr)
+    {
+        Serial.println("Ошибка: syslog_ng  x null");
+        return;
+    }
     x = fFTS(float(millis()) / 1000, 3) + "s " + x;
     syslog.log(LOG_ERR, x);
     Serial.println(x);
@@ -328,6 +341,24 @@ bool stringToDeviceAddress(const String &str, DeviceAddress &deviceAddress)
     return true;
 }
 
+bool validateAndConvertIP(const char *str, IPAddress &ip)
+{
+    int parts[4];
+    if (sscanf(str, "%d.%d.%d.%d", &parts[0], &parts[1], &parts[2], &parts[3]) != 4)
+    {
+        return false;  // Invalid format
+    }
+    for (int i = 0; i < 4; i++)
+    {
+        if (parts[i] < 0 || parts[i] > 255)
+        {
+            return false;  // Out of range
+        }
+    }
+    ip = IPAddress(parts[0], parts[1], parts[2], parts[3]);
+    return true;
+}
+
 // Преобразование DeviceAddress в строку
 String deviceAddressToString(const DeviceAddress &deviceAddress)
 {
@@ -365,7 +396,7 @@ void enqueueMessage(const char *topic, const char *payload, String key = "", boo
         String websocket_msg = ":::" + key + ":" + String(payload);
         // Рассылаем сообщение всем подключённым WebSocket-клиентам
         webSocket.broadcastTXT(websocket_msg);
-        vTaskDelay(1);
+        vTaskDelay(5);
     }
 #if defined(ENABLE_PONICS_ONLINE)
     if (mqttClient.connected() and not_ha_only)

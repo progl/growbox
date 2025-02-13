@@ -54,7 +54,7 @@ void setupTimers()
     }
 #endif
     mqttReconnectTimerHa =
-        xTimerCreate("MqttReconnectTimerHa", pdMS_TO_TICKS(20000), pdFALSE, (void *)0, onMqttReconnectTimerHa);
+        xTimerCreate("MqttReconnectTimerHa", pdMS_TO_TICKS(5000), pdFALSE, (void *)0, onMqttReconnectTimerHa);
 
     if (mqttReconnectTimerHa == NULL)
     {
@@ -262,7 +262,19 @@ void setupHA_MQTT()
         mqttClientHA.onMessage(onMqttMessageHA);
         mqttClientHA.onDisconnect(onMqttDisconnectHA);
         mqttClientHA.setClientId(client_id.c_str());
-        mqttClientHA.setServer(a_ha_c, uint16_t(port_ha));
+        IPAddress mqttServerHA;
+        syslog_ng("mqttClientHA HOSTNAME: \"" + String(HOSTNAME) + "\"");
+        if (validateAndConvertIP(a_ha.c_str(), mqttServerHA))
+        {
+            syslog_ng("mqttClientHA validateAndConvertIP 1 mqttServerHA: " + String(mqttServerHA) +
+                      "port_ha: " + String(port_ha));
+            mqttClientHA.setServer(mqttServerHA, uint16_t(port_ha));
+        }
+        else
+        {
+            syslog_ng("mqttClientHA set str adress : " + String(mqttServerHA) + "port_ha: " + String(port_ha));
+            mqttClientHA.setServer(a_ha_c, uint16_t(port_ha));
+        }
         mqttClientHA.setCredentials(u_ha_c, p_ha_c);  // Set login and password
     }
 }
@@ -380,10 +392,11 @@ void setup()
     syslog_ng("esp_core_dump_init ");
 
     mqttPrefix = update_token + "/";
-    calibrate_adc();
-    setupMQTT();
     syslog_ng("setupHA_MQTT ");
     setupHA_MQTT();  // добавлен вызов функции для настройки MQTT для HA
+    calibrate_adc();
+    setupMQTT();
+
     setupTimers();
     syslog_ng("setupTimers ");
     setupDisplay();
@@ -400,14 +413,17 @@ void setup()
     syslog_ng("setupServer");
     setupServer();
     syslog_ng("setupDevices");
+
+    xTimerStart(mqttReconnectTimerHa, 0);
 #if defined(ENABLE_PONICS_ONLINE)
     xTimerStart(mqttReconnectTimer, 0);
 #endif
-    xTimerStart(mqttReconnectTimerHa, 0);
     distanceSensor.begin();  // Инициализация датчика
     setupDevices();
     distanceSensor.begin();  // Инициализация датчика
     syslog_ng("endsetup");
+    syslog_ng("Firmware " + Firmware);
+    syslog_ng("commit " + firmware_commit);
     // Пример намеренной ошибки для проверки
 
     preferences.putInt("rst_counter", 0);

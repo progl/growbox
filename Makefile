@@ -8,18 +8,18 @@ FW_COMMIT_FILE = ./src/fw_commit.h
 
 # Команда для получения хэша текущего коммита
 COMMIT_HASH = $(shell git rev-parse HEAD 2>/dev/null | head -c 6)
-
-# Read commit number from file
 COMMIT_NUMBER := $(shell cat commit_number.txt)
 
 
+commit_number:
+	@echo  "$(VERSION):$(COMMIT_NUMBER):$(COMMIT_HASH)"
 # Цель форматирования
 format:
 	@echo "Форматирование файлов .cpp и .h в папке $(SRC_DIR)..."
 	$(FORMAT_CMD)
-	@echo "Форматирование завершено."
-commit:
-	@bash scripts/increment_commit_number.sh  # Increment the commit number
+	@echo "Форматирование завершено."commit:
+	@bash scripts/increment_commit_number.sh
+	$(eval COMMIT_NUMBER := $(shell cat commit_number.txt))
 	@echo "Обновление $(FW_COMMIT_FILE) с текущим порядковым номером коммита: $(COMMIT_NUMBER)"
 	@echo "#ifndef FW_COMMIT_H" > $(FW_COMMIT_FILE)
 	@echo "#define FW_COMMIT_H" >> $(FW_COMMIT_FILE)

@@ -155,7 +155,6 @@ void connectToMqttHA()
             mqttHAConnected = 0;
             syslog_ng("mqttClientHA a_ha: \"" + String(a_ha) + "\", p_ha: \"" + String(p_ha) + "\", u_ha: \"" +
                       String(u_ha) + "\"");
-
             syslog_ng("mqttClientHA connectToMqtt Connecting to MQTT...");
             mqttClientHA.connect();
             syslog_ng("mqttClientHA connectToMqtt Connected " + String(mqttClientHA.connected()));
