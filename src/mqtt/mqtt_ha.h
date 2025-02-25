@@ -218,14 +218,13 @@ void onMqttReconnectTimerHa(TimerHandle_t xTimer)
     connectToMqttHA();  // Попытка повторного подключения к MQTT
 }
 
-
- 
- void publishVariablesListToMQTT()
+void publishVariablesListToMQTT()
 {
     JsonDocument doc;
     JsonObject root = doc.to<JsonObject>();
 
-    int arraySize = sizeof(preferencesArray) / sizeof(preferencesArray[0]);  // Определяем количество элементов в массиве
+    int arraySize =
+        sizeof(preferencesArray) / sizeof(preferencesArray[0]);  // Определяем количество элементов в массиве
 
     for (int i = 0; i < arraySize; ++i)
     {
