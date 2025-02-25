@@ -1,27 +1,20 @@
 
 void get_ntc()
 {
-    if (tR_type == "direct")
+    float r = 0;
+    if (NTC_KAL_E == 1)
     {
-        float r = 0;
-        if (NTC_KAL_E == 1)
-        {
-            r = log((-NTC_Kalman + tR_DAC) / NTC_Kalman);
-        }
-        else
-        {
-            r = log((-NTC + tR_DAC) / NTC);
-        }
-
-        wNTC = (tR_B * 25 - r * 237.15 * 25 - r * pow(237.15, 2)) / (tR_B + r * 25 + r * 237.15) + tR_val_korr;
-        syslog_ng("make_raschet  EC tR_B:" + fFTS(tR_B, 3) + " EC r:" + fFTS(r, 3) + " NTC " + fFTS(NTC, 3) +
-                  " NTC_KAL_E " + fFTS(NTC_KAL_E, 0) + " NTC_Kalman " + fFTS(NTC_Kalman, 2) + " tR_DAC " +
-                  fFTS(tR_DAC, 3) + " wNTC " + fFTS(wNTC, 3));
+        r = log((-NTC_Kalman + tR_DAC) / NTC_Kalman);
     }
     else
     {
-        syslog_ng("make_raschet error tr type: " + String(tR_type));
+        r = log((-NTC_RAW + tR_DAC) / NTC_RAW);
     }
+
+    wNTC = (tR_B * 25 - r * 237.15 * 25 - r * pow(237.15, 2)) / (tR_B + r * 25 + r * 237.15) + tR_val_korr;
+    syslog_ng("make_raschet get_ntc EC tR_B:" + fFTS(tR_B, 3) + " EC r:" + fFTS(r, 3) + " NTC_RAW " + fFTS(NTC_RAW, 3) +
+              " NTC_KAL_E " + fFTS(NTC_KAL_E, 0) + " NTC_Kalman " + fFTS(NTC_Kalman, 2) + " tR_DAC " + fFTS(tR_DAC, 3) +
+              " wNTC " + fFTS(wNTC, 3));
 }
 void get_acp()
 {
@@ -68,15 +61,11 @@ void NTC_void()
                 NTC_Kalman = KalmanNTC.filtered(NTC_RAW);
             }
         }
-        NTC = NTC_Kalman;
+        NTC_RAW = NTC_Kalman;
     }
-    else
-    {
-        NTC = NTC_RAW;
-    }
+
     get_ntc();
 
-    publish_parameter("NTC", NTC, 3, 1);
     publish_parameter("NTC_RAW", NTC_RAW, 3, 1);
     publish_parameter("NTC_Kalman", NTC_Kalman, 3, 1);
     publish_parameter("wNTC", wNTC, 3, 1);

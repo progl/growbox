@@ -7,7 +7,6 @@ extern "C"
 // Функция для считывания температуры
 void TaskCPUTEMP()
 {
-    float CPUTemp = NAN;
     bool success = false;
 
     uint8_t raw = temprature_sens_read();

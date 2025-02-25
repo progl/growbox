@@ -2,25 +2,25 @@ void setVPDStyles(String vpdstage)
 {
     if (vpdstage == "Start")
     {
-        rootStyle = getStyle(rootVPD, 0.8, 0.2, 1.4);  // Параметры для стадии клонов
-        airStyle = getStyle(airVPD, 0.8, 0.2, 1.4);
+        rootStyle = getStyle(RootVPD, 0.8, 0.2, 1.4);  // Параметры для стадии клонов
+        airStyle = getStyle(AirVPD, 0.8, 0.2, 1.4);
     }
     else if (vpdstage == "Vega")
     {
-        rootStyle = getStyle(rootVPD, 1.0, 0.5, 1.6);  // Параметры для вегетативной стадии
-        airStyle = getStyle(airVPD, 1.0, 0.5, 1.6);
+        rootStyle = getStyle(RootVPD, 1.0, 0.5, 1.6);  // Параметры для вегетативной стадии
+        airStyle = getStyle(AirVPD, 1.0, 0.5, 1.6);
     }
     else if (vpdstage == "Fruit")
     {
-        rootStyle = getStyle(rootVPD, 1.2, 0.7, 2.8);  // Параметры для стадии цветения
-        airStyle = getStyle(airVPD, 1.2, 0.7, 2.8);
+        rootStyle = getStyle(RootVPD, 1.2, 0.7, 2.8);  // Параметры для стадии цветения
+        airStyle = getStyle(AirVPD, 1.2, 0.7, 2.8);
     }
     else
     {
         // Значения по умолчанию, если vpdstage не соответствует ни одному из
         // известных значений
-        rootStyle = getStyle(rootVPD, 1.0, 0.5, 1.6);
-        airStyle = getStyle(airVPD, 1.0, 0.5, 1.6);
+        rootStyle = getStyle(RootVPD, 1.0, 0.5, 1.6);
+        airStyle = getStyle(AirVPD, 1.0, 0.5, 1.6);
     }
 }
 
@@ -87,7 +87,7 @@ void handle_calibrate()
     doc["Dist"] = fFTS(Dist, 3);
     doc["pHmV"] = fFTS(pHmV, 3);
     doc["PR"] = fFTS(PR, 3);
-    doc["RAW_NTC"] = fFTS(NTC, 3);
+    doc["RAW_NTC"] = fFTS(NTC_RAW, 3);
     doc["Dist"] = fFTS(Dist, 1);
     doc["ec_notermo"] = fFTS(ec_notermo, 2) + " mS/cm";
     doc["not_detected_sensors"] = not_detected_sensors;
@@ -143,20 +143,20 @@ void handleApiStatuses()
     // VPD Styles
     setVPDStyles(vpdstage);
 
-    doc["rootVPD"] = fFTS(rootVPD, 1);
-    doc["airVPD"] = fFTS(airVPD, 1);
-    doc["airHum"] = fFTS(AirHum, 1) + "%";
-    doc["rootTemp"] = fFTS(RootTemp, 1);
-    doc["airTemp"] = fFTS(AirTemp, 1);
-    doc["PR"] = fFTS(wPR, 1);
-    doc["EC"] = fFTS(wEC, 2) + " mS/cm";
-    doc["NTC"] = fFTS(wNTC, 1);
-    doc["Level"] = fFTS(wLevel, 1);
+    doc["RootVPD"] = fFTS(RootVPD, 1);
+    doc["AirVPD"] = fFTS(AirVPD, 1);
+    doc["AirHum"] = fFTS(AirHum, 1) + "%";
+    doc["RootTemp"] = fFTS(RootTemp, 1);
+    doc["AirTemp"] = fFTS(AirTemp, 1);
+    doc["wPR"] = fFTS(wPR, 0);
+    doc["wEC"] = fFTS(wEC, 2) + " mS/cm";
+    doc["wNTC"] = fFTS(wNTC, 1);
+    doc["wLevel"] = fFTS(wLevel, 1);
     doc["CPUTemp"] = fFTS(CPUTemp, 1);
     doc["AirPress"] = fFTS(AirPress, 1);
     doc["tVOC"] = fFTS(tVOC, 1);
     doc["CO2"] = fFTS(CO2, 1);
-    doc["pH"] = fFTS(wpH, 1);
+    doc["wpH"] = fFTS(wpH, 1);
     doc["PWD"] = String(PWD1) + " : " + String(PWD2);
     // Датчики
     JsonArray sensorsArray = doc["sensors"].to<JsonArray>();
@@ -238,6 +238,8 @@ void handleApiGroups()
     server.send(200, "application/json", sanitizeString(output));
 }
 
+// Функция для работы с JsonVariant
+
 void saveSettings()
 {
     syslog_ng("saveSettings");
@@ -281,28 +283,8 @@ void saveSettings()
                 return;
             }
 
-            if (PreferenceItem *item = findPreferenceByKey(settingName))
+            if (updatePreference(settingName, kv.value()))
             {
-                switch (item->type)
-                {
-                    case DataType::STRING:
-                        *(String *)item->variable = kv.value().as<String>();
-                        s = item->preferences->putString(item->key, *(String *)item->variable);
-                        break;
-                    case DataType::INTEGER:
-                        *(int *)item->variable = kv.value().as<int>();
-                        s = item->preferences->putInt(item->key, *(int *)item->variable);
-                        break;
-                    case DataType::FLOAT:
-                        *(float *)item->variable = kv.value().as<float>();
-                        s = item->preferences->putFloat(item->key, *(float *)item->variable);
-                        break;
-                    case DataType::BOOLEAN:
-                        *(bool *)item->variable = kv.value().as<bool>();
-                        s = item->preferences->putBool(item->key, *(bool *)item->variable);
-                        break;
-                }
-
                 // Handle specific settings that require additional logic
                 if (strcmp(settingName, "RDDelayOn") == 0)
                 {
@@ -316,7 +298,7 @@ void saveSettings()
                 }
                 else if (strcmp(settingName, "password") == 0)
                 {
-                    setupWiFi();
+                    connectToWiFi();
                 }
 
                 else if (strcmp(settingName, "SetPumpA_Ml") == 0 || strcmp(settingName, "SetPumpB_Ml") == 0)

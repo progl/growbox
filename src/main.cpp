@@ -37,6 +37,8 @@
 #include "ccs811.h"  // CCS811 library
 #include "esp_adc_cal.h"
 
+bool isAPMode = false;
+
 uint8_t buff[128] = {0};
 HTTPClient http;
 
@@ -402,7 +404,7 @@ void enqueueMessage(const char *topic, const char *payload, String key = "", boo
     if (mqttClient.connected() and not_ha_only)
     {
         int packet_id = mqttClient.publish(topic, 0, false, payload);
-        vTaskDelay(1);
+        vTaskDelay(5);
         if (packet_id == 0)
         {
             int payloadSize = strlen(payload);
@@ -412,10 +414,10 @@ void enqueueMessage(const char *topic, const char *payload, String key = "", boo
         }
     }
 #endif
-    if (e_ha == 1 and mqttClientHA.connected())
+    if (mqttClientHA.connected())
     {
         int packet_id = mqttClientHA.publish(topic, 0, false, payload);
-        vTaskDelay(1);
+        vTaskDelay(5);
         if (packet_id == 0)
         {
             int payloadSize = strlen(payload);
@@ -473,28 +475,62 @@ void setParamSettings(const String &key, float compare, int action, String url)
 
 void publish_parameter(const String &key, float value, int precision, int timescale)
 {
+    // Проверка на допустимость precision
+    if (precision < 0 || precision > 6)
+    {
+        syslog_ng("ERROR: Invalid precision value: " + String(precision));
+        return;  // Выходим, если precision недопустим
+    }
+
+    // Проверка на пустой ключ
+    if (key.length() == 0)
+    {
+        syslog_ng("ERROR: Parameter key is empty.");
+        return;  // Выходим, если ключ пустой
+    }
+
     if (timescale == 1)
     {
-        String topic = mqttPrefix + timescale_prefix + key;  // Use appropriate topic prefix
+        String topic = mqttPrefix + timescale_prefix + key;  // Используем соответствующий префикс темы
         char valueStr[32];
         if (log_debug) syslog_ng("publish_parameter topic " + topic + " value: " + String(value));
-        dtostrf(value, 1, precision, valueStr);  // Convert float to string with precision
+
+        dtostrf(value, 1, precision, valueStr);  // Преобразуем float в строку с заданной точностью
+
         if (log_debug) syslog_ng("published topic " + topic + " value: " + String(value));
         enqueueMessage(topic.c_str(), valueStr, key);
+        vTaskDelay(1);
     }
     else
     {
-        String topic = mqttPrefix + data_prefix + key;  // Use appropriate topic prefix
+        String topic = mqttPrefix + data_prefix + key;  // Используем соответствующий префикс темы
         char valueStr[32];
-        dtostrf(value, 1, precision, valueStr);  // Convert float to string with precision
+
+        dtostrf(value, 1, precision, valueStr);  // Преобразуем float в строку с заданной точностью
         enqueueMessage(topic.c_str(), valueStr, key);
+        vTaskDelay(5);
     }
 }
+
 void publish_parameter(const String &key, const String &value, int timescale)
 {
+    // Проверка на пустой ключ
+    if (key.length() == 0)
+    {
+        syslog_ng("ERROR: Parameter key is empty.");
+        return;  // Выходим, если ключ пустой
+    }
+
+    // Проверка на пустое значение
+    if (value.length() == 0)
+    {
+        syslog_ng("ERROR: Parameter value is empty for key: " + key);
+        return;  // Выходим, если значение пустое
+    }
+
     if (timescale == 1)
     {
-        String topic = mqttPrefix + timescale_prefix + key;  // Use appropriate topic prefix
+        String topic = mqttPrefix + timescale_prefix + key;  // Используем соответствующий префикс темы
         if (log_debug) syslog_ng("publish_parameter topic " + topic + " value: " + String(value));
 
         enqueueMessage(topic.c_str(), String(value).c_str(), key);
@@ -502,12 +538,11 @@ void publish_parameter(const String &key, const String &value, int timescale)
     }
     else
     {
-        String topic = mqttPrefix + data_prefix + key;  // Use appropriate topic prefix
+        String topic = mqttPrefix + data_prefix + key;  // Используем соответствующий префикс темы
 
         enqueueMessage(topic.c_str(), String(value).c_str(), key);
     }
 }
-
 void get_ph()
 {
     if (pHmV)
@@ -606,7 +641,7 @@ Group groups[] = {
     {"Долив концентрата",
      5,
      {
-         {"ECDoserEnable", "Дозер концентратов (0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"ECDoserEnable", "Дозер концентратов(0-off, 1-on)", Param::INT, .defaultInt = 0},
          {"ECDoserLimit", "ЕС максимальный", Param::FLOAT, .defaultFloat = 1.5},
          {"ECDoserValueA", "Помпа А МЛ за одну подачу", Param::FLOAT, .defaultFloat = 1},
          {"ECDoserValueB", "Помпа Б МЛ за одну подачу", Param::FLOAT, .defaultFloat = 1},
@@ -615,7 +650,7 @@ Group groups[] = {
     {"Давление корней",
      12,
      {
-         {"RootPomp", "Вкл (0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"RootPomp", "Вкл(0-off, 1-on)", Param::INT, .defaultInt = 0},
          {"SelectedRP", "Помпа", Param::INT, .defaultInt = 0},
          {"RootPwdOn", "Регулировать ШИМом(0-off, 1-on)", Param::INT, .defaultInt = 1},
          {"RootPwdMax", "ШИМ максимум", Param::INT, .defaultInt = 254},
@@ -736,14 +771,14 @@ Group groups[] = {
          {"PWDport1", "ШИМ порт ESP", Param::INT, .defaultInt = 16},
          {"PWD1", "Значение Pulse Width Modulation (PWD). ШИМ", Param::INT, .defaultInt = 256},
          {"FREQ1", "Частота", Param::INT, .defaultInt = 5000},
-         {"DRV1_A_State", "DRV1_A (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"DRV1_B_State", "DRV1_B (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"DRV2_A_State", "DRV2_A (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"DRV2_B_State", "DRV2_B (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"DRV3_A_State", "DRV3_A (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"DRV3_B_State", "DRV3_B (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"DRV4_A_State", "DRV4_A (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"DRV4_B_State", "DRV4_B (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV1_A_State", "DRV1_A (0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV1_B_State", "DRV1_B (0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV2_A_State", "DRV2_A (0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV2_B_State", "DRV2_B (0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV3_A_State", "DRV3_A (0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV3_B_State", "DRV3_B (0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV4_A_State", "DRV4_A (0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV4_B_State", "DRV4_B (0-off, 1-on)", Param::INT, .defaultInt = 0},
      }},
 
     {"ШИМ группа 2",
@@ -752,14 +787,14 @@ Group groups[] = {
          {"PWDport2", "ШИМ порт ESP", Param::INT, .defaultInt = 17},
          {"PWD2", "Значение Pulse Width Modulation (PWD). ШИМ", Param::INT, .defaultInt = 255},
          {"FREQ2", "Частота", Param::INT, .defaultInt = 5000},
-         {"DRV1_C_State", "DRV1_C (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"DRV1_D_State", "DRV1_D (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"DRV2_C_State", "DRV2_C (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"DRV2_D_State", "DRV2_D (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"DRV3_C_State", "DRV3_C (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"DRV3_D_State", "DRV3_D (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"DRV4_C_State", "DRV4_C (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"DRV4_D_State", "DRV4_D (постоянный 0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV1_C_State", "DRV1_C (0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV1_D_State", "DRV1_D (0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV2_C_State", "DRV2_C (0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV2_D_State", "DRV2_D (0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV3_C_State", "DRV3_C (0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV3_D_State", "DRV3_D (0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV4_C_State", "DRV4_C (0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"DRV4_D_State", "DRV4_D (0-off, 1-on)", Param::INT, .defaultInt = 0},
 
      }},
 
@@ -942,7 +977,7 @@ void sendFileLittleFS(String path)
 #include <web/root.h>
 #include <etc/update.h>
 #include <preferences_local.h>
-#include <mqtt.h>
+#include <mqtt/mqtt.h>
 
 #include <etc/wifi_ap.h>
 #include <web/new_settings.h>

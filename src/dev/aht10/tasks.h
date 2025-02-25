@@ -17,8 +17,8 @@ void AHT10()
             publish_parameter("AirTemp", AirTemp, 3, 1);
             publish_parameter("AirHum", AirHum, 3, 1);
             Kornevoe = AirTemp - RootTemp;
-            rootVPD = calculateVPD(RootTemp, AirHum);
-            airVPD = calculateVPD(AirTemp, AirHum);
+            RootVPD = calculateVPD(RootTemp, AirHum);
+            AirVPD = calculateVPD(AirTemp, AirHum);
         }
     }
     else

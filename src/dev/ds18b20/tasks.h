@@ -30,8 +30,8 @@ void DS18B20()
                 syslog_ng("DS18B20 found by address RootTemp Sensor: " + fFTS(tempC, 3));
                 RootTemp = tempC;
                 Kornevoe = AirTemp - RootTemp;
-                rootVPD = calculateVPD(RootTemp, AirHum);
-                airVPD = calculateVPD(AirTemp, AirHum);
+                RootVPD = calculateVPD(RootTemp, AirHum);
+                AirVPD = calculateVPD(AirTemp, AirHum);
                 publish_parameter("RootTemp", RootTemp, 3, 1);
             }
             if (sensorArray[i].key == "wNTC")

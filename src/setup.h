@@ -47,18 +47,27 @@ void setupTimers()
 {
 #if defined(ENABLE_PONICS_ONLINE)
     mqttReconnectTimer =
-        xTimerCreate("MqttReconnectTimer", pdMS_TO_TICKS(20000), pdFALSE, (void *)0, onMqttReconnectTimer);
+        xTimerCreate("MqttReconnectTimer", pdMS_TO_TICKS(10000), pdTRUE, (void *)0, onMqttReconnectTimer);
     if (mqttReconnectTimer == NULL)
     {
         syslog_ng("Failed to create timer for MQTT reconnect");
     }
 #endif
     mqttReconnectTimerHa =
-        xTimerCreate("MqttReconnectTimerHa", pdMS_TO_TICKS(5000), pdFALSE, (void *)0, onMqttReconnectTimerHa);
+        xTimerCreate("MqttReconnectTimerHa", pdMS_TO_TICKS(10000), pdTRUE, (void *)0, onMqttReconnectTimerHa);
 
     if (mqttReconnectTimerHa == NULL)
     {
         syslog_ng("Failed to create timer for MQTT reconnect");
+    }
+    wifiReconnectTimer = xTimerCreate("WiFiReconnectTimer",
+                                      pdMS_TO_TICKS(5000),  // 10 секунд
+                                      pdTRUE,               // повторяющийся
+                                      (void *)0, checkWiFiConnection);
+
+    if (wifiReconnectTimer != NULL)
+    {
+        xTimerStart(wifiReconnectTimer, 0);
     }
 }
 
@@ -229,6 +238,11 @@ void setupServer()
     server.on("/update", update);
     server.on("/update-index", HTTP_GET, handleUpdateIndex);
     server.on("/core-dump", HTTP_GET, handleCoreDump);
+
+    server.on("/generate_204", handleRedirect);               // Android
+    server.on("/library/test/success.html", handleRedirect);  // iOS
+    server.on("/hotspot-detect.html", handleRedirect);        // macOS
+
     server.onNotFound([]() { handleFileRequest(); });
     server.begin();
 
@@ -317,11 +331,11 @@ void setupDevices()
 #include <dev/vl6180x/setup.h>
 }
 
-void setupTaskMqtt()
+void setupTaskMqttForCal()
 {
     syslog_ng("before setupTaskMqtt");
-    syslog_ng("before TaskMqttOnce");
-    xTaskCreate(TaskMqtt, "TaskMqtt", 5000, NULL, 0, NULL);
+    syslog_ng("before TaskMqttForCal");
+    xTaskCreate(TaskMqttForCal, "TaskMqttForCal", 5000, NULL, 0, NULL);
     syslog_ng("after setupTaskMqtt");
 }
 
@@ -345,7 +359,7 @@ void setup()
 
     setup_preferences();
     setupSyslog();
-    setupWiFi();
+    connectToWiFi();
     int rst_counter = preferences.getInt("rst_counter", 0);
     int upd = preferences.getInt("upd", 0);
     if (upd != 0)
@@ -405,15 +419,12 @@ void setup()
     KalmanDist.setParameters(dist_mea_e, dist_est_e, dist_q);
     KalmanEC.setParameters(ec_mea_e, ec_est_e, ec_q);
     KalmanEcUsual.setParameters(ec_mea_e, ec_est_e, ec_q);
-
-    setupTaskMqtt();
-
-    syslog_ng("setupI2C");
-    setupI2C();
     syslog_ng("setupServer");
     setupServer();
+    syslog_ng("setupI2C");
+    setupI2C();
     syslog_ng("setupDevices");
-
+    setupTaskMqttForCal();
     xTimerStart(mqttReconnectTimerHa, 0);
 #if defined(ENABLE_PONICS_ONLINE)
     xTimerStart(mqttReconnectTimer, 0);
@@ -424,7 +435,5 @@ void setup()
     syslog_ng("endsetup");
     syslog_ng("Firmware " + Firmware);
     syslog_ng("commit " + firmware_commit);
-    // Пример намеренной ошибки для проверки
-
     preferences.putInt("rst_counter", 0);
 }

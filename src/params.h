@@ -233,10 +233,10 @@ String generateTableRow(const Param &p)
 }
 
 // Переменные
-float AirTemp, AirHum, AirPress, RootTemp, hall, pHmV, pHraw, NTC, NTC_RAW, Ap, An, Dist, DstRAW, CPUTemp, CO2, tVOC,
-    eRAW, Vcc, wNTC, wEC_ususal, wR2, wEC, wpH, PR, EC_R1, EC_R2_p1, EC_R2_p2, Kornevoe;
-float rootVPD;
-float airVPD;
+float AirTemp, AirHum, AirPress, RootTemp, hall, pHmV, pHraw, NTC_RAW, Ap, An, Dist, DstRAW, CPUTemp, CO2, tVOC, eRAW,
+    Vcc, wNTC, wEC_ususal, wR2, wEC, wpH, PR, EC_R1, EC_R2_p1, EC_R2_p2, Kornevoe;
+float RootVPD;
+float AirVPD;
 bool OtaStart, ECwork, USwork = false;
 bool RootTempFound;
 uint16_t readGPIO;

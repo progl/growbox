@@ -7,7 +7,7 @@ FORMAT_CMD := find $(SRC_DIR) -type f \( -name "*.cpp" -o -name "*.h" \) -exec c
 FW_COMMIT_FILE = ./src/fw_commit.h
 
 # Команда для получения хэша текущего коммита
-COMMIT_HASH = $(shell git rev-parse HEAD 2>/dev/null | head -c 6)
+COMMIT_HASH = $(shell git rev-parse HEAD 2>/dev/null | head -c 7)
 COMMIT_NUMBER := $(shell cat commit_number.txt)
 
 
@@ -18,7 +18,6 @@ format:
 	@echo "Форматирование файлов .cpp и .h в папке $(SRC_DIR)..."
 	$(FORMAT_CMD)
 	@echo "Форматирование завершено."commit:
-	@bash scripts/increment_commit_number.sh
 	$(eval COMMIT_NUMBER := $(shell cat commit_number.txt))
 	@echo "Обновление $(FW_COMMIT_FILE) с текущим порядковым номером коммита: $(COMMIT_NUMBER)"
 	@echo "#ifndef FW_COMMIT_H" > $(FW_COMMIT_FILE)

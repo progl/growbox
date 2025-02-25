@@ -86,13 +86,11 @@ void TaskUS()
     Dist = (DIST_KAL_E == 1) ? Dist_Kalman : secondDist;
 
     // Вычисление уровня воды с проверкой валидности параметров
-    float wLevel = NAN;
+
     if (max_l_raw != min_l_raw)  // Защита от деления на ноль
     {
         wLevel = (min_l_level * max_l_raw - min_l_raw * max_l_level + Dist * max_l_level - Dist * min_l_level) /
                  (max_l_raw - min_l_raw);
-
-        // Проверка валидности уровня воды
         if (wLevel < 0 || wLevel > 100)
         {
             syslog_ng("US025: Invalid water level calculated: " + fFTS(wLevel, 3));
