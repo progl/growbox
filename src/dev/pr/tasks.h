@@ -114,7 +114,7 @@ void PR_void()
               "ms end.");
 
     // Публикация данных
-    publish_parameter("PR", PR, 3, 1);
+
     publish_parameter("wPR", wPR, 3, 1);
 }
 

@@ -30,7 +30,7 @@ void DS18B20()
                 syslog_ng("DS18B20 found by address RootTemp Sensor: " + fFTS(tempC, 3));
                 RootTemp = tempC;
                 Kornevoe = AirTemp - RootTemp;
-                RootVPD = calculateVPD(RootTemp, AirHum);
+
                 AirVPD = calculateVPD(AirTemp, AirHum);
                 publish_parameter("RootTemp", RootTemp, 3, 1);
             }

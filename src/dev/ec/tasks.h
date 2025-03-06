@@ -104,18 +104,13 @@ void EC_void()
               + " wEC:" + fFTS(wEC, 3) + " ec_notermo " + ec_notermo + " " + fFTS(EC_time, 0) + "ms end.");
 
     // Публикация данных
-    publish_parameter("EC_Kalman", EC_Kalman, 3, 1);
-    publish_parameter("wECnt", ec_notermo, 3, 1);
-    publish_parameter("wR2", wR2, 3, 1);
+
     publish_parameter("wEC", wEC, 3, 1);
-    publish_parameter("Ap", Ap, 3, 1);
-    publish_parameter("An", An, 3, 1);
-
-    publish_parameter("raw_Ap", raw_Ap, 3, 1);
-    publish_parameter("raw_An", raw_An, 3, 1);
-
-    publish_parameter("mv_ap0", mv_ap0, 3, 1);
-    publish_parameter("mv_an0", mv_an0, 3, 1);
+    if (!isnan(wEC) and !isnan(wLevel))
+    {
+        wSalt = wEC * wLevel;
+        publish_parameter("wSalt", wSalt, 3, 1);
+    }
 }
 
 TaskParams EC_voidParams;

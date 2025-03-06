@@ -1,3 +1,61 @@
+void publishVariablesListToMQTT()
+{
+    JsonDocument doc;
+    JsonObject root = doc.to<JsonObject>();
+
+    int arraySize =
+        sizeof(preferencesArray) / sizeof(preferencesArray[0]);  // Определяем количество элементов в массиве
+
+    for (int i = 0; i < arraySize; ++i)
+    {
+        String key = preferencesArray[i].key;
+
+        PreferenceItem *item = findPreferenceByKey(key.c_str());
+
+        if (item == nullptr)
+        {
+            syslog_ng("ERROR: Preference item not found for key: " + key);
+            continue;
+        }
+
+        if (item->preferences != nullptr)
+        {
+            switch (item->type)
+            {
+                case DataType::STRING:
+                    root[key] = item->preferences->getString(key.c_str(), *(String *)item->variable);
+                    break;
+                case DataType::INTEGER:
+                    root[key] = item->preferences->getInt(key.c_str(), *(int *)item->variable);
+                    break;
+                case DataType::FLOAT:
+                    root[key] = item->preferences->getFloat(key.c_str(), *(float *)item->variable);
+                    break;
+                case DataType::BOOLEAN:
+                    root[key] = item->preferences->getBool(key.c_str(), *(bool *)item->variable);
+                    break;
+                default:
+                    syslog_ng("ERROR: Unsupported data type for key: " + key);
+                    break;
+            }
+        }
+        else
+        {
+            syslog_ng("ERROR: Preferences not found for key: " + key);
+        }
+    }
+
+    // Сериализуем JSON объект в строку
+    String output;
+    serializeJson(doc, output);
+
+    // Создаем строку топика
+    String topic = mqttPrefix + preferences_prefix + "all_variables";
+
+    // Отправляем JSON полезную нагрузку через MQTT
+    enqueueMessage(topic.c_str(), output.c_str(), "", false);
+    vTaskDelay(1);
+}
 
 void subscribe()
 {
@@ -71,14 +129,12 @@ void onMqttConnect(bool sessionPresent)
     {
         String statusTopic = mqttPrefix + "status";
         enqueueMessage(statusTopic.c_str(), "connected");
-
-        publish_parameter("commit", String(Firmware), 1);
         syslog_ng("Before publish_setting_groups ");
         publish_setting_groups();
         syslog_ng("Before publishVariablesListToMQTT ");
         publishVariablesListToMQTT();
         first_time = false;
-        syslog_ng("After suspected line");
+        syslog_ng("After publishVariablesListToMQTT");
     }
     syslog_ng("mqtt onMqttConnect end");
 }
@@ -304,8 +360,10 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
         {
             Param &param = group.params[i];
 
-            String paramTopic = mqttPrefix + "set/" + String(group.caption) + "/" + String(param.name);
-            if (String(topic).startsWith(mqttPrefix) && paramTopic == topic)  // Check if topic starts with prefix
+            String paramTopicGroup = mqttPrefix + "set/" + String(group.caption) + "/" + String(param.name);
+            String paramTopic = mqttPrefix + "set/" + String(param.name);
+            if (String(topic).startsWith(mqttPrefix) &&
+                (paramTopic == topic || paramTopicGroup == topic))  // Check if topic starts with prefix
             {
                 PreferenceItem *item = findPreferenceByKey(param.name);
                 // Topic corresponds to parameter, processing message

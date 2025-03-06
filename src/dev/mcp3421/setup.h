@@ -11,5 +11,9 @@ if (Wire.available())
 
     setSensorDetected("MCP3421", 1);
 }
+else
+{
+    syslog_ng("MCP3421 error Wire request - no device?");
+}
 
 xSemaphoreGive(xSemaphore_C);

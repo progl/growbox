@@ -117,16 +117,9 @@ void syslog_ng(String x)
         return;
     }
     x = fFTS(float(millis()) / 1000, 3) + "s " + x;
-
-    // Проверка на NULL для topic и payload
-
     syslog.log(LOG_INFO, x);
     Serial.println(x);
-    // Отправка логов через вебсокет
-    if (webSocket.connectedClients() > 0)
-    {
-        webSocket.broadcastTXT(x);
-    }
+    webSocket.broadcastTXT(x);
 }
 
 void syslog_err(String x)
@@ -398,7 +391,7 @@ void enqueueMessage(const char *topic, const char *payload, String key = "", boo
         String websocket_msg = ":::" + key + ":" + String(payload);
         // Рассылаем сообщение всем подключённым WebSocket-клиентам
         webSocket.broadcastTXT(websocket_msg);
-        vTaskDelay(5);
+        vTaskDelay(1);
     }
 #if defined(ENABLE_PONICS_ONLINE)
     if (mqttClient.connected() and not_ha_only)
@@ -689,7 +682,7 @@ Group groups[] = {
 
      }},
     {"Сглаживание",
-     20,
+     16,
      {
 
          {"NTC_KAL_E", "Включить NTC сглаживание(0-off, 1-on)", Param::INT, .defaultInt = 0},
@@ -715,7 +708,7 @@ Group groups[] = {
      }},
 
     {"Настройки",
-     11,
+     8,
      {
          {"UPDATE_URL", "Ссылка на прошивку", Param::STRING,
           .defaultString = "https://ponics.online/static/wegabox/esp32-local/firmware.bin"},
@@ -894,6 +887,21 @@ Group groups[] = {
      }}
 
 };
+
+String getGroupNameByParameter(const String &paramName)
+{
+    for (const auto &group : groups)
+    {
+        for (const auto &param : group.params)
+        {
+            if (String(param.name) == paramName)
+            {
+                return group.caption;  // Return the group name (caption)
+            }
+        }
+    }
+    return "common_group";  // If the parameter is not found
+}
 
 const int PwdChannel1 = 1;
 const int PwdResolution1 = 8;

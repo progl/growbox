@@ -53,7 +53,7 @@ void BMP280()
         syslog_ng("BMx280 BMP280_Temp: " + fFTS(BMP280_Temp, 3));
         BMP280_AirTempRM.add(BMP280_Temp);
         AirTemp = BMP280_AirTempRM.getMedianAverage(3);
-        RootVPD = calculateVPD(RootTemp, AirHum);
+
         AirVPD = calculateVPD(AirTemp, AirHum);
         syslog_ng("BMx280 AirTemp: " + fFTS(AirTemp, 3));
 

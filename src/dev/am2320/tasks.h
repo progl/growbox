@@ -13,7 +13,7 @@ void TaskAM2320()
         publish_parameter("AirTemp", AirTemp, 3, 1);
         publish_parameter("AirHum", AirHum, 3, 1);
         Kornevoe = AirTemp - RootTemp;
-        RootVPD = calculateVPD(RootTemp, AirHum);
+
         AirVPD = calculateVPD(AirTemp, AirHum);
         syslog_ng("AM2320 AirTemp " + fFTS(AirTemp, 0));
         syslog_ng("AM2320 AirHum " + fFTS(AirHum, 0));

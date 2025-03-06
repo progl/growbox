@@ -104,9 +104,7 @@ void TaskUS()
 
     // Публикация параметров с метками времени
     uint32_t timestamp = millis();
-    publish_parameter("Dist", Dist, 3, 1);
-    publish_parameter("DistRaw", secondDist, 3, 1);
-    publish_parameter("Dist_Kalman", Dist_Kalman, 3, 1);
+
     if (!isnan(wLevel))
     {
         publish_parameter("wLevel", wLevel, 3, 1);

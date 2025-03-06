@@ -2,24 +2,21 @@ void setVPDStyles(String vpdstage)
 {
     if (vpdstage == "Start")
     {
-        rootStyle = getStyle(RootVPD, 0.8, 0.2, 1.4);  // Параметры для стадии клонов
         airStyle = getStyle(AirVPD, 0.8, 0.2, 1.4);
     }
     else if (vpdstage == "Vega")
     {
-        rootStyle = getStyle(RootVPD, 1.0, 0.5, 1.6);  // Параметры для вегетативной стадии
         airStyle = getStyle(AirVPD, 1.0, 0.5, 1.6);
     }
     else if (vpdstage == "Fruit")
     {
-        rootStyle = getStyle(RootVPD, 1.2, 0.7, 2.8);  // Параметры для стадии цветения
         airStyle = getStyle(AirVPD, 1.2, 0.7, 2.8);
     }
     else
     {
         // Значения по умолчанию, если vpdstage не соответствует ни одному из
         // известных значений
-        rootStyle = getStyle(RootVPD, 1.0, 0.5, 1.6);
+
         airStyle = getStyle(AirVPD, 1.0, 0.5, 1.6);
     }
 }
@@ -143,7 +140,6 @@ void handleApiStatuses()
     // VPD Styles
     setVPDStyles(vpdstage);
 
-    doc["RootVPD"] = fFTS(RootVPD, 1);
     doc["AirVPD"] = fFTS(AirVPD, 1);
     doc["AirHum"] = fFTS(AirHum, 1) + "%";
     doc["RootTemp"] = fFTS(RootTemp, 1);
@@ -283,6 +279,9 @@ void saveSettings()
                 return;
             }
 
+            String groupName = getGroupNameByParameter(settingName);
+            syslog_ng("Group name for " + String(settingName) + ": " + groupName);
+
             if (updatePreference(settingName, kv.value()))
             {
                 // Handle specific settings that require additional logic
@@ -314,20 +313,12 @@ void saveSettings()
                     MCP23017();
                 }
 
-                if (s == 0)
-                {
-                    syslog_err("error saving settingName " + String(settingName) + " val " + kv.value().as<String>());
-                    server.send(200, "application/json", "{\"status\":\"error memory\"}");
-                }
-                else
-                {
-                    server.send(200, "application/json", "{\"status\":\"success\"}");
-                }
+                server.send(200, "application/json", "{\"status\":\"success\"}");
             }
             else
             {
                 syslog_err("Setting not found: " + String(settingName));
-                server.send(200, "application/json", "{\"status\":\"error not found\"}");
+                server.send(200, "application/json", "{\"status\":\"error not found or error memory \"}");
             }
         }
 

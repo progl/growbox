@@ -12,8 +12,6 @@ void MCP3421()
         pHmV = (4096 / pow(2, 18) * PhRM.getAverage(2) / 4);
         get_ph();
         publish_parameter("wpH", wpH, 3, 1);
-        publish_parameter("pHmV", pHmV, 3, 1);
-        publish_parameter("pHraw", pHraw, 3, 1);
         syslog_ng("MCP3421 RAW:" + fFTS(pHraw, 3) + " pHmV:" + fFTS(pHmV, 3));
     }
     else
