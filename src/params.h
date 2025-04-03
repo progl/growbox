@@ -37,7 +37,7 @@ String not_detected_sensors = "";
 int NTC_KAL_E, EC_KAL_E, DIST_KAL_E = 0;
 int DEFAULT_DELAY = 35000;
 int LOOP_DEFAULT_DELAY = 10;
-String preferences_prefix = "preferences/";
+String preferences_prefix = "set/";
 String data_prefix = "data-calibrate/";
 String timescale_prefix = "data-timescale/";
 String main_prefix = "main/";
@@ -234,9 +234,7 @@ String generateTableRow(const Param &p)
 
 // Переменные
 float AirTemp, AirHum, AirPress, RootTemp, hall, pHmV, pHraw, NTC_RAW, Ap, An, Dist, DstRAW, CPUTemp, CO2, tVOC, eRAW,
-    Vcc, wNTC, wEC_ususal, wR2, wEC, wpH, PR, EC_R1, EC_R2_p1, EC_R2_p2, Kornevoe, wSalt;
-
-float AirVPD;
+    Vcc, wNTC, wEC_ususal, wR2, wEC, wpH, PR, EC_R1, EC_R2_p1, EC_R2_p2, Kornevoe, wSalt, AirVPD, vZapas;
 bool OtaStart, ECwork, USwork = false;
 bool RootTempFound;
 uint16_t readGPIO;

@@ -108,7 +108,7 @@ void EC_void()
     publish_parameter("wEC", wEC, 3, 1);
     if (!isnan(wEC) and !isnan(wLevel))
     {
-        wSalt = wEC * wLevel;
+        wSalt = wEC * (wLevel + vZapas);
         publish_parameter("wSalt", wSalt, 3, 1);
     }
 }

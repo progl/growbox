@@ -155,13 +155,6 @@ void handleApiStatuses()
     doc["wpH"] = fFTS(wpH, 1);
     doc["PWD"] = String(PWD1) + " : " + String(PWD2);
     // Датчики
-    JsonArray sensorsArray = doc["sensors"].to<JsonArray>();
-    for (int i = 0; i < sensorCount; i++)
-    {
-        doc["name"] = "dallas_" + String(i);
-        doc["address"] = sensorArray[i].addressToString();
-        doc["temperature"] = fFTS(sensorArray[i].temperature, 3) + "°C";
-    }
 
     doc["detected_sensors"] = detected_sensors;
 
@@ -180,11 +173,11 @@ void handleApiStatuses()
     server.send(200, "application/json", sanitizeString(output));
 }
 
-void handleApiGroups()
+void ApiGroups(bool labels = false)
 {
     // Проверка и инициализация списков не обнаруженных и обнаруженных датчиков
 
-    syslog_ng("WEB /groups");
+    syslog_ng("WEB /groups labels " + String(labels));
     unsigned long t_millis = millis();
 
     // Создание JSON-объекта
@@ -204,17 +197,24 @@ void handleApiGroups()
 
             if (item != nullptr && item->preferences != nullptr)
             {
-                switch (param.type)
+                if (labels)
                 {
-                    case Param::INT:
-                        groupJson[param.name] = item->preferences->getInt(param.name, *(int *)item->variable);
-                        break;
-                    case Param::FLOAT:
-                        groupJson[param.name] = item->preferences->getFloat(param.name, *(float *)item->variable);
-                        break;
-                    case Param::STRING:
-                        groupJson[param.name] = item->preferences->getString(param.name, *(String *)item->variable);
-                        break;
+                    doc[String(param.name) + "_label"] = param.label;
+                }
+                else
+                {
+                    switch (param.type)
+                    {
+                        case Param::INT:
+                            groupJson[param.name] = item->preferences->getInt(param.name, *(int *)item->variable);
+                            break;
+                        case Param::FLOAT:
+                            groupJson[param.name] = item->preferences->getFloat(param.name, *(float *)item->variable);
+                            break;
+                        case Param::STRING:
+                            groupJson[param.name] = item->preferences->getString(param.name, *(String *)item->variable);
+                            break;
+                    }
                 }
             }
             else
@@ -224,16 +224,24 @@ void handleApiGroups()
         }
     }
 
+    JsonArray sensorsArray = doc.createNestedArray("sensors");
+    for (int i = 0; i < sensorCount; i++)
+    {
+        JsonObject sensor = sensorsArray.createNestedObject();
+        sensor["name"] = "dallas_" + String(i);
+        sensor["address"] = dallasAdresses[i].addressToString();
+    }
+
     // Сериализация и отправка JSON
     String output;
     serializeJson(doc, output);
 
     Serial.print("Serialized JSON length: ");
     Serial.println(output.length());
-
     server.send(200, "application/json", sanitizeString(output));
 }
-
+void handleApiLabels() { ApiGroups(true); }
+void handleApiGroups() { ApiGroups(false); }
 // Функция для работы с JsonVariant
 
 void saveSettings()
@@ -284,6 +292,8 @@ void saveSettings()
 
             if (updatePreference(settingName, kv.value()))
             {
+                const PreferenceItem *item = findPreferenceByKey(settingName);
+                publish_one_data(item);
                 // Handle specific settings that require additional logic
                 if (strcmp(settingName, "RDDelayOn") == 0)
                 {
@@ -318,13 +328,9 @@ void saveSettings()
             else
             {
                 syslog_err("Setting not found: " + String(settingName));
-                server.send(200, "application/json", "{\"status\":\"error not found or error memory \"}");
+                server.send(400, "application/json", "{\"status\":\"error not found or error memory \"}");
             }
         }
-
-        publish_setting_groups();
-
-        publishVariablesListToMQTT();
 
         KalmanNTC.setParameters(ntc_mea_e, ntc_est_e, ntc_q);
         KalmanDist.setParameters(dist_mea_e, dist_est_e, dist_q);

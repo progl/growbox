@@ -37,7 +37,7 @@ void start_ledc_pwd(int pwdChannel, int &pwd_val, int pwd_freq, int pwd_port, co
 void start_ledc_pwd1()
 {
     // Проверка наличия указателя на переменную PWD1
-    if (variablePointers["PWD1"] != nullptr && variablePointers["FREQ1"] != nullptr)
+    if (!isnan(*variablePointers["PWD1"]) && !isnan(*variablePointers["FREQ1"]))
     {
         int &pwd_val = *variablePointers["PWD1"];
         int &pwd_freq = *variablePointers["FREQ1"];
@@ -46,14 +46,10 @@ void start_ledc_pwd1()
     else
     {
         // Логирование ошибки в случае отсутствия указателя
-        if (variablePointers["PWD1"] == nullptr)
-        {
-            syslog_err("MCP23017 Pointer to PWD1 is null!");
-        }
-        if (variablePointers["FREQ1"] == nullptr)
-        {
-            syslog_err("MCP23017 Pointer to FREQ1 is null!");
-        }
+
+        syslog_err("MCP23017 Pointer to PWD1 is null!");
+
+        syslog_err("MCP23017 Pointer to FREQ1 is null!");
     }
 }
 
@@ -93,7 +89,7 @@ void MCP23017()
     // Адаптивная циркуляция для снижения скачков корневого давления
     if (RootPomp == 1)
     {
-        syslog_ng("MCP23017 RootPomp");
+        syslog_ng("MCP23017 RootPomp on");
 
         if (RootPwdOn == 1)
         {
@@ -153,66 +149,88 @@ void MCP23017()
         }
     }
 
+    if (log_debug)
+        syslog_ng("MCP23017 WATERING ECStabEnable==1 " + String(ECStabEnable == 1) + " wEC > ECStabValue  " +
+                  String(wEC > ECStabValue) + " millis() - ECStabTimeStart  > ECStabInterval * 1000  " + " time: " +
+                  String(millis() - ECStabTimeStart > ECStabInterval * 1000) + " wLevel >= ECStabMinDist  " +
+                  String(wLevel >= ECStabMinDist) + " wLevel < ECStabMaxDist " + String(wLevel < ECStabMaxDist));
     // Коррекция ЕС путем разбавления
     if (ECStabEnable == 1 && wEC > ECStabValue && millis() - ECStabTimeStart > ECStabInterval * 1000 &&
-        Dist >= ECStabMinDist && Dist < ECStabMaxDist
+        wLevel >= ECStabMinDist && wLevel < ECStabMaxDist
 
     )
     {
+        std::string key = std::string(options[ECStabPomp].c_str()) + "_State";
         syslog_ng("MCP23017 WATERING ECStabTime " + String(ECStabTime) + " ECStabInterval " + String(ECStabInterval));
         mcp.digitalWrite(ECStabPomp, 1);
-        readGPIO = mcp.readGPIOAB();
-        publish_parameter("readGPIO", readGPIO, 3, 1);
+        *variablePointers[key] = 1;
+        publish_parameter(options[ECStabPomp], 1, 3, 1);
         vTaskDelay(ECStabTime * 1000);
         mcp.digitalWrite(ECStabPomp, 0);
+        *variablePointers[key] = 0;
         readGPIO = mcp.readGPIOAB();
-        publish_parameter("readGPIO", readGPIO, 3, 1);
+        publish_parameter(options[ECStabPomp], 0, 3, 1);
         ECStabOn += ECStabTime;
         ECStabTimeStart = millis();
-        syslog_ng("MCP23017 END WATERING");
+        syslog_ng("MCP23017 WATERING END WATERING");
     }
     else
     {
-        syslog_ng("MCP23017 ECStabEnable==1 " + String(ECStabEnable == 1) + " wEC > ECStabValue  " +
-                  String(wEC > ECStabValue) + " millis() - ECStabTimeStart  > ECStabInterval * 1000  " +
-                  " time: " + String(millis() - ECStabTimeStart > ECStabInterval * 1000) + " Dist >= ECStabMinDist  " +
-                  String(Dist >= ECStabMinDist) + " Dist < ECStabMaxDist " + String(Dist < ECStabMaxDist));
-
-        mcp.digitalWrite(ECStabPomp, 0);
+        if (ECStabEnable == 1)
+        {
+            std::string key = std::string(options[ECStabPomp].c_str()) + "_State";
+            if (*variablePointers[key] != 0)
+            {
+                mcp.digitalWrite(ECStabPomp, 0);
+                *variablePointers[key] = 0;
+                syslog_ng("MCP23017 WATERING DISABLE ECStabEnable==1 " + String(ECStabEnable == 1) +
+                          " wEC > ECStabValue  " + String(wEC > ECStabValue) +
+                          " millis() - ECStabTimeStart  > ECStabInterval * 1000  " +
+                          " time: " + String(millis() - ECStabTimeStart > ECStabInterval * 1000) +
+                          " wLevel >= ECStabMinDist  " + String(wLevel >= ECStabMinDist) + " wLevel < ECStabMaxDist " +
+                          String(wLevel < ECStabMaxDist));
+            }
+        }
     }
 
     // Остановка помпы ночью по датчику освещенности
     if (PompNightEnable == 1)
     {
         int pompState = min_light ? 0 : 1;
+        std::string key = std::string(options[PompNightPomp].c_str()) + "_State";
         if (PR != -1)
         {
-            syslog_ng("MCP23017 PompNight enable");
-            t = preferences.putInt((options[PompNightPomp] + "_State").c_str(), pompState);
-            // Преобразование String в std::string перед конкатенацией
-            std::string key = std::string(options[PompNightPomp].c_str()) + "_State";
-
-            // Использование ключа для доступа к словарю variablePointers
-            *variablePointers[key] = pompState;
-
-            if (t == 0)
+            if (*variablePointers[key] != pompState)
             {
-                syslog_ng("MCP23017 error put PompNight_State");
+                syslog_ng("MCP23017 PompNight enable");
+                t = preferences.putInt((options[PompNightPomp] + "_State").c_str(), pompState);
+                // Преобразование String в std::string перед конкатенацией
+
+                // Использование ключа для доступа к словарю variablePointers
+                *variablePointers[key] = pompState;
+
+                if (t == 0)
+                {
+                    syslog_ng("MCP23017 PompNight error put PompNight_State");
+                }
             }
         }
         else
         {
-            syslog_ng("MCP23017 PompNight STOP" + String(pompState));
-            t = preferences.putInt((options[PompNightPomp] + "_State").c_str(), pompState);
-            // Преобразование String в std::string перед конкатенацией
-            std::string key = std::string(options[PompNightPomp].c_str()) + "_State";
-
-            // Использование ключа для доступа к словарю variablePointers
-            *variablePointers[key] = pompState;
-
-            if (t == 0)
+            if (*variablePointers[key] != pompState)
             {
-                syslog_ng("MCP23017 error put PompNight_State");
+                syslog_ng("MCP23017 PompNight STOP" + String(pompState));
+                t = preferences.putInt((options[PompNightPomp] + "_State").c_str(), pompState);
+                // Преобразование String в std::string перед конкатенацией
+                std::string key = std::string(options[PompNightPomp].c_str()) + "_State";
+
+                // Использование ключа для доступа к словарю variablePointers
+                *variablePointers[key] = pompState;
+
+                if (t == 0)
+                {
+                    syslog_ng("MCP23017 PompNight error put PompNight_State");
+                }
             }
         }
     }
@@ -220,45 +238,51 @@ void MCP23017()
     // Периодическое управление помпой
     if ((RDWorkNight == 1 && min_light && RDEnable == 1) || (RDEnable == 1))
     {
-        syslog_ng("MCP23017 PERIODICA START + RDWorkNight " + String(RDWorkNight == 1) + " min_light " +
-                  String(min_light) + " RDEnable " + String(RDEnable == 1));
+        if (log_debug)
+            syslog_ng("MCP23017 PERIODICA START + RDWorkNight " + String(RDWorkNight == 1) + " min_light " +
+                      String(min_light) + " RDEnable " + String(RDEnable == 1));
         if (millis() > NextRootDrivePwdOn)
         {
-            t = preferences.putInt((options[RDSelectedRP] + "_State").c_str(), 1);
-            // Преобразование String в std::string перед конкатенацией
             std::string key = std::string(options[RDSelectedRP].c_str()) + "_State";
-
-            // Использование ключа для доступа к словарю variablePointers
-            *variablePointers[key] = 1;
-
-            if (t == 0)
+            if (*variablePointers[key] != 1)
             {
-                syslog_ng("MCP23017 error put RDSelectedRP state");
+                t = preferences.putInt((options[RDSelectedRP] + "_State").c_str(), 1);
+                // Преобразование String в std::string перед конкатенацией
+
+                // Использование ключа для доступа к словарю variablePointers
+                *variablePointers[key] = 1;
+
+                if (t == 0)
+                {
+                    syslog_ng("MCP23017 error put RDSelectedRP state");
+                }
+                t = preferences.putInt("PWD2", RDPWD);
+                *variablePointers["PWD2"] = RDPWD;
+                if (t == 0)
+                {
+                    syslog_ng("MCP23017 error put RDPWD");
+                }
+                NextRootDrivePwdOff = millis() + (RDDelayOn * 1000);
+                NextRootDrivePwdOn = NextRootDrivePwdOff + (RDDelayOff * 1000);
+                isPumpOn = true;
             }
-            t = preferences.putInt("PWD2", RDPWD);
-            *variablePointers["PWD2"] = RDPWD;
-            if (t == 0)
-            {
-                syslog_ng("MCP23017 error put RDPWD");
-            }
-            NextRootDrivePwdOff = millis() + (RDDelayOn * 1000);
-            NextRootDrivePwdOn = NextRootDrivePwdOff + (RDDelayOff * 1000);
-            isPumpOn = true;
         }
         if (millis() > NextRootDrivePwdOff)
         {
-            t = preferences.putInt((options[RDSelectedRP] + "_State").c_str(), 0);
-            // Преобразование String в std::string перед конкатенацией
             std::string key = std::string(options[RDSelectedRP].c_str()) + "_State";
-
-            // Использование ключа для доступа к словарю variablePointers
-            *variablePointers[key] = 0;
-
-            if (t == 0)
+            if (*variablePointers[key] != 0)
             {
-                syslog_ng("MCP23017 error put RDSelectedRPsate");
+                t = preferences.putInt((options[RDSelectedRP] + "_State").c_str(), 0);
+
+                // Использование ключа для доступа к словарю variablePointers
+                *variablePointers[key] = 0;
+
+                if (t == 0)
+                {
+                    syslog_ng("MCP23017 error put RDSelectedRPsate");
+                }
+                isPumpOn = false;
             }
-            isPumpOn = false;
         }
     }
     else
@@ -278,14 +302,15 @@ void MCP23017()
         for (int j = 0; j < BITS_PER_DRV; j++)
         {
             int currentPinState = *variablePointers[DRV_Keys[i][j].c_str()];
+            byte cur_bitw_state = bitRead(readGPIO, DRV[i][j]);
             bitWrite(bitw, DRV[i][j], currentPinState);
-            if (log_debug)
-                syslog_ng("MCP23017 READ:" + String(bitString) + " DRV" + String(i) + " pin " + String(DRV[i][j]) +
+            if (currentPinState != cur_bitw_state)
+            {
+                syslog_ng("MCP23017 READ: " + String(bitString) + " DRV" + String(i) + " pin " + String(DRV[i][j]) +
                           " " + String(DRV_Keys[i][j]) + " currentPinState " + String(currentPinState) + " bitRead " +
                           bitRead(readGPIO, DRV[i][j]) + " bitw " + bitRead(bitw, DRV[i][j]));
-
-            if (bitRead(readGPIO, DRV[i][j]) == 0 && currentPinState == 1 &&
-                *variablePointers[DRV_PK_On_Keys[i][j].c_str()] == 1)
+            }
+            if (cur_bitw_state == 0 && currentPinState == 1 && *variablePointers[DRV_PK_On_Keys[i][j].c_str()] == 1)
             {
                 int pwdChannel = (i < 2) ? PwdChannel1 : PwdChannel2;
                 ledcSetup(pwdChannel, (i < 2) ? FREQ1 : FREQ2, PwdResolution1);
@@ -326,30 +351,32 @@ void MCP23017()
             mcp.writeGPIOAB(bitw);
             readGPIO = mcp.readGPIOAB();
 
-            if (log_debug)
+            char bitString[17];
+            char bitString2[17];  // строка для хранения битов, 16 бит + 1 символ для
+                                  // окончания строки
+
+            // Управление драйверами
+            for (int i = 0; i < 16; i++)
             {
-                char bitString[17];
-                char bitString2[17];  // строка для хранения битов, 16 бит + 1 символ для
-                                      // окончания строки
-
-                // Управление драйверами
-                for (int i = 0; i < 16; i++)
-                {
-                    bitString[15 - i] = (readGPIO & (1 << i)) ? '1' : '0';
-                    bitString2[15 - i] = (bitw & (1 << i)) ? '1' : '0';
-                }
-
-                bitString[16] = '\0';   // добавляем символ окончания строки
-                bitString2[16] = '\0';  // добавляем символ окончания строки
-
-                syslog_ng("MCP23017 set  readGPIO " + String(bitString) + " bitw " + String(bitString2));
+                bitString[15 - i] = (readGPIO & (1 << i)) ? '1' : '0';
+                bitString2[15 - i] = (bitw & (1 << i)) ? '1' : '0';
             }
 
-            GPIOerrcont++;
-            checkMismatchedPumps(readGPIO, bitw);
+            bitString[16] = '\0';   // добавляем символ окончания строки
+            bitString2[16] = '\0';  // добавляем символ окончания строки
+
+            syslog_ng("MCP23017 set  readGPIO " + String(bitString) + " bitw " + String(bitString2));
         }
+
+        GPIOerrcont++;
+        checkMismatchedPumps(readGPIO, bitw);
     }
-    // Публикация параметров
-    publish_parameter("readGPIO", readGPIO, 3, 1);
+
+    for (int i = 0; i < 16; i++)
+    {
+        uint16_t mask = 1 << i;
+        uint8_t status = (readGPIO & mask) ? 1 : 0;  // Получаем четкое 0 или 1
+        publish_parameter(options[i], status, 3, 1);
+    }
 }
 TaskParams MCP23017Params;

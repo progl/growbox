@@ -208,6 +208,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
                 publish_parameter("AirTemp", AirTemp, 3, 0);
                 publish_parameter("NTC_RAW", NTC_RAW, 3, 0);
                 publish_parameter("wNTC", wNTC, 3, 0);
+                publish_parameter("now", wNTC, 0, 0);
 
                 syslog_ng("mqtt calibrate_now temp");
             }
@@ -230,7 +231,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
                 publish_parameter("wEC", wEC, 3, 0);
                 publish_parameter("wECnt", ec_notermo, 3, 0);
                 publish_parameter("wR2", wR2, 3, 0);
-                publish_parameter("uptime", millis() / 1000, 0, 0);
+                publish_parameter("now", wNTC, 0, 0);
                 syslog_ng("mqtt calibrate_now ec");
                 if (enabled_kalman == 1)
                 {
@@ -244,7 +245,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
                 publish_parameter("pHmV", pHmV, 3, 0);
                 publish_parameter("pHraw", pHraw, 3, 0);
                 publish_parameter("wpH", wpH, 3, 0);
-                publish_parameter("uptime", millis() / 1000, 0, 0);
+                publish_parameter("now", wNTC, 0, 0);
                 syslog_ng("mqtt MCP3421");
             }
 
@@ -253,7 +254,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
                 PR_void();  // Фоторезистор
                 publish_parameter("PR", PR, 3, 0);
                 publish_parameter("wPR", wPR, 3, 0);
-                publish_parameter("uptime", millis() / 1000, 0, 0);
+                publish_parameter("now", wNTC, 0, 0);
                 syslog_ng("mqtt PR_void");
             }
 
@@ -263,7 +264,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
                 publish_parameter("Dist", Dist, 3, 0);
                 publish_parameter("DstRAW", DstRAW, 3, 0);
                 publish_parameter("wLevel", wLevel, 3, 0);
-                publish_parameter("uptime", millis() / 1000, 0, 0);
+                publish_parameter("now", wNTC, 0, 0);
                 syslog_ng("mqtt bak");
             }
 
@@ -346,10 +347,6 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
                         }
                         break;
                 }
-                if (is_setup == 0)
-                {
-                    publish_one_data(preferencesArray[i]);
-                }
             }
         }
     }
@@ -374,8 +371,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
                         {  // Add your own validation function isInteger
 
                             item->preferences->putInt(param.name, message.toInt());
-                            syslog_ng("mqtt " + String(param.name) + " message " + message);
-                            publish_switch_discovery_payload(param);
+                            syslog_ng("mqtt int param " + String(param.name) + " message " + String(message.toInt()));
                         }
                         else
                         {
@@ -386,8 +382,8 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
                         if (message.length() > 0)
                         {  // Add your own validation function isFloat
                             item->preferences->putFloat(param.name, message.toFloat());
-                            syslog_ng("mqtt " + String(param.name) + " message " + message);
-                            publish_switch_discovery_payload(param);
+                            syslog_ng("mqtt float param " + String(param.name) + " message " +
+                                      String(message.toFloat()));
                         }
                         else
                         {
@@ -398,8 +394,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
                         if (message.length() > 0)
                         {
                             item->preferences->putString(param.name, message);
-                            syslog_ng("mqtt " + String(param.name) + " message " + message);
-                            publish_switch_discovery_payload(param);
+                            syslog_ng("mqtt string param " + String(param.name) + " message " + String(message));
                         }
                         else
                         {
@@ -419,6 +414,7 @@ void publish_params_all(int all = 1)
     if (calE == 1)
     {
         syslog_ng("publich calibtate params");
+
         publish_parameter("RootTemp", RootTemp, 3, 0);
         publish_parameter("NTC_RAW", NTC_RAW, 3, 0);
 

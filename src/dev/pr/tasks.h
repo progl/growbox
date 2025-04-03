@@ -1,7 +1,7 @@
 
 float pr(float my_arg)
 {
-    if (isnan(my_arg) || my_arg == 0.0) return NAN;  // Check if my_arg is not a number or zero
+    if (isnan(my_arg) || my_arg == 0.0) return 0.0f;  // Check if my_arg is not a number or zero
 
     float calc_pr = 0.0;
 

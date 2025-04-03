@@ -61,6 +61,7 @@ struct TaskParams
     void (*taskFunction)();
     unsigned long repeatInterval;
     SemaphoreHandle_t xSemaphore;
+    unsigned long busyCounter;
 };
 
 struct TaskInfo
@@ -142,6 +143,7 @@ void syslog_err(String x)
 void TaskTemplate(void *params)
 {
     TaskParams *taskParams = (TaskParams *)params;
+    taskParams->busyCounter = 0;
     syslog_ng(String("TaskTemplate " + String(taskParams->taskName) + " received task ") +
               String(taskParams->taskName));
     TaskInfo *currentTask = nullptr;
@@ -225,6 +227,7 @@ void TaskTemplate(void *params)
             }
             if (xSemaphoreTake(taskParams->xSemaphore, (TickType_t)1) == pdTRUE)
             {
+                taskParams->busyCounter = 0;
                 lastExecutionTime = currentTime;
                 unsigned long startTime = millis();
 
@@ -253,7 +256,11 @@ void TaskTemplate(void *params)
             }
             else
             {
-                syslog_ng(String(taskParams->taskName) + " symofore busy ");
+                taskParams->busyCounter++;
+                if (taskParams->busyCounter > 5)
+                {
+                    syslog_ng(String(taskParams->taskName) + " symofore busy ");
+                }
 
                 vTaskDelay(5000);
             }
@@ -318,7 +325,25 @@ struct SensorData
     SensorData() : KalmanDallasTmp(dallas_mea_e, dallas_est_e, dallas_q) {}
 };
 
+struct DallasAdresses
+{
+    DeviceAddress address;
+    String addressToString() const
+    {
+        String str = "";
+        for (int i = 0; i < 8; i++)
+        {
+            if (address[i] < 16) str += "0";  // Добавляем ведущий ноль для однозначных значений
+            str += String(address[i], HEX);
+            if (i < 7) str += ":";
+        }
+        return str;
+    }
+};
+
 SensorData sensorArray[MAX_DS18B20_SENSORS];
+DallasAdresses dallasAdresses[MAX_DS18B20_SENSORS];
+
 String rootTempAddressString;
 String WNTCAddressString;
 
@@ -624,27 +649,18 @@ Group groups[] = {
      7,
      {
          {"ECStabEnable", "EC вкл коррекцию водой(0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"ECStabPomp", "Помпа", Param::INT, .defaultInt = 0},
+         {"ECStabPomp", "Помпа Пин", Param::INT, .defaultInt = 0},
          {"ECStabValue", "EC нужный", Param::FLOAT, .defaultFloat = 2.5},
-         {"ECStabTime", "Время налива", Param::INT, .defaultInt = 20},
-         {"ECStabInterval", "Интервал налива", Param::INT, .defaultInt = 180},
-         {"ECStabMinDist", "Уровень минимальный", Param::FLOAT, .defaultFloat = 5},
-         {"ECStabMaxDist", "Уровень максимальный", Param::FLOAT, .defaultFloat = 50},
-     }},
-    {"Долив концентрата",
-     5,
-     {
-         {"ECDoserEnable", "Дозер концентратов(0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"ECDoserLimit", "ЕС максимальный", Param::FLOAT, .defaultFloat = 1.5},
-         {"ECDoserValueA", "Помпа А МЛ за одну подачу", Param::FLOAT, .defaultFloat = 1},
-         {"ECDoserValueB", "Помпа Б МЛ за одну подачу", Param::FLOAT, .defaultFloat = 1},
-         {"ECDoserInterval", "Интервал коррекции", Param::INT, .defaultInt = 600},
+         {"ECStabTime", "Время работы секунды", Param::INT, .defaultInt = 20},
+         {"ECStabInterval", "Время отдыха секунды", Param::INT, .defaultInt = 180},
+         {"ECStabMinDist", "Уровень минимальный литры", Param::FLOAT, .defaultFloat = 5},
+         {"ECStabMaxDist", "Уровень максимальный литры", Param::FLOAT, .defaultFloat = 50},
      }},
     {"Давление корней",
      12,
      {
          {"RootPomp", "Вкл(0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"SelectedRP", "Помпа", Param::INT, .defaultInt = 0},
+         {"SelectedRP", "Помпа Пин", Param::INT, .defaultInt = 0},
          {"RootPwdOn", "Регулировать ШИМом(0-off, 1-on)", Param::INT, .defaultInt = 1},
          {"RootPwdMax", "ШИМ максимум", Param::INT, .defaultInt = 254},
          {"RootPwdMin", "ШИМ минимум", Param::INT, .defaultInt = 0},
@@ -661,8 +677,8 @@ Group groups[] = {
      3,
      {
          {"PompNightEnable", "Ночной режим(0-off, 1-on)", Param::INT, .defaultInt = 0},
-         {"PompNightPomp", "Помпа", Param::INT, .defaultInt = 0},
-         {"MinLightLevel", "Минимальный уровень датчика света для отключеняи помпы", Param::INT, .defaultInt = 10},
+         {"PompNightPomp", "Помпа Пин", Param::INT, .defaultInt = 0},
+         {"MinLightLevel", "Минимальный уровень датчика света для отключения помпы", Param::INT, .defaultInt = 10},
      }},
     {"WIFI",
      2,
@@ -708,10 +724,9 @@ Group groups[] = {
      }},
 
     {"Настройки",
-     8,
+     10,
      {
-         {"UPDATE_URL", "Ссылка на прошивку", Param::STRING,
-          .defaultString = "https://ponics.online/static/wegabox/esp32-local/firmware.bin"},
+         {"UPDATE_URL", "Ссылка на прошивку", Param::STRING, .defaultString = UPDATE_URL.c_str()},
          {"update_token", "Ключ обновления", Param::STRING, .defaultString = update_token.c_str()},
          {"HOSTNAME", "Имя хоста", Param::STRING, .defaultString = HOSTNAME.c_str()},
          {"vpdstage", "VPD стадия", Param::STRING, .defaultString = vpdstage.c_str()},
@@ -719,6 +734,7 @@ Group groups[] = {
          {"calE", "Включить калибровку(0-off, 1-on)", Param::INT, .defaultInt = 0},
          {"change_pins", "поменять пины US025(HCR04)(0-off, 1-on)", Param::INT, .defaultInt = 0},
          {"clear_pref", "Сброс ВСЕХ настроек кроме wifi(0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"vZapas", "Запас в трубе раствора", Param::FLOAT, .defaultFloat = 9.5},
 
      }},
 
@@ -745,7 +761,7 @@ Group groups[] = {
      11,
      {
          {"StPumpB_On", "Вкл(0-off, 1-on)", Param::INT, .defaultFloat = 0},
-         {"SetPumpB_Ml", "Налить мл разово", Param::FLOAT, .defaultFloat = 0},
+         {"SetPumpB_Ml", "Налить мл разово(0-off, 1-on)", Param::FLOAT, .defaultFloat = 0},
          {"StPumpB_Del", "Отдых мс", Param::INT, .defaultInt = 700},
          {"StPumpB_Ret", "Шаг мс", Param::INT, .defaultInt = 700},
 
@@ -757,7 +773,15 @@ Group groups[] = {
          {"StPumpB_C", "Пин 3", Param::INT, .defaultInt = 10},
          {"StPumpB_D", "Пин 4", Param::INT, .defaultInt = 11},
      }},
-
+    {"Долив концентрата",
+     5,
+     {
+         {"ECDoserEnable", "Дозер концентратов(0-off, 1-on)", Param::INT, .defaultInt = 0},
+         {"ECDoserLimit", "ЕС максимальный", Param::FLOAT, .defaultFloat = 1.5},
+         {"ECDoserValueA", "Помпа А МЛ за одну подачу", Param::FLOAT, .defaultFloat = 1},
+         {"ECDoserValueB", "Помпа Б МЛ за одну подачу", Param::FLOAT, .defaultFloat = 1},
+         {"ECDoserInterval", "Интервал коррекции", Param::INT, .defaultInt = 600},
+     }},
     {"ШИМ группа 1",
      11,
      {

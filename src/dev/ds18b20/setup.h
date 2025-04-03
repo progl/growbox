@@ -35,6 +35,8 @@ if (sensorCount > 0)
     {
         DeviceAddress currentAddress;
         sens18b20.getAddress(currentAddress, i);
+
+        memcpy(dallasAdresses[i].address, currentAddress, sizeof(DeviceAddress));
         syslog_ng("DS18B20 Sensor " + String(i) + " adr: " + deviceAddressToString(currentAddress) +
                   " Temp: " + fFTS(sens18b20.getTempC(currentAddress), 3));
         for (uint8_t j = 0; j < MAX_DS18B20_SENSORS; j++)  // Adjust MAX_SENSOR_ARRAY_SIZE as needed

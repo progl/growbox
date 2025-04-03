@@ -48,8 +48,6 @@ bool updatePreferenceValue(PreferenceItem *item, const String &value)
     if (s.length() > 0)
     {
         syslog_ng("Updated preference for key: " + String(item->key) + " with value: " + String(value));
-        String state_topic = mqttPrefix + "state/" + String(item->key);
-        enqueueMessage(state_topic.c_str(), value.c_str(), "", false);
         return true;
     }
     else
@@ -126,18 +124,18 @@ void publish_switch_discovery_payload(Param param)
     JsonDocument doc;
     char buffer[512];
     String command_topic = mqttPrefix + "set/" + String(param.name);
-    String state_topic = mqttPrefix + "state/" + String(param.name);
 
     // Проверка на наличие имени переключателя
     if (switch_name.length() == 0)
     {
-        syslog_ng("ERROR: Switch name is empty.");
+        syslog_ng("mqttHA ERROR: Switch name is empty.");
         return;
     }
 
-    doc["name"] = switch_name;                                // Имя устройства
-    doc["command_topic"] = command_topic;                     // Топик для команд
-    doc["state_topic"] = state_topic;                         // Топик для состояния
+    doc["name"] = switch_name;             // Имя устройства
+    doc["command_topic"] = command_topic;  // Топик для команд
+    doc["state_topic"] = command_topic;    // Топик для состояния
+
     doc["unique_id"] = String(HOSTNAME) + "_" + switch_name;  // Уникальный ID устройства
     doc["payload_on"] = 1;                                    // Значение для включения
     doc["payload_off"] = 0;                                   // Значение для выключения
@@ -164,10 +162,45 @@ void publish_switch_discovery_payload(Param param)
     {
         if (item->variable != nullptr)
         {
-            String value = (strlen((const char *)item->variable) > 0) ? String((const char *)item->variable) : "0";
-            enqueueMessage(state_topic.c_str(), value.c_str(), "", false);
+            if (item->variable)
+            {
+                String value;
+
+                switch (item->type)
+                {
+                    case DataType::STRING:
+                        if (strlen((const char *)item->variable) > 0)
+                        {
+                            value = String((const char *)item->variable);
+                        }
+                        break;
+
+                    case DataType::INTEGER:
+                        value = String(*reinterpret_cast<int *>(item->variable));
+                        break;
+
+                    case DataType::FLOAT:
+                        value = String(*reinterpret_cast<float *>(item->variable), 2);  // 2 знака после запятой
+                        break;
+
+                    case DataType::BOOLEAN:
+                        value = (*reinterpret_cast<bool *>(item->variable)) ? "true" : "false";
+                        break;
+
+                    default:
+                        value = "0";
+                        break;
+                }
+
+                // Отправляем сообщение и логируем состояние
+                if (!value.isEmpty())
+                {
+                    enqueueMessage(command_topic.c_str(), value.c_str(), "", false);
+                    syslog_ng("mqttHA mqttClientHA publish switch state " + String(switch_name) + " value " + value);
+                }
+            }
+
             mqttClientHA.subscribe(command_topic.c_str(), qos);
-            syslog_ng("mqttClientHA publish switch state " + String(switch_name) + " value " + value);
         }
         else
         {
@@ -176,29 +209,35 @@ void publish_switch_discovery_payload(Param param)
     }
     else
     {
-        syslog_ng("ERROR: mqtt publish switch  Could not find preferences for " + String(switch_name));
+        syslog_ng("mqtt ERROR: mqtt publish switch  Could not find preferences for " + String(switch_name));
     }
+}
+
+void subscribe_param_ha(Param param)
+{
+    String command_topic = mqttPrefix + "set/" + String(param.name);
+    mqttClientHA.subscribe(command_topic.c_str(), qos);
 }
 
 void onMqttDisconnectHA(AsyncMqttClientDisconnectReason reason)
 {
-    syslog_ng("mqttClientHA Disconnected. Reason: " + String((int)reason));
+    syslog_ng("mqtt mqttClientHA Disconnected. Reason: " + String((int)reason));
     if (reason == AsyncMqttClientDisconnectReason::TCP_DISCONNECTED)
     {
-        syslog_ng("mqttClientHA TCP_DISCONNECTED: клиент сам разорвал соединение.");
+        syslog_ng("mqtt mqttClientHA TCP_DISCONNECTED: клиент сам разорвал соединение.");
     }
     else if (reason == AsyncMqttClientDisconnectReason::MQTT_UNACCEPTABLE_PROTOCOL_VERSION)
     {
-        syslog_ng("mqttClientHA Ошибка: неверная версия протокола.");
+        syslog_ng("mqtt mqttClientHA Ошибка: неверная версия протокола.");
     }
     else if (reason == AsyncMqttClientDisconnectReason::MQTT_IDENTIFIER_REJECTED)
     {
-        syslog_ng("mqttClientHA Ошибка: идентификатор клиента отклонен.");
+        syslog_ng("mqtt mqttClientHA Ошибка: идентификатор клиента отклонен.");
     }
     // Добавьте дополнительные случаи для анализа
 
-    syslog_ng("mqttClientHA: Disconnected. Reason: " + String(static_cast<int>(reason)));
-    syslog_ng("mqttClientHA: WiFi isConnected: " + String(static_cast<int>(WiFi.isConnected())));
+    syslog_ng("mqtt mqttClientHA: Disconnected. Reason: " + String(static_cast<int>(reason)));
+    syslog_ng("mqtt mqttClientHA: WiFi isConnected: " + String(static_cast<int>(WiFi.isConnected())));
     if (WiFi.isConnected())
     {
         if (not mqttClientHA.connected())
@@ -216,15 +255,15 @@ void connectToMqttHA()
         if (not mqttClientHA.connected())
         {
             mqttHAConnected = 0;
-            syslog_ng("mqttClientHA a_ha: \"" + String(a_ha) + "\", p_ha: \"" + String(p_ha) + "\", u_ha: \"" +
+            syslog_ng("mqtt mqttClientHA a_ha: \"" + String(a_ha) + "\", p_ha: \"" + String(p_ha) + "\", u_ha: \"" +
                       String(u_ha) + "\"");
-            syslog_ng("mqttClientHA connectToMqtt Connecting to MQTT...");
+            syslog_ng("mqtt mqttClientHA connectToMqtt Connecting to MQTT...");
             mqttClientHA.connect();
-            syslog_ng("mqttClientHA connectToMqtt Connected " + String(mqttClientHA.connected()));
+            syslog_ng("mqtt mqttClientHA connectToMqtt Connected " + String(mqttClientHA.connected()));
             mqtt_not_connected_counter = mqtt_not_connected_counter + 1;
             if (mqtt_not_connected_counter > 100)
             {
-                syslog_ng("mqttClientHA connectToMqtt ESP RESTART");
+                syslog_ng("mqtt mqttClientHA connectToMqtt ESP RESTART");
                 preferences.putString(pref_reset_reason, "mqttHA error");
             }
         }
@@ -256,7 +295,7 @@ void publish_setting_groups()
 
             if (item == nullptr)
             {
-                syslog_ng("nullptr: " + String(param.name));
+                syslog_ng("mqtt nullptr: " + String(param.name));
                 continue;
             }
 
@@ -277,7 +316,7 @@ void publish_setting_groups()
             }
             else
             {
-                syslog_ng("ERROR: Could not find preferences for " + String(param.name));
+                syslog_ng("mqtt ERROR: Could not find preferences for " + String(param.name));
             }
         }
     }
@@ -301,40 +340,41 @@ void processToggleParameters()
             if (String(param.label).indexOf("(0-off, 1-on)") != -1)
             {
                 publish_switch_discovery_payload(param);
+                subscribe_param_ha(param);
             }
         }
     }
 }
 
-void publish_one_data(const PreferenceItem &item)
+void publish_one_data(const PreferenceItem *item)
 {
-    String topic = mqttPrefix + preferences_prefix + item.key;  // Use appropriate topic prefix
+    String topic = mqttPrefix + preferences_prefix + item->key;  // Use appropriate topic prefix
     String valueStr;
-    if (item.variable != nullptr)
+    if (item->variable != nullptr)
     {
-        syslog_ng("before publish_one_data topic: " + String(item.key));
+        syslog_ng("mqtt before publish_one_data topic: " + String(item->key));
         // Определите тип переменной и получите ее значение в зависимости от типа
-        switch (item.type)
+        switch (item->type)
         {
             case DataType::FLOAT:
-                valueStr = String(*(float *)item.variable);
+                valueStr = String(*(float *)item->variable);
                 break;
             case DataType::STRING:
-                valueStr = *(String *)item.variable;
+                valueStr = *(String *)item->variable;
                 break;
             case DataType::BOOLEAN:
-                valueStr = (*(bool *)item.variable) ? "true" : "false";
+                valueStr = (*(bool *)item->variable) ? "true" : "false";
                 break;
             case DataType::INTEGER:
-                valueStr = String(*(int *)item.variable);
+                valueStr = String(*(int *)item->variable);
                 break;
         }
 
         // Опубликуйте значение в MQTT
-        syslog_ng("publish_one_data topic: " + topic + " value: " + valueStr);
+        syslog_ng("mqtt publish_one_data topic: " + topic + " value: " + valueStr);
         enqueueMessage(topic.c_str(), valueStr.c_str());
     }
-    syslog_ng("after publish_one_data topic: " + String(item.key));
+    syslog_ng("mqtt after publish_one_data topic: " + String(item->key));
 }
 
 void mqttTaskHA(void *parameter)
@@ -343,13 +383,10 @@ void mqttTaskHA(void *parameter)
     publish_discovery_payload("AirHum");
     publish_discovery_payload("AirPress");
     publish_discovery_payload("AirTemp");
-    // publish_discovery_payload("An");
-    // publish_discovery_payload("Ap");
+    publish_discovery_payload("wSalt");
     publish_discovery_payload("CPUTemp");
     publish_discovery_payload("Dist");
-    // publish_discovery_payload("DistRaw");
     publish_discovery_payload("Dist_Kalman");
-    // publish_discovery_payload("DstRAW");
     publish_discovery_payload("EC_Kalman");
     publish_discovery_payload("EC_notermo_Kalman");
     publish_discovery_payload("Kornevoe");
@@ -363,11 +400,7 @@ void mqttTaskHA(void *parameter)
     publish_discovery_payload("Vcc");
     publish_discovery_payload("AirVPD");
     publish_discovery_payload("commit");
-
-    // publish_discovery_payload("pHmV");
-    // publish_discovery_payload("pHraw");
     publish_discovery_payload("readGPIO");
-
     publish_discovery_payload("uptime");
     publish_discovery_payload("wEC");
     publish_discovery_payload("wEC_ususal");
@@ -400,7 +433,7 @@ void onMqttMessageHA(char *topic, char *payload, AsyncMqttClientMessagePropertie
 
         return;
     }
-    syslog_ng("mqtt onMqttMessageHA topic: " + String(topic) + " payload " + String(payload));
+    syslog_ng("mqtt HA onMqttMessageHA topic: " + String(topic) + " payload " + String(payload));
 
     String message = String(payload).substring(0, len);
 
@@ -428,7 +461,7 @@ void onMqttMessageHA(char *topic, char *payload, AsyncMqttClientMessagePropertie
         {
             Param &param = group.params[i];
             String paramTopic = mqttPrefix + "set/" + String(param.name);
-            if (String(topic).startsWith(mqttPrefix) && (paramTopic == topic))
+            if (paramTopic == topic)
             {
                 if (updatePreference(param.name, message))
                 {
