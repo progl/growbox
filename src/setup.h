@@ -46,24 +46,25 @@ void calibrate_adc()
 void setupTimers()
 {
 #if defined(ENABLE_PONICS_ONLINE)
-    mqttReconnectTimer =
-        xTimerCreate("MqttReconnectTimer", pdMS_TO_TICKS(10000), pdTRUE, (void *)0, onMqttReconnectTimer);
-    if (mqttReconnectTimer == NULL)
+    if (enable_ponics_online)
     {
-        syslog_ng("Failed to create timer for MQTT reconnect");
+        mqttReconnectTimer =
+            xTimerCreate("MqttReconnectTimer", pdMS_TO_TICKS(30000), pdTRUE, (void *)0, onMqttReconnectTimer);
+        if (mqttReconnectTimer == NULL)
+        {
+            syslog_ng("Failed to create timer for MQTT reconnect");
+        }
     }
 #endif
     mqttReconnectTimerHa =
-        xTimerCreate("MqttReconnectTimerHa", pdMS_TO_TICKS(10000), pdTRUE, (void *)0, onMqttReconnectTimerHa);
+        xTimerCreate("MqttReconnectTimerHa", pdMS_TO_TICKS(30000), pdTRUE, (void *)0, onMqttReconnectTimerHa);
 
     if (mqttReconnectTimerHa == NULL)
     {
         syslog_ng("Failed to create timer for MQTT reconnect");
     }
-    wifiReconnectTimer = xTimerCreate("WiFiReconnectTimer",
-                                      pdMS_TO_TICKS(5000),  // 10 секунд
-                                      pdTRUE,               // повторяющийся
-                                      (void *)0, checkWiFiConnection);
+    wifiReconnectTimer =
+        xTimerCreate("WiFiReconnectTimer", pdMS_TO_TICKS(30000), pdTRUE, (void *)0, checkWiFiConnection);
 
     if (wifiReconnectTimer != NULL)
     {
@@ -234,6 +235,8 @@ void setupServer()
     server.on("/api/status", HTTP_GET, handleApiStatuses);
     server.on("/api/groups", HTTP_GET, handleApiGroups);
     server.on("/api/labels", HTTP_GET, handleApiLabels);
+    server.on("/api/tasks", HTTP_GET, handleApiTasks);
+
     server.on("/api/save-settings", HTTP_POST, saveSettings);
     server.on("/reset", handleReset);
     server.on("/update", update);
@@ -253,15 +256,18 @@ void setupServer()
 void setupMQTT()
 {
 #if defined(ENABLE_PONICS_ONLINE)
-    syslog_ng("mqtt MQTT_HOST: " + String(MQTT_HOST) + "mqtt MQTT_PORT: " + String(MQTT_PORT));
-    mqttClient.onConnect(onMqttConnect);
-    mqttClient.onDisconnect(onMqttDisconnect);
-    mqttClient.onMessage(onMqttMessage);  // Set the callback for received messages
-    mqttClient.setClientId(HOSTNAME.c_str());
-    mqttClient.setServer(MQTT_HOST, MQTT_PORT);
-    mqttClient.setCredentials(mqtt_mqtt_user,
-                              mqtt_mqtt_password);  // Set login and password
-    syslog_ng("mqtt end setupMQTT connected: " + String(mqttClient.connected()));
+    if (enable_ponics_online)
+    {
+        syslog_ng("mqtt MQTT_HOST: " + String(MQTT_HOST) + "mqtt MQTT_PORT: " + String(MQTT_PORT));
+        mqttClient.onConnect(onMqttConnect);
+        mqttClient.onDisconnect(onMqttDisconnect);
+        mqttClient.onMessage(onMqttMessage);  // Set the callback for received messages
+        mqttClient.setClientId(HOSTNAME.c_str());
+        mqttClient.setServer(MQTT_HOST, MQTT_PORT);
+        mqttClient.setCredentials(mqtt_mqtt_user,
+                                  mqtt_mqtt_password);  // Set login and password
+        syslog_ng("mqtt end setupMQTT connected: " + String(mqttClient.connected()));
+    }
 #endif
 }
 
@@ -325,18 +331,18 @@ void setupDevices()
 #include <dev/pr/setup.h>
 
 #include <dev/sdc30/setup.h>
-#include <dev/us025/setup.h>
 
 #include <dev/vcc/setup.h>
 #include <dev/vl53l0x_us/setup.h>
 #include <dev/vl6180x/setup.h>
+#include <dev/us025/setup.h>
 }
 
 void setupTaskMqttForCal()
 {
     syslog_ng("before setupTaskMqtt");
     syslog_ng("before TaskMqttForCal");
-    xTaskCreate(TaskMqttForCal, "TaskMqttForCal", 5000, NULL, 0, NULL);
+    xTaskCreate(TaskMqttForCal, "TaskMqttForCal", 2000, NULL, 0, NULL);
     syslog_ng("after setupTaskMqtt");
 }
 
@@ -428,7 +434,10 @@ void setup()
     setupTaskMqttForCal();
     xTimerStart(mqttReconnectTimerHa, 0);
 #if defined(ENABLE_PONICS_ONLINE)
-    xTimerStart(mqttReconnectTimer, 0);
+    if (enable_ponics_online)
+    {
+        xTimerStart(mqttReconnectTimer, 0);
+    }
 #endif
     distanceSensor.begin();  // Инициализация датчика
     setupDevices();

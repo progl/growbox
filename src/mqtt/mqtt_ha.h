@@ -237,7 +237,7 @@ void onMqttDisconnectHA(AsyncMqttClientDisconnectReason reason)
     // Добавьте дополнительные случаи для анализа
 
     syslog_ng("mqtt mqttClientHA: Disconnected. Reason: " + String(static_cast<int>(reason)));
-    syslog_ng("mqtt mqttClientHA: WiFi isConnected: " + String(static_cast<int>(WiFi.isConnected())));
+    syslog_ng("mqtt mqttClientHA: WiFi isConnected: " + String(WiFi.isConnected()));
     if (WiFi.isConnected())
     {
         if (not mqttClientHA.connected())

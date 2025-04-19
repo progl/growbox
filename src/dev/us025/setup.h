@@ -69,7 +69,7 @@ setSensorDetected("US025", 1);
 syslog_ng("US025: Successfully initialized. Initial distance: " + String(measurement.distanceCm) + " cm");
 
 // Создание задачи измерения
-TaskUSParams = {"US", TaskUS, 30000, xSemaphore_C};
+TaskUSParams = {"US", TaskUS, 50000, xSemaphore_C};
 int US025_TaskErr = xTaskCreatePinnedToCore(TaskTemplate, "US", stack_size, (void *)&TaskUSParams, 1, NULL, 1);
 
 if (US025_TaskErr != pdPASS)

@@ -42,6 +42,7 @@ PreferenceItem preferencesArray[] = {
     {"UPDATE_URL", DataType::STRING, Data{UPDATE_URL}, &UPDATE_URL, &preferences},
     {"update_token", DataType::STRING, {"default_token"}, &update_token, &preferences},
     {"ssid", DataType::STRING, {"ESP32"}, &ssid, &preferences},
+    {"epo", DataType::INTEGER, {1}, &enable_ponics_online, &preferences},
     {"password", DataType::STRING, {"ESP32"}, &password, &preferences},
     {"appName", DataType::STRING, {"appName"}, &appName, &preferences},
     {"HOSTNAME", DataType::STRING, {"growbox"}, &HOSTNAME, &preferences},

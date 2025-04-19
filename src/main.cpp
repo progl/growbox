@@ -201,7 +201,7 @@ void TaskTemplate(void *params)
                   String(counter) + " taskParams->taskName " + String(taskParams->taskName));
         vTaskDelete(NULL);
     }
-    vTaskDelay(3000);
+    vTaskDelay(500);
     for (;;)
     {
         if (OtaStart == true)
@@ -225,7 +225,7 @@ void TaskTemplate(void *params)
                           " timeSinceLastExecution >= taskParams->repeatInterval Starting taskName: " +
                           String(taskParams->taskName));
             }
-            if (xSemaphoreTake(taskParams->xSemaphore, (TickType_t)1) == pdTRUE)
+            if (xSemaphoreTake(taskParams->xSemaphore, (TickType_t)100) == pdTRUE)
             {
                 taskParams->busyCounter = 0;
                 lastExecutionTime = currentTime;
@@ -257,12 +257,12 @@ void TaskTemplate(void *params)
             else
             {
                 taskParams->busyCounter++;
-                if (taskParams->busyCounter > 5)
+                if (taskParams->busyCounter > 15)
                 {
                     syslog_ng(String(taskParams->taskName) + " symofore busy ");
                 }
 
-                vTaskDelay(5000);
+                vTaskDelay(1000);
             }
         }
         else
@@ -419,16 +419,19 @@ void enqueueMessage(const char *topic, const char *payload, String key = "", boo
         vTaskDelay(1);
     }
 #if defined(ENABLE_PONICS_ONLINE)
-    if (mqttClient.connected() and not_ha_only)
+    if (enable_ponics_online)
     {
-        int packet_id = mqttClient.publish(topic, 0, false, payload);
-        vTaskDelay(5);
-        if (packet_id == 0)
+        if (mqttClient.connected() and not_ha_only)
         {
-            int payloadSize = strlen(payload);
-            syslog_ng("Payload size: " + String(payloadSize));
-            syslog_ng(" error enqueueMessage: publish packet_id " + String(packet_id) + " topic " + String(topic) +
-                      " payload " + String(payload));
+            int packet_id = mqttClient.publish(topic, 0, false, payload);
+            vTaskDelay(5);
+            if (packet_id == 0)
+            {
+                int payloadSize = strlen(payload);
+                syslog_ng("Payload size: " + String(payloadSize));
+                syslog_ng(" error enqueueMessage: publish packet_id " + String(packet_id) + " topic " + String(topic) +
+                          " payload " + String(payload));
+            }
         }
     }
 #endif
@@ -727,6 +730,7 @@ Group groups[] = {
      10,
      {
          {"UPDATE_URL", "Ссылка на прошивку", Param::STRING, .defaultString = UPDATE_URL.c_str()},
+         {"epo", "Вкл мктт поникс(0-off, 1-on)", Param::INT, .defaultInt = 1},
          {"update_token", "Ключ обновления", Param::STRING, .defaultString = update_token.c_str()},
          {"HOSTNAME", "Имя хоста", Param::STRING, .defaultString = HOSTNAME.c_str()},
          {"vpdstage", "VPD стадия", Param::STRING, .defaultString = vpdstage.c_str()},
@@ -786,7 +790,7 @@ Group groups[] = {
      11,
      {
          {"PWDport1", "ШИМ порт ESP", Param::INT, .defaultInt = 16},
-         {"PWD1", "Значение Pulse Width Modulation (PWD). ШИМ", Param::INT, .defaultInt = 256},
+         {"PWD1", "Значение PWD ШИМ > 255-откл", Param::INT, .defaultInt = 256},
          {"FREQ1", "Частота", Param::INT, .defaultInt = 5000},
          {"DRV1_A_State", "DRV1_A (0-off, 1-on)", Param::INT, .defaultInt = 0},
          {"DRV1_B_State", "DRV1_B (0-off, 1-on)", Param::INT, .defaultInt = 0},
@@ -802,7 +806,7 @@ Group groups[] = {
      11,
      {
          {"PWDport2", "ШИМ порт ESP", Param::INT, .defaultInt = 17},
-         {"PWD2", "Значение Pulse Width Modulation (PWD). ШИМ", Param::INT, .defaultInt = 255},
+         {"PWD2", "Значение PWD ШИМ > 255-откл", Param::INT, .defaultInt = 255},
          {"FREQ2", "Частота", Param::INT, .defaultInt = 5000},
          {"DRV1_C_State", "DRV1_C (0-off, 1-on)", Param::INT, .defaultInt = 0},
          {"DRV1_D_State", "DRV1_D (0-off, 1-on)", Param::INT, .defaultInt = 0},

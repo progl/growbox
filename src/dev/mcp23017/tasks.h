@@ -30,26 +30,24 @@ void start_ledc_pwd(int pwdChannel, int &pwd_val, int pwd_freq, int pwd_port, co
     ledcSetup(pwdChannel, pwd_freq, PwdResolution1);
     ledcAttachPin(pwd_port, pwdChannel);
     publish_parameter(pwd_name, pwd_val, 3, 1);
-
     ledcWrite(pwdChannel, pwd_val);
 }
 
 void start_ledc_pwd1()
 {
     // Проверка наличия указателя на переменную PWD1
-    if (!isnan(*variablePointers["PWD1"]) && !isnan(*variablePointers["FREQ1"]))
+
+    int &pwd_val = *variablePointers["PWD1"];
+    int &pwd_freq = *variablePointers["FREQ1"];
+    if (pwd_val == 0 || pwd_freq >= 255)
     {
-        int &pwd_val = *variablePointers["PWD1"];
-        int &pwd_freq = *variablePointers["FREQ1"];
-        start_ledc_pwd(PwdChannel1, pwd_val, pwd_freq, PWDport1, "PWD1");
+        // Отключаем PWM
+        ledcWrite(PwdChannel1, 0);  // Устанавливаем значение 0 для отключения
+        ledcDetachPin(PwdChannel1);
     }
     else
     {
-        // Логирование ошибки в случае отсутствия указателя
-
-        syslog_err("MCP23017 Pointer to PWD1 is null!");
-
-        syslog_err("MCP23017 Pointer to FREQ1 is null!");
+        start_ledc_pwd(PwdChannel1, pwd_val, pwd_freq, PWDport1, "PWD1");
     }
 }
 
@@ -57,36 +55,57 @@ void start_ledc_pwd2()
 {
     int &pwd_val2 = *variablePointers["PWD2"];    // Ссылка на переменную PWD2
     int &pwd_freq2 = *variablePointers["FREQ2"];  // Значение переменной FREQ2
-    start_ledc_pwd(PwdChannel2, pwd_val2, pwd_freq2, PWDport2, "PWD2");
+    if (pwd_val2 == 0 || pwd_freq2 < 255)
+    {
+        // Отключаем PWM
+        ledcWrite(PwdChannel2, 0);  // Устанавливаем значение 0 для отключения
+        ledcDetachPin(PwdChannel2);
+    }
+    else
+    {
+        start_ledc_pwd(PwdChannel2, pwd_val2, pwd_freq2, PWDport2, "PWD2");
+    }
 }
 
-void MCP23017()
+// Глобальная переменная для управления состоянием
+volatile bool isWatering = false;
+
+// Функция для отдельного потока
+static void wateringTask(void *params)
 {
-    int t = 0;
-    bitw = 0b00000000;
+    std::string key = std::string(options[ECStabPomp].c_str()) + "_State";
+    int *pumpPin = (int *)params;
+    syslog_ng("Watering Task Started");
+
+    // Включаем помпу
+    mcp.digitalWrite(*pumpPin, 1);
+    *variablePointers[key] = 1;
+    publish_parameter(options[ECStabPomp], 1, 3, 1);
+
+    // Ждем заданное время
+    vTaskDelay(ECStabTime * 1000);
+
+    // Выключаем помпу
+    mcp.digitalWrite(*pumpPin, 0);
+    *variablePointers[key] = 0;
     readGPIO = mcp.readGPIOAB();
-    bool min_light = wPR < MinLightLevel;
-    char bitString[17];    // строка для хранения битов, 16 бит + 1 символ для
-                           // окончания строки
-    bitString[16] = '\0';  // добавляем символ окончания строки
+    publish_parameter(options[ECStabPomp], 0, 3, 1);
 
-    if (pwd_val != PWD1 || pwd_freq != FREQ1 || pwd_port != PWDport1)
-    {
-        pwd_val = PWD1;
-        pwd_freq = FREQ1;
-        pwd_port = PWDport1;
-        start_ledc_pwd1();
-    }
+    // Обновляем счетчики
+    ECStabOn += ECStabTime;
+    ECStabTimeStart = millis();
+    syslog_ng("MCP23017 WATERING END WATERING");
 
-    if (pwd_val2 != PWD2 || pwd_freq2 != FREQ2 || pwd_port2 != PWDport2)
-    {
-        pwd_val2 = PWD2;
-        pwd_freq2 = FREQ2;
-        pwd_port2 = PWDport2;
-        start_ledc_pwd2();
-    }
+    // Сбрасываем флаг
+    isWatering = false;
 
-    // Адаптивная циркуляция для снижения скачков корневого давления
+    // Завершаем задачу
+    vTaskDelete(NULL);
+}
+
+// Функция для управления корневым давлением
+static void manageRootPressure()
+{
     if (RootPomp == 1)
     {
         syslog_ng("MCP23017 RootPomp on");
@@ -112,7 +131,7 @@ void MCP23017()
                 {
                     if (pwd_val_root <= MinKickPWD)
                     {
-                        t = preferences.putInt("KickOnce", 1);
+                        int t = preferences.putInt("KickOnce", 1);
                         *variablePointers["KickOnce"] = 1;
 
                         if (t == 0)
@@ -125,7 +144,7 @@ void MCP23017()
             }
 
             pwd_val_root = constrain(pwd_val_root, RootPwdMin, RootPwdMax);
-            t = preferences.putInt("PWD2", pwd_val_root);
+            int t = preferences.putInt("PWD2", pwd_val_root);
             *variablePointers["PWD2"] = pwd_val_root;
             if (t == 0)
             {
@@ -136,10 +155,8 @@ void MCP23017()
         {
             // Управление включением/выключением помпы без ШИМ
             bool pumpState = (RootTemp > AirTemp && RootTemp > 15 && Dist > RootDistMin) ? 0 : 1;
-            t = preferences.putInt((options[SelectedRP] + "_State").c_str(), pumpState);
-            // Преобразование String в std::string перед конкатенацией
+            int t = preferences.putInt((options[SelectedRP] + "_State").c_str(), pumpState);
             std::string key = std::string(options[SelectedRP].c_str()) + "_State";
-
             *variablePointers[key] = pumpState;
 
             if (t == 0)
@@ -148,108 +165,72 @@ void MCP23017()
             }
         }
     }
+}
 
-    if (log_debug)
-        syslog_ng("MCP23017 WATERING ECStabEnable==1 " + String(ECStabEnable == 1) + " wEC > ECStabValue  " +
-                  String(wEC > ECStabValue) + " millis() - ECStabTimeStart  > ECStabInterval * 1000  " + " time: " +
-                  String(millis() - ECStabTimeStart > ECStabInterval * 1000) + " wLevel >= ECStabMinDist  " +
-                  String(wLevel >= ECStabMinDist) + " wLevel < ECStabMaxDist " + String(wLevel < ECStabMaxDist));
-    // Коррекция ЕС путем разбавления
-    if (ECStabEnable == 1 && wEC > ECStabValue && millis() - ECStabTimeStart > ECStabInterval * 1000 &&
-        wLevel >= ECStabMinDist && wLevel < ECStabMaxDist
-
-    )
-    {
-        std::string key = std::string(options[ECStabPomp].c_str()) + "_State";
-        syslog_ng("MCP23017 WATERING ECStabTime " + String(ECStabTime) + " ECStabInterval " + String(ECStabInterval));
-        mcp.digitalWrite(ECStabPomp, 1);
-        *variablePointers[key] = 1;
-        publish_parameter(options[ECStabPomp], 1, 3, 1);
-        vTaskDelay(ECStabTime * 1000);
-        mcp.digitalWrite(ECStabPomp, 0);
-        *variablePointers[key] = 0;
-        readGPIO = mcp.readGPIOAB();
-        publish_parameter(options[ECStabPomp], 0, 3, 1);
-        ECStabOn += ECStabTime;
-        ECStabTimeStart = millis();
-        syslog_ng("MCP23017 WATERING END WATERING");
-    }
-    else
-    {
-        if (ECStabEnable == 1)
-        {
-            std::string key = std::string(options[ECStabPomp].c_str()) + "_State";
-            if (*variablePointers[key] != 0)
-            {
-                mcp.digitalWrite(ECStabPomp, 0);
-                *variablePointers[key] = 0;
-                syslog_ng("MCP23017 WATERING DISABLE ECStabEnable==1 " + String(ECStabEnable == 1) +
-                          " wEC > ECStabValue  " + String(wEC > ECStabValue) +
-                          " millis() - ECStabTimeStart  > ECStabInterval * 1000  " +
-                          " time: " + String(millis() - ECStabTimeStart > ECStabInterval * 1000) +
-                          " wLevel >= ECStabMinDist  " + String(wLevel >= ECStabMinDist) + " wLevel < ECStabMaxDist " +
-                          String(wLevel < ECStabMaxDist));
-            }
-        }
-    }
-
-    // Остановка помпы ночью по датчику освещенности
+static void managePompNight(bool min_light)
+{
     if (PompNightEnable == 1)
     {
         int pompState = min_light ? 0 : 1;
         std::string key = std::string(options[PompNightPomp].c_str()) + "_State";
-        if (PR != -1)
+        std::string stateStr = std::to_string(pompState);
+
+        if (*variablePointers[key] != pompState)
         {
-            if (*variablePointers[key] != pompState)
+            int t = preferences.putInt((options[PompNightPomp] + "_State").c_str(), pompState);
+            *variablePointers[key] = pompState;
+
+            if (t == 0)
+            {
+                syslog_ng("MCP23017 PompNight error put PompNight_State");
+            }
+
+            if (PR != -1)
             {
                 syslog_ng("MCP23017 PompNight enable");
-                t = preferences.putInt((options[PompNightPomp] + "_State").c_str(), pompState);
-                // Преобразование String в std::string перед конкатенацией
-
-                // Использование ключа для доступа к словарю variablePointers
-                *variablePointers[key] = pompState;
-
-                if (t == 0)
-                {
-                    syslog_ng("MCP23017 PompNight error put PompNight_State");
-                }
             }
-        }
-        else
-        {
-            if (*variablePointers[key] != pompState)
+            else
             {
-                syslog_ng("MCP23017 PompNight STOP" + String(pompState));
-                t = preferences.putInt((options[PompNightPomp] + "_State").c_str(), pompState);
-                // Преобразование String в std::string перед конкатенацией
-                std::string key = std::string(options[PompNightPomp].c_str()) + "_State";
-
-                // Использование ключа для доступа к словарю variablePointers
-                *variablePointers[key] = pompState;
-
-                if (t == 0)
-                {
-                    syslog_ng("MCP23017 PompNight error put PompNight_State");
-                }
+                syslog_ng("MCP23017 PompNight STOP");
             }
         }
     }
+}
 
-    // Периодическое управление помпой
+static void managePWM(int &pwd_val, int &pwd_freq, int &pwd_port, int pwd_val_new, int pwd_freq_new, int pwd_port_new,
+                      int channel)
+{
+    if (pwd_val != pwd_val_new || pwd_freq != pwd_freq_new || pwd_port != pwd_port_new)
+    {
+        pwd_val = pwd_val_new;
+        pwd_freq = pwd_freq_new;
+        pwd_port = pwd_port_new;
+
+        if (channel == 1)
+        {
+            start_ledc_pwd1();
+        }
+        else
+        {
+            start_ledc_pwd2();
+        }
+    }
+}
+
+static void managePeriodicPump(bool min_light)
+{
     if ((RDWorkNight == 1 && min_light && RDEnable == 1) || (RDEnable == 1))
     {
         if (log_debug)
             syslog_ng("MCP23017 PERIODICA START + RDWorkNight " + String(RDWorkNight == 1) + " min_light " +
                       String(min_light) + " RDEnable " + String(RDEnable == 1));
+
         if (millis() > NextRootDrivePwdOn)
         {
             std::string key = std::string(options[RDSelectedRP].c_str()) + "_State";
             if (*variablePointers[key] != 1)
             {
-                t = preferences.putInt((options[RDSelectedRP] + "_State").c_str(), 1);
-                // Преобразование String в std::string перед конкатенацией
-
-                // Использование ключа для доступа к словарю variablePointers
+                int t = preferences.putInt((options[RDSelectedRP] + "_State").c_str(), 1);
                 *variablePointers[key] = 1;
 
                 if (t == 0)
@@ -267,14 +248,13 @@ void MCP23017()
                 isPumpOn = true;
             }
         }
+
         if (millis() > NextRootDrivePwdOff)
         {
             std::string key = std::string(options[RDSelectedRP].c_str()) + "_State";
             if (*variablePointers[key] != 0)
             {
-                t = preferences.putInt((options[RDSelectedRP] + "_State").c_str(), 0);
-
-                // Использование ключа для доступа к словарю variablePointers
+                int t = preferences.putInt((options[RDSelectedRP] + "_State").c_str(), 0);
                 *variablePointers[key] = 0;
 
                 if (t == 0)
@@ -290,49 +270,60 @@ void MCP23017()
         NextRootDrivePwdOn = -1;
         NextRootDrivePwdOff = -1;
     }
+}
 
-    // Управление драйверами
+static void updateDriverStates()
+{
+    // Формируем строку для логирования
+    char bitString[17];
+    bitString[16] = '\0';
     for (int i = 0; i < 16; i++)
     {
         bitString[15 - i] = (readGPIO & (1 << i)) ? '1' : '0';
     }
 
+    // Обновляем состояние каждого драйвера
     for (int i = 0; i < DRV_COUNT; i++)
     {
         for (int j = 0; j < BITS_PER_DRV; j++)
         {
-            int currentPinState = *variablePointers[DRV_Keys[i][j].c_str()];
+            String drv_key = DRV_Keys[i][j].c_str();
+            int currentPinState = *variablePointers[drv_key.c_str()];
             byte cur_bitw_state = bitRead(readGPIO, DRV[i][j]);
             bitWrite(bitw, DRV[i][j], currentPinState);
-            if (currentPinState != cur_bitw_state)
-            {
-                syslog_ng("MCP23017 READ: " + String(bitString) + " DRV" + String(i) + " pin " + String(DRV[i][j]) +
-                          " " + String(DRV_Keys[i][j]) + " currentPinState " + String(currentPinState) + " bitRead " +
-                          bitRead(readGPIO, DRV[i][j]) + " bitw " + bitRead(bitw, DRV[i][j]));
-            }
+
+            // Выполняем пинок при необходимости
             if (cur_bitw_state == 0 && currentPinState == 1 && *variablePointers[DRV_PK_On_Keys[i][j].c_str()] == 1)
             {
                 int pwdChannel = (i < 2) ? PwdChannel1 : PwdChannel2;
-                ledcSetup(pwdChannel, (i < 2) ? FREQ1 : FREQ2, PwdResolution1);
-                ledcAttachPin((i < 2) ? PWDport1 : PWDport2, pwdChannel);
-                PwdPompKick(pwdChannel, KickUpMax, KickUpStrart, (i < 2) ? PWD1 : PWD2, KickUpTime);
-                ledcWrite(pwdChannel, (i < 2) ? PWD1 : PWD2);
-                syslog_ng(String("MCP23017 PWD DRV" + String(i) + " pin " + String(DRV[i][j]) +
-                                 " POMP KICK: executed! " + DRV_PK_On_Keys[i][j]));
+                int freq = (i < 2) ? FREQ1 : FREQ2;
+                int pwd = (i < 2) ? PWD1 : PWD2;
+
+                if (freq > 0 && pwd < 255 && pwd > 0)
+                {
+                    ledcSetup(pwdChannel, freq, PwdResolution1);
+                    ledcAttachPin((i < 2) ? PWDport1 : PWDport2, pwdChannel);
+                    PwdPompKick(pwdChannel, KickUpMax, KickUpStrart, pwd, KickUpTime);
+                    ledcWrite(pwdChannel, pwd);
+                    syslog_ng(String("MCP23017 PWD DRV" + String(i) + " pin " + String(DRV[i][j]) +
+                                     " POMP KICK: executed! " + DRV_PK_On_Keys[i][j] + " FREQ: " + String(freq) +
+                                     " PWD: " + String(pwd)));
+                }
+                else
+                {
+                    syslog_ng(String("MCP23017 PWD DRV" + String(i) + " pin " + String(DRV[i][j]) +
+                                     " POMP KICK: skipped! FREQ: " + String(freq) + " PWD: " + String(pwd)));
+                }
             }
         }
     }
+}
 
+static void handleGPIOErrors()
+{
     if (readGPIO != bitw)
     {
-        mcp.writeGPIOAB(bitw);
-        readGPIO = mcp.readGPIOAB();
-    }
-
-    // Проверка GPIO
-    int GPIOerrcont = 0;
-    if (readGPIO != bitw)
-    {
+        int GPIOerrcont = 0;
         while (readGPIO != bitw && GPIOerrcont < 25)
         {
             if (GPIOerrcont == 10)
@@ -351,32 +342,109 @@ void MCP23017()
             mcp.writeGPIOAB(bitw);
             readGPIO = mcp.readGPIOAB();
 
+            // Логируем текущее состояние
             char bitString[17];
-            char bitString2[17];  // строка для хранения битов, 16 бит + 1 символ для
-                                  // окончания строки
-
-            // Управление драйверами
+            char bitString2[17];
+            bitString[16] = '\0';
+            bitString2[16] = '\0';
             for (int i = 0; i < 16; i++)
             {
                 bitString[15 - i] = (readGPIO & (1 << i)) ? '1' : '0';
                 bitString2[15 - i] = (bitw & (1 << i)) ? '1' : '0';
             }
-
-            bitString[16] = '\0';   // добавляем символ окончания строки
-            bitString2[16] = '\0';  // добавляем символ окончания строки
-
-            syslog_ng("MCP23017 set  readGPIO " + String(bitString) + " bitw " + String(bitString2));
+            syslog_ng("MCP23017 WRITE readGPIO " + String(readGPIO) + " bitw " + String(bitw));
+            vTaskDelay(1);
+            GPIOerrcont++;
         }
-
-        GPIOerrcont++;
         checkMismatchedPumps(readGPIO, bitw);
     }
+}
 
+static void publishPinStates()
+{
     for (int i = 0; i < 16; i++)
     {
         uint16_t mask = 1 << i;
-        uint8_t status = (readGPIO & mask) ? 1 : 0;  // Получаем четкое 0 или 1
+        uint8_t status = (readGPIO & mask) ? 1 : 0;
         publish_parameter(options[i], status, 3, 1);
     }
+}
+void MCP23017()
+{
+    int t = 0;
+    int GPIOerrcont = 0;
+    bitw = 0b00000000;
+    readGPIO = mcp.readGPIOAB();
+    bool min_light = wPR < MinLightLevel;
+    char bitString[17];    // строка для хранения битов, 16 бит + 1 символ для
+                           // окончания строки
+    bitString[16] = '\0';  // добавляем символ окончания строки
+
+    // Управление настройками PWM
+    managePWM(pwd_val, pwd_freq, pwd_port, PWD1, FREQ1, PWDport1, 1);
+    managePWM(pwd_val2, pwd_freq2, pwd_port2, PWD2, FREQ2, PWDport2, 2);
+    // Адаптивная циркуляция для снижения скачков корневого давления
+    manageRootPressure();
+    if (log_debug)
+        syslog_ng("MCP23017 WATERING ECStabEnable==1 " + String(ECStabEnable == 1) + " wEC > ECStabValue  " +
+                  String(wEC > ECStabValue) + " millis() - ECStabTimeStart  > ECStabInterval * 1000  " + " time: " +
+                  String(millis() - ECStabTimeStart > ECStabInterval * 1000) + " wLevel >= ECStabMinDist  " +
+                  String(wLevel >= ECStabMinDist) + " wLevel < ECStabMaxDist " + String(wLevel < ECStabMaxDist));
+    // Коррекция ЕС путем разбавления
+    if (ECStabEnable == 1 && wEC > ECStabValue && millis() - ECStabTimeStart > ECStabInterval * 1000 &&
+        wLevel >= ECStabMinDist && wLevel < ECStabMaxDist)
+    {
+        syslog_ng("MCP23017 WATERING ECStabTime " + String(ECStabTime) + " ECStabInterval " + String(ECStabInterval));
+
+        // Создаем задачу для полива с высшим приоритетом
+        xTaskCreate(wateringTask, "Watering", 2048, &ECStabPomp, 2, NULL);
+    }
+    else
+    {
+        if (ECStabEnable == 1)
+        {
+            std::string key = std::string(options[ECStabPomp].c_str()) + "_State";
+
+            bool isPumpActiveInGPIO = (readGPIO & (1 << ECStabPomp)) != 0;
+
+            if (isPumpActiveInGPIO)
+            {
+                // Выключаем помпу только если она включена
+                mcp.digitalWrite(ECStabPomp, 0);
+                *variablePointers[key] = 0;
+                readGPIO = mcp.readGPIOAB();  // Обновляем состояние после выключения
+                syslog_ng("MCP23017 WATERING DISABLE ECStabEnable==1 " + String(ECStabEnable == 1) +
+                          " wEC > ECStabValue  " + String(wEC > ECStabValue) +
+                          " millis() - ECStabTimeStart  > ECStabInterval * 1000  " +
+                          " time: " + String(millis() - ECStabTimeStart > ECStabInterval * 1000) +
+                          " wLevel >= ECStabMinDist  " + String(wLevel >= ECStabMinDist) + " wLevel < ECStabMaxDist " +
+                          String(wLevel < ECStabMaxDist));
+            }
+        }
+    }
+
+    // Остановка помпы ночью по датчику освещенности
+    managePompNight(min_light);
+    // Периодическое управление помпой
+    managePeriodicPump(min_light);
+    // Управление драйверами
+    updateDriverStates();
+
+    // Обновляем GPIO
+    if (readGPIO != bitw)
+    {
+        syslog_ng("MCP23017 WRITE readGPIO: " + String(readGPIO) + " bitw: " + String(bitw));
+        mcp.writeGPIOAB(bitw);
+        vTaskDelay(1);
+        readGPIO = mcp.readGPIOAB();
+    }
+
+    // Обработка ошибок GPIO
+    handleGPIOErrors();
+
+    // Публикация состояния пинов
+    publishPinStates();
+    readGPIO = mcp.readGPIOAB();
+    syslog_ng("MCP23017  readGPIO: " + String(readGPIO));
 }
 TaskParams MCP23017Params;
