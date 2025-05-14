@@ -411,6 +411,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
 }
 void publish_params_all(int all = 1)
 {
+    publish_parameter("uptime", millis(), 0, 0);
     if (calE == 1)
     {
         syslog_ng("publich calibtate params");

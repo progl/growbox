@@ -6,8 +6,7 @@ void handleRedirect()
 
 void configAP()
 {
-    WiFi.disconnect();
-    WiFi.mode(WIFI_AP);
+    WiFi.mode(WIFI_AP_STA);
     Serial.println("Switching to AP mode...");
 
     server.on("/generate_204", handleRoot);
@@ -16,29 +15,29 @@ void configAP()
     WiFi.softAP(AP_SSID.c_str(), AP_PASS.c_str(), 1, 0, 4, false);
 
     IPAddress ip = WiFi.softAPIP();
-    Serial.print("AP mode. Connect to SSID: ");
+    Serial.print("Внимание!!!! Вайфай режим точки доступа. SSID: ");
     Serial.print(AP_SSID);
+    Serial.print(" Пароль ");
+    Serial.print(AP_PASS);
+    Serial.print(" Веб логин/пароль admin/ponics ");
     Serial.print(", enter http://");
+
     Serial.println(ip);
 
-    isAPMode = true;
+
 }
 
 bool tryConnectToWiFi()
 {
     Serial.print("Trying to connect to WiFi: ");
     Serial.println(ssid);
-
-    WiFi.mode(WIFI_STA);
     WiFi.begin(ssid.c_str(), password.c_str());
-
-    if (WiFi.waitForConnectResult() == WL_CONNECTED)
+    if (WiFi.waitForConnectResult(10000) == WL_CONNECTED)
     {
         Serial.println("Connected to WiFi.");
         wifiIp = WiFi.localIP().toString();
         Serial.print("IP Address: ");
         Serial.println(wifiIp);
-        isAPMode = false;
         return true;
     }
     Serial.println("Failed to connect to WiFi.");
@@ -49,20 +48,12 @@ void connectToWiFi()
 {
     if (tryConnectToWiFi())
     {
-        if (isAPMode)
-        {
-            Serial.println("Disabling AP mode after successful WiFi connection.");
-            WiFi.softAPdisconnect(true);
-            WiFi.mode(WIFI_STA);
-            isAPMode = false;
-        }
+        Serial.println("Disabling AP mode after successful WiFi connection.");
+        WiFi.softAPdisconnect(true);
     }
     else
     {
-        if (!isAPMode)
-        {
-            configAP();
-        }
+        configAP();
     }
 }
 
@@ -71,16 +62,9 @@ void checkWiFiConnection(TimerHandle_t xTimer)
     if (WiFi.status() != WL_CONNECTED)
     {
         Serial.println("WiFi not connected. Checking connection...");
-
-        if (isAPMode)
-        {
-            Serial.println("In AP mode. Trying to reconnect to WiFi...");
-            connectToWiFi();
-        }
-        else
-        {
-            Serial.println("Lost connection in STA mode. Switching to AP...");
-            configAP();
-        }
+        configAP();
+        Serial.println("In AP mode. Trying to reconnect to WiFi...");
+        connectToWiFi();
+       
     }
 }

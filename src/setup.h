@@ -1,4 +1,3 @@
-int stack_size = 4096;
 
 // Обработчик событий WebSocket
 void onWebSocketEvent(uint8_t clientNum, WStype_t type, uint8_t *payload, size_t length)
@@ -225,29 +224,122 @@ void handleUpdateIndex()
         server.send(500, "text/plain", "Failed to update index file");
     }
 }
-
 void setupServer()
 {
     webSocket.begin();
     webSocket.onEvent(onWebSocketEvent);
 
-    server.on("/", HTTP_GET, handleRoot);
-    server.on("/api/status", HTTP_GET, handleApiStatuses);
-    server.on("/api/groups", HTTP_GET, handleApiGroups);
-    server.on("/api/labels", HTTP_GET, handleApiLabels);
-    server.on("/api/tasks", HTTP_GET, handleApiTasks);
+    server.on("/", HTTP_GET,
+              []()
+              {
+                  if (!server.authenticate(httpAuthUser.c_str(), httpAuthPass.c_str()))
+                      return server.requestAuthentication();
+                  handleRoot();
+              });
 
-    server.on("/api/save-settings", HTTP_POST, saveSettings);
-    server.on("/reset", handleReset);
-    server.on("/update", update);
-    server.on("/update-index", HTTP_GET, handleUpdateIndex);
-    server.on("/core-dump", HTTP_GET, handleCoreDump);
+    server.on("/api/status", HTTP_GET,
+              []()
+              {
+                  if (!server.authenticate(httpAuthUser.c_str(), httpAuthPass.c_str()))
+                      return server.requestAuthentication();
+                  handleApiStatuses();
+              });
 
-    server.on("/generate_204", handleRedirect);               // Android
-    server.on("/library/test/success.html", handleRedirect);  // iOS
-    server.on("/hotspot-detect.html", handleRedirect);        // macOS
+    server.on("/api/groups", HTTP_GET,
+              []()
+              {
+                  if (!server.authenticate(httpAuthUser.c_str(), httpAuthPass.c_str()))
+                      return server.requestAuthentication();
+                  handleApiGroups();
+              });
 
-    server.onNotFound([]() { handleFileRequest(); });
+    server.on("/api/labels", HTTP_GET,
+              []()
+              {
+                  if (!server.authenticate(httpAuthUser.c_str(), httpAuthPass.c_str()))
+                      return server.requestAuthentication();
+                  handleApiLabels();
+              });
+
+    server.on("/api/tasks", HTTP_GET,
+              []()
+              {
+                  if (!server.authenticate(httpAuthUser.c_str(), httpAuthPass.c_str()))
+                      return server.requestAuthentication();
+                  handleApiTasks();
+              });
+
+    server.on("/api/save-settings", HTTP_POST,
+              []()
+              {
+                  if (!server.authenticate(httpAuthUser.c_str(), httpAuthPass.c_str()))
+                      return server.requestAuthentication();
+                  saveSettings();
+              });
+
+    server.on("/reset",
+              []()
+              {
+                  if (!server.authenticate(httpAuthUser.c_str(), httpAuthPass.c_str()))
+                      return server.requestAuthentication();
+                  handleReset();
+              });
+
+    server.on("/update",
+              []()
+              {
+                  if (!server.authenticate(httpAuthUser.c_str(), httpAuthPass.c_str()))
+                      return server.requestAuthentication();
+                  update();
+              });
+
+    server.on("/update-index", HTTP_GET,
+              []()
+              {
+                  if (!server.authenticate(httpAuthUser.c_str(), httpAuthPass.c_str()))
+                      return server.requestAuthentication();
+                  handleUpdateIndex();
+              });
+
+    server.on("/core-dump", HTTP_GET,
+              []()
+              {
+                  if (!server.authenticate(httpAuthUser.c_str(), httpAuthPass.c_str()))
+                      return server.requestAuthentication();
+                  handleCoreDump();
+              });
+
+    server.on("/generate_204",
+              []()
+              {
+                  if (!server.authenticate(httpAuthUser.c_str(), httpAuthPass.c_str()))
+                      return server.requestAuthentication();
+                  handleRedirect();
+              });
+
+    server.on("/library/test/success.html",
+              []()
+              {
+                  if (!server.authenticate(httpAuthUser.c_str(), httpAuthPass.c_str()))
+                      return server.requestAuthentication();
+                  handleRedirect();
+              });
+
+    server.on("/hotspot-detect.html",
+              []()
+              {
+                  if (!server.authenticate(httpAuthUser.c_str(), httpAuthPass.c_str()))
+                      return server.requestAuthentication();
+                  handleRedirect();
+              });
+
+    server.onNotFound(
+        []()
+        {
+            if (!server.authenticate(httpAuthUser.c_str(), httpAuthPass.c_str())) return server.requestAuthentication();
+            handleFileRequest();
+        });
+
     server.begin();
 
     MDNS.addService("http", "tcp", 80);

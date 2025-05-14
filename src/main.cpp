@@ -38,7 +38,8 @@
 #include "esp_adc_cal.h"
 
 bool isAPMode = false;
-
+int stack_size = 4096;
+String httpAuthUser, httpAuthPass;
 uint8_t buff[128] = {0};
 HTTPClient http;
 
@@ -118,7 +119,10 @@ void syslog_ng(String x)
         return;
     }
     x = fFTS(float(millis()) / 1000, 3) + "s " + x;
-    syslog.log(LOG_INFO, x);
+    if (!isAPMode && WiFi.status() == WL_CONNECTED)
+    {
+        syslog.log(LOG_INFO, x);
+    }
     Serial.println(x);
     webSocket.broadcastTXT(x);
 }
@@ -131,7 +135,10 @@ void syslog_err(String x)
         return;
     }
     x = fFTS(float(millis()) / 1000, 3) + "s " + x;
-    syslog.log(LOG_ERR, x);
+    if (!isAPMode && WiFi.status() == WL_CONNECTED)
+    {
+        syslog.log(LOG_ERR, x);
+    }
     Serial.println(x);
     if (webSocket.connectedClients() > 0)
     {
@@ -421,7 +428,7 @@ void enqueueMessage(const char *topic, const char *payload, String key = "", boo
 #if defined(ENABLE_PONICS_ONLINE)
     if (enable_ponics_online)
     {
-        if (mqttClient.connected() and not_ha_only)
+        if (mqttClient.connected() and not_ha_only and WiFi.status() == WL_CONNECTED)
         {
             int packet_id = mqttClient.publish(topic, 0, false, payload);
             vTaskDelay(5);
@@ -435,7 +442,7 @@ void enqueueMessage(const char *topic, const char *payload, String key = "", boo
         }
     }
 #endif
-    if (mqttClientHA.connected())
+    if (mqttClientHA.connected() and WiFi.status() == WL_CONNECTED)
     {
         int packet_id = mqttClientHA.publish(topic, 0, false, payload);
         vTaskDelay(5);
@@ -730,6 +737,10 @@ Group groups[] = {
      10,
      {
          {"UPDATE_URL", "Ссылка на прошивку", Param::STRING, .defaultString = UPDATE_URL.c_str()},
+
+         {"httpAU", "Логин", Param::STRING, .defaultString = httpAuthUser.c_str()},
+         {"httpAP", "Пароль", Param::STRING, .defaultString = httpAuthPass.c_str()},
+
          {"epo", "Вкл мктт поникс(0-off, 1-on)", Param::INT, .defaultInt = 1},
          {"update_token", "Ключ обновления", Param::STRING, .defaultString = update_token.c_str()},
          {"HOSTNAME", "Имя хоста", Param::STRING, .defaultString = HOSTNAME.c_str()},

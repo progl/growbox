@@ -9,8 +9,7 @@ void configureHttpClientForFirefox(HTTPClient &http)
     http.addHeader("Accept-Encoding", "gzip, deflate, br");
 
     http.setConnectTimeout(100000);
-    uint16_t timeout = 100000;
-    http.setTimeout(timeout);
+    http.setTimeout(100000);
 }
 
 const char UPDATE_page[] PROGMEM = R"=====(

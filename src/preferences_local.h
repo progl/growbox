@@ -229,6 +229,8 @@ PreferenceItem preferencesArray[] = {
     {"PumpA_Step_SUM", DataType::FLOAT, {0.0f}, &PumpA_Step_SUM, &config_preferences},
     {"PumpB_Step_SUM", DataType::FLOAT, {0.0f}, &PumpB_Step_SUM, &config_preferences},
 
+    {"httpAU", DataType::STRING, "admin", &httpAuthUser, &config_preferences},
+    {"httpAP", DataType::STRING, "ponics", &httpAuthPass, &config_preferences},
 };
 
 const int preferencesCount = sizeof(preferencesArray) / sizeof(preferencesArray[0]);
