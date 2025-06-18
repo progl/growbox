@@ -1,26 +1,72 @@
 #include <stdint.h>
 #include <Arduino.h>
 #include "LittleFS.h"
+#ifdef ARDUINO_ARCH_ESP32
+#undef noInterrupts  // () {portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;portENTER_CRITICAL(&mux)
+#undef interrupts    // () portEXIT_CRITICAL(&mux);}
+#endif
 #include <MCP342x.h>
 #include "GyverFilters.h"
-#include <BMx280I2C.h>
+#include <Adafruit_AHTX0.h>
+#include <Adafruit_BME280.h>
 #include <WiFi.h>
 #include <soc/rtc.h>
-#include <AHT10.h>
 #include <WiFiClient.h>
+#include <AsyncJson.h>
+#include <ESPAsyncWebServer.h>
 #include <WiFiClientSecure.h>
 #include <WiFiUdp.h>
 #include <Adafruit_MCP23X17.h>
 #include <ESPmDNS.h>
 #include <ArduinoOTA.h>
 #include <GyverOLED.h>
-#include "SparkFun_SCD30_Arduino_Library.h"
-#include <BMx280I2C.h>
-#include <WebServer.h>
-#include <WebSocketsServer.h>
+#include <Adafruit_SCD30.h>
+#include <Adafruit_BME280.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
+#include <ESPAsyncWebServer.h>
+#include <vector>
+#include <algorithm>
+#include <DNSServer.h>  // Для работы с DNS сервером
+#include <Ticker.h>
+#include <set>
+#include "ram_saver.h"
+Ticker restartTicker;
+String chipStr;
+// Global HTTP client
+HTTPClient http;
+AsyncWebServer server(80);
+AsyncEventSource events("/events");  // SSE endpoint по адресу /events
+String indexHtml;
+bool waitingSecondOta = false;
+
+std::set<String> notFoundCache;
+std::set<String> FoundCache;
+// WiFi client configuration
+const int WIFI_CONNECT_TIMEOUT = 5000;    // 5 seconds
+const int WIFI_RESPONSE_TIMEOUT = 10000;  // 10 seconds
+static unsigned long lastDataTime = 0;
+static bool otaTimedOut = false;
+static bool updateBegun = false;
+// Initialize HTTP client with timeouts
+void initWiFiClient()
+{
+    http.setTimeout(WIFI_RESPONSE_TIMEOUT);
+    http.setConnectTimeout(WIFI_CONNECT_TIMEOUT);
+}
+
+// Function to clean up WiFi client
+void cleanupWiFiClient()
+{
+    if (http.connected())
+    {
+        http.end();
+    }
+    http.end();
+}
 #include <lwip/dns.h>
 #include <sstream>
-#include <cmath>  // для isnan
+#include <cmath>
 #include <Update.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
@@ -30,18 +76,67 @@
 #include <AM232X.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
+#include "ccs811.h"  // CCS811 library
+#include <VL53L0X.h>
+#undef NOP
+#include "HX710B.h"
+
 #include <nvs_flash.h>
 #include <variables.h>
 #include <functions.h>
-#include <Syslog.h>
-#include "ccs811.h"  // CCS811 library
-#include "esp_adc_cal.h"
 
+#include "esp_adc_cal.h"
+#define ONE_WIRE_BUS 23  // Порт 1-Wire
+#include <Wire.h>        // Шина I2C
+#define I2C_SDA 21       // SDA
+#define I2C_SCL 22       // SCL
 bool isAPMode = false;
 int stack_size = 4096;
 String httpAuthUser, httpAuthPass;
 uint8_t buff[128] = {0};
-HTTPClient http;
+WiFiUDP udpClient;
+
+#include <Syslog.h>
+Syslog syslog(udpClient, SYSLOG_PROTO_IETF);
+// Обработчик загрузки файла
+bool shouldReboot = false;
+
+void syslog_ng(String x)
+{
+    if (x == nullptr)
+    {
+        Serial.println("Ошибка: syslog_ng  x null");
+        return;
+    }
+
+    events.send(x.c_str(), "log", millis());
+
+    x = fFTS(float(millis()) / 1000, 3) + "s " + x;
+    if (!isAPMode && WiFi.status() == WL_CONNECTED)
+    {
+        syslog.log(LOG_INFO, x.c_str());
+    }
+
+    Serial.println(x);
+}
+
+void syslog_err(String x)
+{
+    if (x == nullptr)
+    {
+        Serial.println("Ошибка: syslog_err  x null");
+        return;
+    }
+    events.send(x.c_str(), "log", millis());
+
+    x = fFTS(float(millis()) / 1000, 3) + "s " + x;
+    if (!isAPMode && WiFi.status() == WL_CONNECTED)
+    {
+        syslog.log(LOG_ERR, x.c_str());
+    }
+
+    Serial.println(x);
+}
 
 // Настройки ADC
 esp_adc_cal_characteristics_t *adc_chars;
@@ -68,28 +163,26 @@ struct TaskParams
 struct TaskInfo
 {
     const char *taskName;
-    unsigned long lastExecutionTime;   // Время последнего выполнения
-    unsigned long totalExecutionTime;  // Общее время выполнения
-    unsigned int executionCount;       // Количество выполнений
-    unsigned int minFreeStackSize;     // Минимальное количество свободной памяти в стеке (в байтах)
-    SemaphoreHandle_t xSemaphore;      // Семафор
+    unsigned long lastExecutionTime;
+    unsigned long totalExecutionTime;
+    unsigned int executionCount;
+    unsigned int minFreeStackSize;
+    SemaphoreHandle_t xSemaphore;
 };
-#define MAX_TASKS 20
+#define MAX_TASKS 40
 #define US_SDA 13  // SDA
 #define US_SCL 14  // SCL
 
 TaskInfo tasks[MAX_TASKS];
 int taskCount = 0;
-WiFiUDP udpClient;
-Syslog syslog(udpClient, SYSLOG_PROTO_IETF);
+
 uint8_t LCDaddr = 0x3c;
 GyverOLED<SSD1306_128x64, OLED_BUFFER> oled;
 SemaphoreHandle_t xSemaphore_C = NULL;
 SemaphoreHandle_t xSemaphoreX_WIRE = NULL;
 Preferences preferences;
 Preferences config_preferences;
-WebServer server(80);
-WebSocketsServer webSocket = WebSocketsServer(81);
+extern AsyncWebServer server;
 TimerHandle_t mqttReconnectTimer;
 TimerHandle_t mqttReconnectTimerHa;
 TimerHandle_t wifiReconnectTimer;
@@ -98,55 +191,194 @@ TaskHandle_t xHandleUpdate = NULL;
 AsyncMqttClient mqttClient;
 AsyncMqttClient mqttClientHA;
 WiFiEventId_t wifiConnectHandler;
+String clientId, clientIdHa;
+String sessionToken = "";
+#define MAX_MQTT_QUEUE_SIZE 50
 
-#include <VL53L0X.h>
 #include <map>
 #include <params.h>
 #include <driver/adc.h>
 
 #include <queue>
-#undef NOP
-#include "HX710B.h"
+
 #define SCK_PIN 13
 #define SDI_PIN 14
 #define ADS1115_MiddleCount 10000  // 6236ms за 10 тыс усреднений
 #include <debug_info_new.h>
-void syslog_ng(String x)
+#include <http/funcs.h>
+// Структура для управления SSE клиентами
+struct SSEClient
 {
-    if (x == nullptr)
-    {
-        Serial.println("Ошибка: syslog_ng  x null");
-        return;
-    }
-    x = fFTS(float(millis()) / 1000, 3) + "s " + x;
-    if (!isAPMode && WiFi.status() == WL_CONNECTED)
-    {
-        syslog.log(LOG_INFO, x);
-    }
-    Serial.println(x);
-    webSocket.broadcastTXT(x);
-}
+    WiFiClient client;
+    bool connected;
+};
 
-void syslog_err(String x)
-{
-    if (x == nullptr)
-    {
-        Serial.println("Ошибка: syslog_ng  x null");
-        return;
-    }
-    x = fFTS(float(millis()) / 1000, 3) + "s " + x;
-    if (!isAPMode && WiFi.status() == WL_CONNECTED)
-    {
-        syslog.log(LOG_ERR, x);
-    }
-    Serial.println(x);
-    if (webSocket.connectedClients() > 0)
-    {
-        webSocket.broadcastTXT(x);
-    }
-}
+// Массив SSE клиентов
+#define MAX_SSE_CLIENTS 4
+SSEClient sseClients[MAX_SSE_CLIENTS];
+int sseClientCount = 0;
 
 #include <dev/ec/old_adc/wega-adc.h>
+
+void removeSSEClient(const WiFiClient &client)
+{
+    for (int i = 0; i < sseClientCount; i++)
+    {
+        if (sseClients[i].client == client)
+        {
+            syslog_ng("Removing SSE client");
+
+            // Остановить и очистить клиент
+            sseClients[i].client.stop();
+            sseClients[i].client = WiFiClient();
+            sseClients[i].connected = false;
+
+            // Сдвигаем оставшиеся клиенты
+            for (int j = i; j < sseClientCount - 1; j++)
+            {
+                sseClients[j] = sseClients[j + 1];
+            }
+            sseClientCount--;
+            break;
+        }
+    }
+}
+
+// Функция для добавления нового SSE клиента
+void addSSEClient(const WiFiClient &client)
+{
+    // Проверяем, не добавляем ли мы существующего клиента
+    for (int i = 0; i < sseClientCount; i++)
+    {
+        if (sseClients[i].client == client)
+        {
+            syslog_ng("Client already exists");
+            return;
+        }
+    }
+
+    if (sseClientCount < MAX_SSE_CLIENTS)
+    {
+        sseClients[sseClientCount].client = client;
+        sseClients[sseClientCount].connected = true;
+        sseClientCount++;
+        syslog_ng(String("SSE client added, total: ") + sseClientCount);
+    }
+    else
+    {
+        syslog_err("SSE client limit reached");
+    }
+}
+
+// Function to send message to all connected SSE clients
+void sendSSEMessage(const String &message)
+{
+    if (message.length() == 0)
+    {
+        syslog_err("Empty message in sendSSEMessage");
+        return;
+    }
+
+    // Format the message with event type
+    String sseMessage = "event: message\n";
+    sseMessage += "data: " + message + "\n\n";
+
+    // Send to all connected clients
+    for (int i = 0; i < sseClientCount; i++)
+    {
+        if (sseClients[i].connected && sseClients[i].client.connected())
+        {
+            syslog_ng(String("Sending to client ") + i);
+
+            // Try to send message with retries
+            int retries = 3;
+            bool messageSent = false;
+            while (retries > 0)
+            {
+                sseClients[i].client.print(sseMessage);
+                sseClients[i].client.flush();
+
+                // Проверяем успешность отправки через available()
+                if (sseClients[i].client.available() == 0)
+                {
+                    messageSent = true;
+                    syslog_ng(String("Message sent to client ") + i);
+                    break;
+                }
+                retries--;
+                syslog_err(String("Failed to send message to client ") + i + String(", retries left: ") + retries);
+            }
+
+            if (!messageSent)
+            {
+                syslog_err(String("Failed to send message to client ") + i + String(" after retries"));
+                sseClients[i].connected = false;
+            }
+
+            if (retries == 0)
+            {
+                syslog_err(String("Failed to send message to client ") + i + String(" after retries"));
+                sseClients[i].connected = false;
+            }
+        }
+        else
+        {
+            syslog_err(String("Client ") + i + String(" disconnected"));
+            // Client disconnected, remove from list
+            removeSSEClient(sseClients[i].client);
+            i--;  // Adjust index since we removed an element
+        }
+    }
+}
+
+// Function to clean up disconnected SSE clients
+void cleanupSSEClients()
+{
+    syslog_ng("Starting SSE client cleanup");
+    syslog_ng(String("Total clients: ") + sseClientCount);
+
+    // Create a temporary array of active clients
+    SSEClient activeClients[MAX_SSE_CLIENTS];
+    int activeCount = 0;
+
+    // First pass: collect active clients
+    for (int i = 0; i < sseClientCount; i++)
+    {
+        if (sseClients[i].connected && sseClients[i].client.connected())
+        {
+            // Проверяем, что клиент активен
+            if (sseClients[i].client.available() > 0)
+            {
+                sseClients[i].client.read();  // Очищаем входной буфер
+            }
+            activeClients[activeCount++] = sseClients[i];
+            syslog_ng(String("Client ") + i + String(" is active"));
+        }
+        else
+        {
+            syslog_ng(String("Found disconnected client ") + i);
+            sseClients[i].client.stop();  // Clean up the client
+            sseClients[i].connected = false;
+        }
+    }
+
+    // Second pass: update the main array
+    if (activeCount < sseClientCount)
+    {
+        for (int i = 0; i < activeCount; i++)
+        {
+            sseClients[i] = activeClients[i];
+        }
+        sseClientCount = activeCount;
+        syslog_ng(String("Active clients after cleanup: ") + sseClientCount);
+    }
+    else
+    {
+        syslog_ng("No disconnected clients found");
+    }
+}
+
+// Функция для удаления SSE клиента
 void TaskTemplate(void *params)
 {
     TaskParams *taskParams = (TaskParams *)params;
@@ -208,13 +440,16 @@ void TaskTemplate(void *params)
                   String(counter) + " taskParams->taskName " + String(taskParams->taskName));
         vTaskDelete(NULL);
     }
-    vTaskDelay(500);
+
     for (;;)
     {
         if (OtaStart == true)
         {
-            syslog_ng(String(taskParams->taskName) + " OTA start detected, pause task");
-            while (OtaStart == true) vTaskDelay(1000);
+            syslog_ng(String(taskParams->taskName) + " OTA start detected, deleting task");
+            // Free any allocated resources here if needed
+
+            vTaskDelete(NULL);  // Delete the current task
+            return;             // This line is technically unreachable but good practice
         }
 
         unsigned long currentTime = millis();
@@ -269,16 +504,19 @@ void TaskTemplate(void *params)
                     syslog_ng(String(taskParams->taskName) + " symofore busy ");
                 }
 
-                vTaskDelay(1000);
+                vTaskDelay(random(500, 1501) / portTICK_PERIOD_MS);
             }
         }
         else
-            vTaskDelay(100);
+        {
+            vTaskDelay(random(500, 1501) / portTICK_PERIOD_MS);
+        }
     }
 
     syslog_ng(String(taskParams->taskName) + " EXIT Task");
 }
-
+static int reconnectDelay = 1000;  // Start with 1 second
+static int reconnectAttempts = 0;
 long phvalue;
 // Очередь для хранения сообщений
 std::queue<std::pair<const char *, const char *>> messageQueue;
@@ -399,17 +637,7 @@ String deviceAddressToString(const DeviceAddress &deviceAddress)
     return str;
 }
 
-void addParameter(String &str, const String &key, float value, int precision)
-{
-    if (!std::isnan(value) and value)
-    {
-        char valueBuffer[32];
-        snprintf(valueBuffer, sizeof(valueBuffer), "%.*f", precision, value);
-        str += "&" + key + "=" + valueBuffer;
-    }
-}
-
-void enqueueMessage(const char *topic, const char *payload, String key = "", bool not_ha_only = true)
+void enqueueMessage(const char *topic, const char *payload, String key = "", String mqtt_type = "all")
 {
     // Проверка на NULL для topic и payload
     if (topic == nullptr || payload == nullptr)
@@ -417,21 +645,16 @@ void enqueueMessage(const char *topic, const char *payload, String key = "", boo
         Serial.println("Ошибка: topic или payload равен NULL");
         return;
     }
-    if (!key.isEmpty() and not_ha_only)
-    {
-        // Формируем сообщение в формате "key:payload"
-        String websocket_msg = ":::" + key + ":" + String(payload);
-        // Рассылаем сообщение всем подключённым WebSocket-клиентам
-        webSocket.broadcastTXT(websocket_msg);
-        vTaskDelay(1);
-    }
 #if defined(ENABLE_PONICS_ONLINE)
     if (enable_ponics_online)
     {
-        if (mqttClient.connected() and not_ha_only and WiFi.status() == WL_CONNECTED)
+        if (mqttClient.connected() and (mqtt_type == "usual" or mqtt_type == "all") and WiFi.status() == WL_CONNECTED)
         {
             int packet_id = mqttClient.publish(topic, 0, false, payload);
-            vTaskDelay(5);
+
+            String e = String(topic) + ":::" + String(payload);
+            events.send(e.c_str(), "mqtt-ponics", millis());
+
             if (packet_id == 0)
             {
                 int payloadSize = strlen(payload);
@@ -442,10 +665,12 @@ void enqueueMessage(const char *topic, const char *payload, String key = "", boo
         }
     }
 #endif
-    if (mqttClientHA.connected() and WiFi.status() == WL_CONNECTED)
+    if (mqttClientHA.connected() and (mqtt_type == "ha" or mqtt_type == "all") and WiFi.status() == WL_CONNECTED)
     {
         int packet_id = mqttClientHA.publish(topic, 0, false, payload);
-        vTaskDelay(5);
+
+        String e = String(topic) + ":::" + String(payload);
+        events.send(e.c_str(), "mqtt-ha", millis());
         if (packet_id == 0)
         {
             int payloadSize = strlen(payload);
@@ -456,11 +681,6 @@ void enqueueMessage(const char *topic, const char *payload, String key = "", boo
         }
     }
 }
-
-#define ONE_WIRE_BUS 23  // Порт 1-Wire
-#include <Wire.h>        // Шина I2C
-#define I2C_SDA 21       // SDA
-#define I2C_SCL 22       // SCL
 
 // Функция для вычисления насыщенного давления пара
 float calculateSVP(float temperature) { return 0.61078 * exp((17.27 * temperature) / (temperature + 237.3)); }
@@ -503,12 +723,7 @@ void setParamSettings(const String &key, float compare, int action, String url)
 
 void publish_parameter(const String &key, float value, int precision, int timescale)
 {
-    // Проверка на допустимость precision
-    if (precision < 0 || precision > 6)
-    {
-        syslog_ng("ERROR: Invalid precision value: " + String(precision));
-        return;  // Выходим, если precision недопустим
-    }
+    // Отправляем RSSI значение если это первый вызов
 
     // Проверка на пустой ключ
     if (key.length() == 0)
@@ -527,7 +742,6 @@ void publish_parameter(const String &key, float value, int precision, int timesc
 
         if (log_debug) syslog_ng("published topic " + topic + " value: " + String(value));
         enqueueMessage(topic.c_str(), valueStr, key);
-        vTaskDelay(1);
     }
     else
     {
@@ -536,7 +750,6 @@ void publish_parameter(const String &key, float value, int precision, int timesc
 
         dtostrf(value, 1, precision, valueStr);  // Преобразуем float в строку с заданной точностью
         enqueueMessage(topic.c_str(), valueStr, key);
-        vTaskDelay(5);
     }
 }
 
@@ -734,14 +947,13 @@ Group groups[] = {
      }},
 
     {"Настройки",
-     10,
+     13,
      {
          {"UPDATE_URL", "Ссылка на прошивку", Param::STRING, .defaultString = UPDATE_URL.c_str()},
-
-         {"httpAU", "Логин", Param::STRING, .defaultString = httpAuthUser.c_str()},
-         {"httpAP", "Пароль", Param::STRING, .defaultString = httpAuthPass.c_str()},
-
+         {"httpAU", "Логин интерфейса", Param::STRING, .defaultString = httpAuthUser.c_str()},
+         {"httpAP", "Пароль интерфейса", Param::STRING, .defaultString = httpAuthPass.c_str()},
          {"epo", "Вкл мктт поникс(0-off, 1-on)", Param::INT, .defaultInt = 1},
+         {"epo_l", "Вкл лог поникс(0-off, 1-on)", Param::INT, .defaultInt = 1},
          {"update_token", "Ключ обновления", Param::STRING, .defaultString = update_token.c_str()},
          {"HOSTNAME", "Имя хоста", Param::STRING, .defaultString = HOSTNAME.c_str()},
          {"vpdstage", "VPD стадия", Param::STRING, .defaultString = vpdstage.c_str()},
@@ -833,8 +1045,8 @@ Group groups[] = {
     {"Даллас",
      2,
      {
-         {"RootTempAddress", "Адрес Темп корней", Param::STRING, .defaultString = "28:FF:1C:30:63:17:03:B1"},
-         {"WNTCAddress", "Адрес Темп бака", Param::STRING, .defaultString = "28:FF:1C:30:63:17:03:B1"},
+         {"RootTempAddress", "Адрес Темп корней", Param::STRING, .defaultString = ""},
+         {"WNTCAddress", "Адрес Темп бака", Param::STRING, .defaultString = ""},
      }},
 
     {"Периодика",
@@ -947,53 +1159,6 @@ const int PwdResolution1 = 8;
 const int PwdChannel2 = 2;
 const int PwdResolution2 = 8;
 
-void sendFileLittleFS(String path)
-{
-    String contentType = "text/plain";
-    File file;
-
-    // Проверяем существование сжатого файла
-    if (LittleFS.exists(path + ".gz"))
-    {
-        Serial.println("File found: " + path + ".gz");
-        file = LittleFS.open(path + ".gz", "r");
-    }
-    // Проверяем существование несжатого файла
-    else if (LittleFS.exists(path))
-    {
-        Serial.println("File found: " + path);
-        file = LittleFS.open(path, "r");
-    }
-    // Если файл не найден
-    else
-    {
-        Serial.println("File not found: " + path);
-        server.send(404, "text/plain", "File Not Found");
-        return;
-    }
-
-    // Определяем MIME-тип по расширению файла
-    if (path.endsWith(".html"))
-        contentType = "text/html";
-    else if (path.endsWith(".css"))
-        contentType = "text/css";
-    else if (path.endsWith(".js"))
-        contentType = "application/javascript";
-    else if (path.endsWith(".json"))
-        contentType = "application/json";
-    else if (path.endsWith(".png"))
-        contentType = "image/png";
-    else if (path.endsWith(".ico"))
-        contentType = "image/x-icon";
-
-    // Отправляем заголовки и поток файла
-    server.sendHeader("Cache-Control", "max-age=2628000, public");  // Кэш на 30 дней
-    server.streamFile(file, contentType);
-
-    file.close();  // Закрываем файл
-    delay(100);    // Задержка для стабильности отправки
-}
-
 #include <rom/rtc.h>
 #include <etc/ResetReason.h>
 #include <etc/http_cert.h>
@@ -1008,6 +1173,7 @@ void sendFileLittleFS(String path)
 #include <dev/ads1115/main.h>
 #include <dev/pr/main.h>
 #include <dev/us025/main.h>
+
 #include <dev/ccs811/main.h>
 #include <dev/am2320/main.h>
 #include <dev/mcp23017/main.h>
@@ -1029,5 +1195,6 @@ void sendFileLittleFS(String path)
 #include <etc/wifi_ap.h>
 #include <web/new_settings.h>
 
+#include <ram_saver_api.h>
 #include <setup.h>
 #include <loop.h>

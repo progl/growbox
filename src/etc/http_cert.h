@@ -1,1 +1,0 @@
-const char* ca_cert = nullptr;

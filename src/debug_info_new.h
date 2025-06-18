@@ -1,53 +1,53 @@
-void handleCoreDump()
+void handleCoreDump(AsyncWebServerRequest* request)
 {
     // Находим раздел дампа ядра
-    const esp_partition_t *core_dump_partition =
+    const esp_partition_t* core_dump_partition =
         esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_COREDUMP, "coredump");
+
     if (!core_dump_partition)
     {
-        server.send(404, "text/plain", "Core dump partition not found.");
+        request->send(404, "text/plain", "Core dump partition not found.");
         return;
     }
 
-    // Информация о разделе
     size_t partition_size = core_dump_partition->size;
-    char partition_info_msg[128];
-    snprintf(partition_info_msg, sizeof(partition_info_msg), "Core dump partition found. Size: %u bytes",
-             (unsigned int)partition_size);
+    Serial.println("WEB /coredump");
+    Serial.println("WEB /coredump partition_size " + String(partition_size));
 
-    // Заголовки ответа
-    server.setContentLength(partition_size);           // Указываем размер ответа
-    server.send(200, "application/octet-stream", "");  // Заголовки без тела
-
-    // Чтение и передача дампа чанками
-    const size_t chunk_size = 1024;  // Размер чанка (1KB)
-    uint8_t *buffer = (uint8_t *)malloc(chunk_size);
-    if (!buffer)
+    // Переменная состояния для чтения дампа
+    struct CoreDumpContext
     {
-        server.send(500, "text/plain", "Failed to allocate buffer.");
-        return;
-    }
-
-    size_t offset = 0;
-    while (offset < partition_size)
-    {
-        size_t bytes_to_read = std::min(chunk_size, partition_size - offset);
-
-        // Чтение чанка из партиции
-        esp_err_t err = esp_partition_read(core_dump_partition, offset, buffer, bytes_to_read);
-        if (err != ESP_OK)
+        const esp_partition_t* partition;
+        size_t offset;
+        size_t total_size;
+        CoreDumpContext(const esp_partition_t* part, size_t off, size_t tot)
+            : partition(part), offset(off), total_size(tot)
         {
-            free(buffer);
-            server.client().stop();  // Завершаем соединение
-            return;
         }
+    };
 
-        // Отправка чанка клиенту
-        server.client().write(buffer, bytes_to_read);
+    CoreDumpContext* context = new CoreDumpContext(core_dump_partition, 0, partition_size);
 
-        offset += bytes_to_read;
-    }
+    AsyncWebServerResponse* response = new AsyncChunkedResponse(
+        "application/octet-stream",
+        [context](uint8_t* buffer, size_t maxLen, size_t index) -> size_t
+        {
+            if (context->offset >= context->total_size)
+            {
+                delete context;
+                return 0;
+            }
 
-    free(buffer);            // Очистка памяти
-    server.client().stop();  // Завершаем соединение после передачи
+            size_t bytes_to_read = std::min(maxLen, context->total_size - context->offset);
+            if (esp_partition_read(context->partition, context->offset, buffer, bytes_to_read) != ESP_OK)
+            {
+                delete context;
+                return 0;  // Ошибка чтения
+            }
+
+            context->offset += bytes_to_read;
+            return bytes_to_read;
+        });
+
+    request->send(response);
 }

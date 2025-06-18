@@ -18,3 +18,4 @@
 #include <dev/vcc/tasks.h>
 #include <dev/vl53l0x_us/tasks.h>
 #include <dev/vl6180x/tasks.h>
+#include <ram_saver.h>

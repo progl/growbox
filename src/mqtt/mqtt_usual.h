@@ -1,3 +1,11 @@
+#include <map>
+#include <string>
+
+// Map to store last update times for each parameter
+std::map<std::string, unsigned long> paramLastUpdate;
+// 5 seconds cooldown between parameter updates
+const unsigned long PARAM_UPDATE_COOLDOWN = 5000;
+
 void publishVariablesListToMQTT()
 {
     JsonDocument doc;
@@ -53,7 +61,7 @@ void publishVariablesListToMQTT()
     String topic = mqttPrefix + preferences_prefix + "all_variables";
 
     // Отправляем JSON полезную нагрузку через MQTT
-    enqueueMessage(topic.c_str(), output.c_str(), "", false);
+    enqueueMessage(topic.c_str(), output.c_str(), "", "all");
     vTaskDelay(1);
 }
 
@@ -67,33 +75,46 @@ void subscribe()
     mqttClient.subscribe(mqttPrefixtest.c_str(), qos);
     syslog_ng("mqtt end subscribe");
 }
+
 void onMqttDisconnect(AsyncMqttClientDisconnectReason reason)
 {
-    syslog_ng("Disconnected. Reason: " + String((int)reason));
-    if (reason == AsyncMqttClientDisconnectReason::TCP_DISCONNECTED)
-    {
-        syslog_ng("TCP_DISCONNECTED: клиент сам разорвал соединение.");
-    }
-    else if (reason == AsyncMqttClientDisconnectReason::MQTT_UNACCEPTABLE_PROTOCOL_VERSION)
-    {
-        syslog_ng("Ошибка: неверная версия протокола.");
-    }
-    else if (reason == AsyncMqttClientDisconnectReason::MQTT_IDENTIFIER_REJECTED)
-    {
-        syslog_ng("Ошибка: идентификатор клиента отклонен.");
-    }
-    // Добавьте дополнительные случаи для анализа
+    static uint8_t reconnectAttempts = 0;
+    const uint8_t MAX_RECONNECT_ATTEMPTS = 10;  // Maximum number of reconnection attempts
 
-    syslog_ng("mqtt: Disconnected. Reason: " + String(static_cast<int>(reason)));
-    syslog_ng("mqtt: WiFi isConnected: " + String(WiFi.isConnected()));
-    if (WiFi.isConnected())
+    syslog_ng("Disconnected from MQTT. Reason: " + String((int)reason));
+
+    // Check if WiFi is still connected
+    if (WiFi.status() != WL_CONNECTED)
     {
-        if (not mqttClient.connected())
-        {
-            syslog_ng("mqtt: Starting reconnect timer");
-            xTimerStart(mqttReconnectTimer, 0);
-        }
+        syslog_ng("WiFi not connected, waiting for WiFi before MQTT reconnection");
+        return;
     }
+
+    // Increment reconnect attempts
+    reconnectAttempts++;
+
+    if (reconnectAttempts > MAX_RECONNECT_ATTEMPTS)
+    {
+        syslog_ng("Max MQTT reconnection attempts reached. Restarting...");
+        shouldReboot = true;
+        return;
+    }
+
+    // Exponential backoff with max 5 minutes
+    if (reconnectDelay < 300000)
+    {  // 5 minutes max
+        reconnectDelay = min(reconnectDelay * 2, 300000);
+    }
+
+    syslog_ng("Reconnect attempt " + String(reconnectAttempts) + "/" + String(MAX_RECONNECT_ATTEMPTS) + " in " +
+              String(reconnectDelay / 1000) + " seconds");
+
+    // Clean up any existing MQTT state
+    mqttClient.disconnect(true);
+
+    // Schedule reconnection
+    xTimerChangePeriod(mqttReconnectTimer, pdMS_TO_TICKS(reconnectDelay), 0);
+    xTimerStart(mqttReconnectTimer, 0);
 }
 
 void connectToMqtt()
@@ -102,7 +123,6 @@ void connectToMqtt()
     {
         syslog_ng("mqtt connectToMqtt Connecting to MQTT...");
         mqttClient.connect();
-        syslog_ng("mqtt connectToMqtt Connected " + String(mqttClient.connected()));
         mqtt_not_connected_counter = mqtt_not_connected_counter + 1;
         if (mqtt_not_connected_counter > 100)
         {
@@ -122,6 +142,9 @@ void onMqttReconnectTimer(TimerHandle_t xTimer)
 
 void onMqttConnect(bool sessionPresent)
 {
+    reconnectDelay = 1000;
+    reconnectAttempts = 0;
+
     syslog_ng("mqtt onMqttConnect mqtt connected start subscribe");
     subscribe();
     syslog_ng("mqtt onMqttConnect subscribed");
@@ -156,9 +179,8 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
         {
             syslog_ng("mqtt restart");
             enqueueMessage(topic, "0");
-
             preferences.putString(pref_reset_reason, "mqtt rest");
-            ESP.restart();
+            shouldReboot = true;
             return;  // After restarting, no need to proceed further
         }
     }
@@ -168,7 +190,10 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
         if (strcmp("1", message.c_str()) == 0)
         {
             syslog_ng("mqtt update");
-            update();
+            preferences.putInt("upd", 1);
+            force_update = true;
+            OtaStart = true;
+            make_update();
         }
     }
 
@@ -231,7 +256,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
                 publish_parameter("wEC", wEC, 3, 0);
                 publish_parameter("wECnt", ec_notermo, 3, 0);
                 publish_parameter("wR2", wR2, 3, 0);
-                publish_parameter("now", wNTC, 0, 0);
+                publish_parameter("now", millis(), 0, 0);
                 syslog_ng("mqtt calibrate_now ec");
                 if (enabled_kalman == 1)
                 {
@@ -245,7 +270,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
                 publish_parameter("pHmV", pHmV, 3, 0);
                 publish_parameter("pHraw", pHraw, 3, 0);
                 publish_parameter("wpH", wpH, 3, 0);
-                publish_parameter("now", wNTC, 0, 0);
+                publish_parameter("now", millis(), 0, 0);
                 syslog_ng("mqtt MCP3421");
             }
 
@@ -254,7 +279,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
                 PR_void();  // Фоторезистор
                 publish_parameter("PR", PR, 3, 0);
                 publish_parameter("wPR", wPR, 3, 0);
-                publish_parameter("now", wNTC, 0, 0);
+                publish_parameter("now", millis(), 0, 0);
                 syslog_ng("mqtt PR_void");
             }
 
@@ -264,7 +289,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
                 publish_parameter("Dist", Dist, 3, 0);
                 publish_parameter("DstRAW", DstRAW, 3, 0);
                 publish_parameter("wLevel", wLevel, 3, 0);
-                publish_parameter("now", wNTC, 0, 0);
+                publish_parameter("now", millis(), 0, 0);
                 syslog_ng("mqtt bak");
             }
 
@@ -351,67 +376,52 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
         }
     }
 
+    unsigned long currentTime = millis();
+    bool found_update = false;
     for (Group &group : groups)
     {
         for (int i = 0; i < group.numParams; i++)
         {
             Param &param = group.params[i];
-
-            String paramTopicGroup = mqttPrefix + "set/" + String(group.caption) + "/" + String(param.name);
-            String paramTopic = mqttPrefix + "set/" + String(param.name);
-            if (String(topic).startsWith(mqttPrefix) &&
-                (paramTopic == topic || paramTopicGroup == topic))  // Check if topic starts with prefix
+            String paramTopic = mqttPrefix + "set/" + String(group.caption) + "/" + String(param.name);
+            if (paramTopic == topic)
             {
-                PreferenceItem *item = findPreferenceByKey(param.name);
-                // Topic corresponds to parameter, processing message
-                switch (param.type)
-                {
-                    case Param::INT:
-                        if (message.length() > 0)
-                        {  // Add your own validation function isInteger
+                found_update = true;
+                syslog_ng("MQTT: Update  found " + String(param.name) + " " + String(message));
 
-                            item->preferences->putInt(param.name, message.toInt());
-                            syslog_ng("mqtt int param " + String(param.name) + " message " + String(message.toInt()));
-                        }
-                        else
-                        {
-                            syslog_ng("mqtt Received INT message is invalid");
-                        }
-                        break;
-                    case Param::FLOAT:
-                        if (message.length() > 0)
-                        {  // Add your own validation function isFloat
-                            item->preferences->putFloat(param.name, message.toFloat());
-                            syslog_ng("mqtt float param " + String(param.name) + " message " +
-                                      String(message.toFloat()));
-                        }
-                        else
-                        {
-                            syslog_ng("mqtt Received FLOAT message is invalid");
-                        }
-                        break;
-                    case Param::STRING:
-                        if (message.length() > 0)
-                        {
-                            item->preferences->putString(param.name, message);
-                            syslog_ng("mqtt string param " + String(param.name) + " message " + String(message));
-                        }
-                        else
-                        {
-                            syslog_ng("mqtt Received STRING message is empty");
-                        }
-                        break;
-                    default:
-                        syslog_ng("mqtt Unknown parameter type");
-                        break;
+                std::string paramKey(param.name);
+
+                // Check if enough time has passed since last update
+                if (paramLastUpdate.find(paramKey) == paramLastUpdate.end() ||
+                    (currentTime - paramLastUpdate[paramKey]) >= PARAM_UPDATE_COOLDOWN)
+                {
+                    // Update the last update time
+                    paramLastUpdate[paramKey] = currentTime;
+
+                    if (updatePreference(param.name, message, "ha"))
+                    {
+                        syslog_ng("MQTT: updatePreference  " + String(param.name) + " " + String(message));
+                        return;
+                    }
+                }
+                else
+                {
+                    syslog_ng("MQTT: Update ignored for " + String(param.name) + ", cooldown active. Wait " +
+                              String((PARAM_UPDATE_COOLDOWN - (currentTime - paramLastUpdate[paramKey])) / 1000.0, 1) +
+                              "s");
                 }
             }
         }
+    }
+    if (!found_update)
+    {
+        syslog_ng("MQTT: Update not found " + String(message));
     }
 }
 void publish_params_all(int all = 1)
 {
     publish_parameter("uptime", millis(), 0, 0);
+
     if (calE == 1)
     {
         syslog_ng("publich calibtate params");
@@ -427,9 +437,9 @@ void publish_params_all(int all = 1)
 
         publish_parameter("DstRAW", DstRAW, 3, 0);
 
-        publish_parameter("PumpA_SUM", SetPumpA_Ml_SUM, 3, 0);
-        publish_parameter("PumpB_SUM", SetPumpB_Ml_SUM, 3, 0);
-        publish_parameter("StepA_SUM", PumpA_Step_SUM, 3, 0);
-        publish_parameter("StepB_SUM", PumpB_Step_SUM, 3, 0);
+        publish_parameter("PumpA_SUM", PumpA_SUM, 3, 0);
+        publish_parameter("PumpB_SUM", PumpB_SUM, 3, 0);
+        publish_parameter("StepA_SUM", StepA_SUM, 3, 0);
+        publish_parameter("StepB_SUM", StepB_SUM, 3, 0);
     }
 }

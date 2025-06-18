@@ -336,7 +336,7 @@ static void handleGPIOErrors()
                 syslog_ng("MCP23017 20 resetMCP23017");
                 resetMCP23017();
                 preferences.putString(pref_reset_reason, "mcp");
-                ESP.restart();
+                shouldReboot = true;
             }
 
             mcp.writeGPIOAB(bitw);

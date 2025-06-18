@@ -43,6 +43,7 @@ PreferenceItem preferencesArray[] = {
     {"update_token", DataType::STRING, {"default_token"}, &update_token, &preferences},
     {"ssid", DataType::STRING, {"ESP32"}, &ssid, &preferences},
     {"epo", DataType::INTEGER, {1}, &enable_ponics_online, &preferences},
+    {"epo_l", DataType::INTEGER, {1}, &enable_ponics_online_logs, &preferences},
     {"password", DataType::STRING, {"ESP32"}, &password, &preferences},
     {"appName", DataType::STRING, {"appName"}, &appName, &preferences},
     {"HOSTNAME", DataType::STRING, {"growbox"}, &HOSTNAME, &preferences},
@@ -124,7 +125,6 @@ PreferenceItem preferencesArray[] = {
     {"max_l_raw", DataType::FLOAT, Data(0.0f), &max_l_raw, &preferences},
     {"min_l_level", DataType::FLOAT, Data(0.0f), &min_l_level, &preferences},
     {"min_l_raw", DataType::FLOAT, Data(0.0f), &min_l_raw, &preferences},
-    {"server_make_update", DataType::BOOLEAN, {false}, &server_make_update, &preferences},
 
     {"DRV1_A_PK_On", DataType::INTEGER, {0}, &DRV1_A_PK_On, &preferences},
     {"DRV1_B_PK_On", DataType::INTEGER, {0}, &DRV1_B_PK_On, &preferences},
@@ -221,13 +221,13 @@ PreferenceItem preferencesArray[] = {
     {"KickUpTime", DataType::INTEGER, {300}, &KickUpTime, &config_preferences},
     {"KickOnce", DataType::INTEGER, {0}, &KickOnce, &config_preferences},
 
-    {"RootTempAddress", DataType::STRING, "28:FF:1C:30:63:17:03:B1", &rootTempAddressString, &config_preferences},
-    {"WNTCAddress", DataType::STRING, "28:FF:2E:31:63:17:04:C2", &WNTCAddressString, &config_preferences},
+    {"RootTempAddress", DataType::STRING, "", &rootTempAddressString, &config_preferences},
+    {"WNTCAddress", DataType::STRING, "", &WNTCAddressString, &config_preferences},
 
-    {"SetPumpA_Ml_SUM", DataType::FLOAT, {0.0f}, &SetPumpA_Ml_SUM, &config_preferences},
-    {"SetPumpB_Ml_SUM", DataType::FLOAT, {0.0f}, &SetPumpB_Ml_SUM, &config_preferences},
-    {"PumpA_Step_SUM", DataType::FLOAT, {0.0f}, &PumpA_Step_SUM, &config_preferences},
-    {"PumpB_Step_SUM", DataType::FLOAT, {0.0f}, &PumpB_Step_SUM, &config_preferences},
+    {"PumpA_SUM", DataType::FLOAT, {0.0f}, &PumpA_SUM, &config_preferences},
+    {"PumpB_SUM", DataType::FLOAT, {0.0f}, &PumpB_SUM, &config_preferences},
+    {"StepA_SUM", DataType::FLOAT, {0.0f}, &StepA_SUM, &config_preferences},
+    {"StepB_SUM", DataType::FLOAT, {0.0f}, &StepB_SUM, &config_preferences},
 
     {"httpAU", DataType::STRING, "admin", &httpAuthUser, &config_preferences},
     {"httpAP", DataType::STRING, "ponics", &httpAuthPass, &config_preferences},

@@ -1,5 +1,5 @@
 
-bool updatePreferenceValue(PreferenceItem *item, const String &value)
+bool updatePreferenceValue(PreferenceItem *item, const String &value, String mqtt_type = "all")
 {
     String s;
     if (item == nullptr)
@@ -47,6 +47,7 @@ bool updatePreferenceValue(PreferenceItem *item, const String &value)
     // Проверка длины строки
     if (s.length() > 0)
     {
+        publish_one_data(item, mqtt_type);
         syslog_ng("Updated preference for key: " + String(item->key) + " with value: " + String(value));
         return true;
     }
@@ -57,20 +58,20 @@ bool updatePreferenceValue(PreferenceItem *item, const String &value)
     return false;
 }
 
-bool updatePreference(const char *settingName, const JsonVariant &value)
+bool updatePreference(const char *settingName, const JsonVariant &value, String mqtt_type = "all")
 {
     if (PreferenceItem *item = findPreferenceByKey(settingName))
     {
         switch (item->type)
         {
             case DataType::STRING:
-                return updatePreferenceValue(item, value.as<String>());
+                return updatePreferenceValue(item, value.as<String>(), mqtt_type);
             case DataType::INTEGER:
-                return updatePreferenceValue(item, String(value.as<int>()));
+                return updatePreferenceValue(item, String(value.as<int>()), mqtt_type);
             case DataType::FLOAT:
-                return updatePreferenceValue(item, String(value.as<float>()));
+                return updatePreferenceValue(item, String(value.as<float>()), mqtt_type);
             case DataType::BOOLEAN:
-                return updatePreferenceValue(item, value.as<bool>() ? "true" : "false");
+                return updatePreferenceValue(item, value.as<bool>() ? "true" : "false", mqtt_type);
             default:
                 syslog_ng("ERROR: Unsupported data type for key: " + String(settingName));
                 return false;  // Выход, если тип данных не поддерживается
@@ -85,11 +86,11 @@ bool updatePreference(const char *settingName, const JsonVariant &value)
 }
 
 // Функция для работы со строкой
-bool updatePreference(const char *settingName, const String &value)
+bool updatePreference(const char *settingName, const String &value, String mqtt_type = "all")
 {
     if (PreferenceItem *item = findPreferenceByKey(settingName))
     {
-        return updatePreferenceValue(item, value);
+        return updatePreferenceValue(item, value, mqtt_type);
     }
     else
     {
@@ -115,7 +116,7 @@ void publish_discovery_payload(const char *sensor_name)
 
     serializeJson(doc, buffer);
     String discovery_topic = "homeassistant/sensor/" + String(sensor_name) + "__" + String(HOSTNAME) + "/config";
-    enqueueMessage(discovery_topic.c_str(), buffer, "", false);
+    enqueueMessage(discovery_topic.c_str(), buffer, "", "ha");
 }
 
 void publish_switch_discovery_payload(Param param)
@@ -153,7 +154,7 @@ void publish_switch_discovery_payload(Param param)
     // Публикуем сообщение в топик Discovery
     String discovery_topic = "homeassistant/switch/" + String(switch_name) + "__" + String(HOSTNAME) + "/config";
 
-    enqueueMessage(discovery_topic.c_str(), buffer, "", false);
+    enqueueMessage(discovery_topic.c_str(), buffer, "", "ha");
 
     // Проверка наличия элемента предпочтений
     PreferenceItem *item = findPreferenceByKey(switch_name.c_str());
@@ -195,7 +196,7 @@ void publish_switch_discovery_payload(Param param)
                 // Отправляем сообщение и логируем состояние
                 if (!value.isEmpty())
                 {
-                    enqueueMessage(command_topic.c_str(), value.c_str(), "", false);
+                    enqueueMessage(command_topic.c_str(), value.c_str(), "", "ha");
                     syslog_ng("mqttHA mqttClientHA publish switch state " + String(switch_name) + " value " + value);
                 }
             }
@@ -222,21 +223,6 @@ void subscribe_param_ha(Param param)
 void onMqttDisconnectHA(AsyncMqttClientDisconnectReason reason)
 {
     syslog_ng("mqtt mqttClientHA Disconnected. Reason: " + String((int)reason));
-    if (reason == AsyncMqttClientDisconnectReason::TCP_DISCONNECTED)
-    {
-        syslog_ng("mqtt mqttClientHA TCP_DISCONNECTED: клиент сам разорвал соединение.");
-    }
-    else if (reason == AsyncMqttClientDisconnectReason::MQTT_UNACCEPTABLE_PROTOCOL_VERSION)
-    {
-        syslog_ng("mqtt mqttClientHA Ошибка: неверная версия протокола.");
-    }
-    else if (reason == AsyncMqttClientDisconnectReason::MQTT_IDENTIFIER_REJECTED)
-    {
-        syslog_ng("mqtt mqttClientHA Ошибка: идентификатор клиента отклонен.");
-    }
-    // Добавьте дополнительные случаи для анализа
-
-    syslog_ng("mqtt mqttClientHA: Disconnected. Reason: " + String(static_cast<int>(reason)));
     syslog_ng("mqtt mqttClientHA: WiFi isConnected: " + String(WiFi.isConnected()));
     if (WiFi.isConnected())
     {
@@ -259,12 +245,12 @@ void connectToMqttHA()
                       String(u_ha) + "\"");
             syslog_ng("mqtt mqttClientHA connectToMqtt Connecting to MQTT...");
             mqttClientHA.connect();
-            syslog_ng("mqtt mqttClientHA connectToMqtt Connected " + String(mqttClientHA.connected()));
             mqtt_not_connected_counter = mqtt_not_connected_counter + 1;
             if (mqtt_not_connected_counter > 100)
             {
                 syslog_ng("mqtt mqttClientHA connectToMqtt ESP RESTART");
                 preferences.putString(pref_reset_reason, "mqttHA error");
+                mqtt_not_connected_counter = 0;
             }
         }
         else
@@ -344,37 +330,6 @@ void processToggleParameters()
             }
         }
     }
-}
-
-void publish_one_data(const PreferenceItem *item)
-{
-    String topic = mqttPrefix + preferences_prefix + item->key;  // Use appropriate topic prefix
-    String valueStr;
-    if (item->variable != nullptr)
-    {
-        syslog_ng("mqtt before publish_one_data topic: " + String(item->key));
-        // Определите тип переменной и получите ее значение в зависимости от типа
-        switch (item->type)
-        {
-            case DataType::FLOAT:
-                valueStr = String(*(float *)item->variable);
-                break;
-            case DataType::STRING:
-                valueStr = *(String *)item->variable;
-                break;
-            case DataType::BOOLEAN:
-                valueStr = (*(bool *)item->variable) ? "true" : "false";
-                break;
-            case DataType::INTEGER:
-                valueStr = String(*(int *)item->variable);
-                break;
-        }
-
-        // Опубликуйте значение в MQTT
-        syslog_ng("mqtt publish_one_data topic: " + topic + " value: " + valueStr);
-        enqueueMessage(topic.c_str(), valueStr.c_str());
-    }
-    syslog_ng("mqtt after publish_one_data topic: " + String(item->key));
 }
 
 void mqttTaskHA(void *parameter)
@@ -463,7 +418,7 @@ void onMqttMessageHA(char *topic, char *payload, AsyncMqttClientMessagePropertie
             String paramTopic = mqttPrefix + "set/" + String(param.name);
             if (paramTopic == topic)
             {
-                if (updatePreference(param.name, message))
+                if (updatePreference(param.name, message, "usual"))
                 {
                     return;
                 }

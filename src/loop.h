@@ -1,8 +1,8 @@
-
 void loop()
 {
-    server.handleClient();
-    webSocket.loop();
-    ArduinoOTA.handle();
-    // delay(1);
+    if (shouldReboot)
+    {
+        delay(500);  // дожидаемся отправки HTTP-ответа
+        ESP.restart();
+    }
 }

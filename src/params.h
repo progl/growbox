@@ -247,8 +247,6 @@ float tR_DAC, restart, tR_B, tR_val_korr, A1, A2, R1, Rx1, Rx2, Dr, R2p, R2n, py
     ec1, ec2, ex1, ex2, eckorr, kt;
 float max_l_level, max_l_raw, min_l_level, min_l_raw, wLevel, twLevel;
 
-boolean server_make_update;
-
 String tR_type = "direct";
 
 String A1name, A2name, wegareply, err_wegaapi_json, dt, Reset_reason0, Reset_reason1;
@@ -291,10 +289,10 @@ boolean make_doser = false;
 #include <ponics.online.h>
 #else
 #pragma message("Header <ponics.online.h> not found, continuing without it.")
-#define MQTT_HOST IPAddress(8, 8, 8, 8)
-#define MQTT_PORT 1883
-#define SYSLOG_SERVER ""  // Адрес SYSLOG сервера будет переопределен в ponics.online.h
-#define ENABLE_PONICS_ONLINE 1
+IPAddress MQTT_HOST(8, 8, 8, 8);
+int MQTT_PORT = 1883;
+String SYSLOG_SERVER = "";  // Адрес SYSLOG сервера будет переопределен в ponics.online.h
+int ENABLE_PONICS_ONLINE = 1;
 const char *mqtt_mqtt_user = "";
 const char *mqtt_mqtt_password = "";
 uint16_t mqtt_mqtt_port = 1883;

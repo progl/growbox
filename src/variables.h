@@ -30,8 +30,8 @@ int percentage = 0;
 IPAddress serverIP;
 String a_ha, p_ha, u_ha;
 
-long PumpB_Step_SUM, PumpA_Step_SUM;
-float SetPumpA_Ml_SUM, SetPumpB_Ml_SUM;
+long StepB_SUM, StepA_SUM;
+float PumpA_SUM, PumpB_SUM;
 int clear_pref;
 int DRV1_A = 0;
 int DRV1_B = 1;

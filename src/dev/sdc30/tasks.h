@@ -1,12 +1,16 @@
 
 void TaskSDC30()
 {
-    if (airSensor.dataAvailable())
+    if (airSensor.dataReady())
     {
-        CO2 = airSensor.getCO2();
-        AirTemp = airSensor.getTemperature();
-        AirHum = airSensor.getHumidity();
-        if (airSensor.getAutoSelfCalibration() == true) syslog_ng("SDC30 Warning: Enable Auto Self Calibration");
+        if (!airSensor.read())
+        {
+            syslog_ng("SDC30: Read failed");
+            return;
+        }
+        CO2 = airSensor.CO2;
+        AirTemp = airSensor.temperature;
+        AirHum = airSensor.relative_humidity;
         syslog_ng("SDC30 CO2 (ppm): " + fFTS(CO2, 3));
         syslog_ng("SDC30 AirTemp: " + fFTS(AirTemp, 3));
         syslog_ng("SDC30 AirHum: " + fFTS(AirHum, 3));

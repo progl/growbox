@@ -19,10 +19,9 @@ syslog_ng("DS18B20 Found 1-W devices:" + fFTS(sensorCount, 0));
 if (sensorCount > 0)
 {
     RootTempFound = true;
-
+    DS18B20Params = {"DS18B20", DS18B20, 30000, xSemaphore_C};
     int DS18B20_TaskErr = xTaskCreatePinnedToCore(TaskTemplate, "DS18B20", 10000, (void *)&DS18B20Params, 1, NULL, 0);
 
-    DS18B20Params = {"DS18B20", DS18B20, 30000, xSemaphore_C};
     setSensorDetected("Dallas", 1);
 
     DeviceAddress deviceAdrCompareRootTemp;

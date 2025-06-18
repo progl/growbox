@@ -1,85 +1,40 @@
 // Проверка и инициализация пинов
 if (change_pins == 1)
 {
-    US_ECHO = 14;
-    US_TRIG = 13;
+    US_TRIG_PIN = 13;
+    US_ECHO_PIN = 14;
 }
 else
 {
-    US_ECHO = 13;
-    US_TRIG = 14;
+    US_TRIG_PIN = 14;
+    US_ECHO_PIN = 13;
 }
 
-// Создание и инициализация датчика
-UltrasonicSensor distanceSensor(US_ECHO, US_TRIG, 200000);
+syslog_ng("US025: US_TRIG_PIN: " + String(US_TRIG_PIN));
+syslog_ng("US025: US_ECHO_PIN: " + String(US_ECHO_PIN));
 
-// Инициализация датчика
-if (!distanceSensor.begin())
+distanceSensor = new HCSR04(US_TRIG_PIN, US_ECHO_PIN);
+float initDist = distanceSensor->dist();
+if (isnan(initDist) || initDist < 1.0f || initDist > MAX_DISTANCE_CM)
 {
-    syslog_ng("US025: Failed to initialize");
-    setSensorDetected("US025", 0);
-    return;
-}
-
-// Тестовое измерение
-distanceSensor.triggerPulse();
-unsigned long start = millis();
-bool measurementSuccess = false;
-
-// Попытка получить измерение с таймаутом
-while (millis() - start < 1000)
-{
-    if (distanceSensor.waitForMeasurement())
-    {
-        measurementSuccess = true;
-        break;
-    }
-    vTaskDelay(pdMS_TO_TICKS(10));
-}
-
-if (!measurementSuccess)
-{
-    syslog_ng("US025: Initial measurement timeout");
-    setSensorDetected("US025", 0);
-    return;
-}
-
-// Получение результата измерения
-UltrasonicMeasurement measurement;
-distanceSensor.measureDistanceCm(measurement);
-
-// Проверка валидности измерения
-if (isnan(measurement.distanceCm))
-{
-    syslog_ng("US025: Invalid initial measurement");
-    setSensorDetected("US025", 0);
-    return;
-}
-
-// Проверка диапазона измерения
-if (measurement.distanceCm < 2.0 || measurement.distanceCm > 400.0)
-{
-    syslog_ng("US025: Initial measurement out of range: " + String(measurement.distanceCm));
+    syslog_ng("US025: Initial measurement out of range or invalid: " + String(initDist));
     setSensorDetected("US025", 0);
     return;
 }
 
 // Успешная инициализация
 setSensorDetected("US025", 1);
-syslog_ng("US025: Successfully initialized. Initial distance: " + String(measurement.distanceCm) + " cm");
+syslog_ng("US025: Initialized, initial distance = " + String(initDist, 2) + " cm");
 
-// Создание задачи измерения
-TaskUSParams = {"US", TaskUS, 50000, xSemaphore_C};
-int US025_TaskErr = xTaskCreatePinnedToCore(TaskTemplate, "US", stack_size, (void *)&TaskUSParams, 1, NULL, 1);
-
-if (US025_TaskErr != pdPASS)
+// Запуск задачи измерения
+TaskUSParams = {"US", TaskUS, 30000, xSemaphore_C};
+int err = xTaskCreatePinnedToCore(TaskTemplate, "US", stack_size, (void *)&TaskUSParams, 1, NULL, 1);
+if (err != pdPASS)
 {
-    syslog_ng("US025: Failed to create task: " + String(US025_TaskErr));
+    syslog_ng("US025: Failed to create task (err=" + String(err) + ")");
     setSensorDetected("US025", 0);
     return;
 }
 
-// Инициализация фильтра Калмана
 KalmanDist = GKalman(dist_mea_e, dist_est_e, dist_q);
-
 syslog_ng("US025: Task created successfully");

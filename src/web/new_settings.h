@@ -1,3 +1,4 @@
+
 void setVPDStyles(String vpdstage)
 {
     if (vpdstage == "Start")
@@ -21,13 +22,20 @@ void setVPDStyles(String vpdstage)
     }
 }
 
-void handleReset()
+void handleReset(AsyncWebServerRequest *request)
 {
     syslog_ng("WEB /reset");
-    server.send(200, "text/plain", "restart");
-    delay(100);
+
+    // Отправляем ответ клиенту
+    request->send(200, "text/plain", "restart");
+
+    // Сохраняем причину сброса
     preferences.putString(pref_reset_reason, "url");
-    ESP.restart();
+
+    // Даём время на отправку ответа, затем перезагружаем
+
+    // через 100 мс перезапустим
+    restartTicker.once_ms(1000, []() { shouldReboot = true; });
 }
 
 // Функция очистки строки
@@ -46,12 +54,10 @@ String sanitizeString(const String &input)
     return sanitized;
 }
 
-void handleApiTasks()
+void handleApiTasks(AsyncWebServerRequest *request)
 {
-    // Создание JSON-объекта
     JsonDocument doc;
-
-    JsonArray tasksArray = doc["tasks_status"].to<JsonArray>();
+    JsonArray tasksArray = doc.createNestedArray("tasks_status");
 
     for (int i = 0; i < MAX_TASKS; i++)
     {
@@ -63,83 +69,79 @@ void handleApiTasks()
             taskObj["totalExecutionTime"] = tasks[i].totalExecutionTime;
             taskObj["executionCount"] = tasks[i].executionCount;
             taskObj["minFreeStackSize"] = tasks[i].minFreeStackSize;
-            // xSemaphore не сериализуется, так как он является указателем на объект.
         }
     }
-    // Сериализация и отправка JSON
+
     String output;
     serializeJson(doc, output);
-    server.send(200, "application/json", sanitizeString(output));
+    request->send(200, "application/json", sanitizeString(output));
 }
-void handle_calibrate()
+
+void handle_calibrate(AsyncWebServerRequest *request)
 {
     syslog_ng("WEB /handle_calibrate");
-    unsigned long t_millis = millis();
 
-    // Создание JSON-объекта
     JsonDocument doc;
     doc["wR2"] = fFTS(wR2, 2);
     doc["An"] = fFTS(An, 3);
     doc["Ap"] = fFTS(Ap, 3);
-    doc["Dist"] = fFTS(Dist, 3);
+    doc["Dist"] = fFTS(Dist, 1);  // Один раз достаточно
     doc["pHmV"] = fFTS(pHmV, 3);
     doc["PR"] = fFTS(PR, 3);
     doc["RAW_NTC"] = fFTS(NTC_RAW, 3);
-    doc["Dist"] = fFTS(Dist, 1);
     doc["ec_notermo"] = fFTS(ec_notermo, 2) + " mS/cm";
     doc["not_detected_sensors"] = not_detected_sensors;
 
-    // Сериализация и отправка JSON
     String output;
     serializeJson(doc, output);
-    server.send(200, "application/json", sanitizeString(output));
+    request->send(200, "application/json", sanitizeString(output));
 }
 
-void handleApiStatuses()
+void handle_token(AsyncWebServerRequest *request)
+{
+    syslog_ng("WEB /handle_token");
+    JsonDocument doc;
+    doc["uuid"] = update_token;
+    String output;
+    serializeJson(doc, output);
+    request->send(200, "application/json", sanitizeString(output));
+}
+
+void handleApiStatuses(AsyncWebServerRequest *request)
 {
     syslog_ng("WEB /handleApiStatuses");
     unsigned long t_millis = millis();
 
-    // Создание JSON-объекта
     JsonDocument doc;
 
-    // Проверка и инициализация списков не обнаруженных и обнаруженных датчиков
-    if (not_detected_sensors == "")
+    if (not_detected_sensors.isEmpty())
     {
         for (int i = 0; i < sensorsCount; ++i)
         {
-            if (sensors[i].detected == 0)
+            if (!sensors[i].detected)
             {
                 not_detected_sensors += "\n" + String(sensors[i].name);
             }
         }
     }
 
-    if (detected_sensors == "")
+    if (detected_sensors.isEmpty())
     {
         for (int i = 0; i < sensorsCount; ++i)
         {
-            if (sensors[i].detected == 1)
+            if (sensors[i].detected)
             {
                 detected_sensors += "\n" + String(sensors[i].name);
             }
         }
     }
 
-    // Добавление общих параметров
     doc["hostname"] = String(HOSTNAME);
-
     doc["firmware"] = String(Firmware);
-
     doc["vpdstage"] = vpdstage;
-
     doc["ha"] = e_ha == 1 ? mqttClientHA.connected() : false;
-
-    doc["uptime"] = float(t_millis) / 1000;
-
-    // VPD Styles
-    setVPDStyles(vpdstage);
-
+    doc["uptime"] = t_millis;
+    doc["wifi_rssi"] = fFTS(WiFi.RSSI(), 0);
     doc["AirVPD"] = fFTS(AirVPD, 1);
     doc["AirHum"] = fFTS(AirHum, 1) + "%";
     doc["RootTemp"] = fFTS(RootTemp, 1);
@@ -147,33 +149,16 @@ void handleApiStatuses()
     doc["wPR"] = fFTS(wPR, 0);
     doc["wEC"] = fFTS(wEC, 2) + " mS/cm";
     doc["wNTC"] = fFTS(wNTC, 1);
+    doc["wpH"] = fFTS(wpH, 2);
     doc["wLevel"] = fFTS(wLevel, 1);
     doc["CPUTemp"] = fFTS(CPUTemp, 1);
-    doc["AirPress"] = fFTS(AirPress, 1);
-    doc["tVOC"] = fFTS(tVOC, 1);
-    doc["CO2"] = fFTS(CO2, 1);
-    doc["wpH"] = fFTS(wpH, 1);
-    doc["PWD"] = String(PWD1) + " : " + String(PWD2);
-    // Датчики
 
-    doc["detected_sensors"] = detected_sensors;
-
-    // Управление драйверами
-    doc["DRV1"] = readGPIO;
-
-    doc["DRV2"] = readGPIO;
-
-    doc["DRV3"] = readGPIO;
-
-    doc["DRV4"] = readGPIO;
-
-    // Сериализация и отправка JSON
     String output;
     serializeJson(doc, output);
-    server.send(200, "application/json", sanitizeString(output));
+    request->send(200, "application/json", sanitizeString(output));
 }
 
-void ApiGroups(bool labels = false)
+String ApiGroups(bool labels = false)
 {
     // Проверка и инициализация списков не обнаруженных и обнаруженных датчиков
 
@@ -184,11 +169,11 @@ void ApiGroups(bool labels = false)
     JsonDocument doc;
 
     // Добавление групп настроек
-    JsonObject groupsJson = doc.createNestedObject("groups");
+    JsonObject groupsJson = doc["groups"].to<JsonObject>();
 
     for (Group &group : groups)
     {
-        JsonObject groupJson = groupsJson.createNestedObject(group.caption);
+        JsonObject groupJson = groupsJson[group.caption].to<JsonObject>();
 
         for (int i = 0; i < group.numParams; i++)
         {
@@ -224,10 +209,10 @@ void ApiGroups(bool labels = false)
         }
     }
 
-    JsonArray sensorsArray = doc.createNestedArray("sensors");
+    JsonArray sensorsArray = doc["sensors"].to<JsonArray>();
     for (int i = 0; i < sensorCount; i++)
     {
-        JsonObject sensor = sensorsArray.createNestedObject();
+        JsonObject sensor = sensorsArray.add<JsonObject>();
         sensor["name"] = "dallas_" + String(i);
         sensor["address"] = dallasAdresses[i].addressToString();
     }
@@ -238,108 +223,17 @@ void ApiGroups(bool labels = false)
 
     Serial.print("Serialized JSON length: ");
     Serial.println(output.length());
-    server.send(200, "application/json", sanitizeString(output));
+    return output;
 }
-void handleApiLabels() { ApiGroups(true); }
-void handleApiGroups() { ApiGroups(false); }
-// Функция для работы с JsonVariant
 
-void saveSettings()
+void handleApiLabels(AsyncWebServerRequest *request)
 {
-    syslog_ng("saveSettings");
+    String output = ApiGroups(true);
+    request->send(200, "application/json", sanitizeString(output));
+}
 
-    if (server.hasArg("plain"))
-    {
-        String body = server.arg("plain");
-        JsonDocument doc;
-
-        DeserializationError error = deserializeJson(doc, body);
-
-        if (error)
-        {
-            Serial.println("Failed to parse JSON");
-            server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"Failed to parse JSON\"}");
-            return;
-        }
-
-        for (JsonPair kv : doc.as<JsonObject>())
-        {
-            const char *settingName = kv.key().c_str();
-            int s = 0;
-
-            if (strcmp(settingName, "clear_pref") == 0 && kv.value().as<int>() == 1)
-            {
-                // Handle the clear_pref logic
-                preferences.clear();
-                config_preferences.clear();
-                config_preferences.end();
-                preferences.end();
-                nvs_flash_erase_partition("nvs");  // Reformats
-                nvs_flash_init_partition("nvs");   // Initializes
-                syslog_ng("clear_pref");
-                preferences.begin("settings", false);
-                config_preferences.begin("config", false);
-
-                preferences.putString("ssid", ssid);
-                preferences.putString("password", password);
-
-                server.send(200, "application/json", "{\"status\":\"cleared\"}");
-                return;
-            }
-
-            String groupName = getGroupNameByParameter(settingName);
-            syslog_ng("Group name for " + String(settingName) + ": " + groupName);
-
-            if (updatePreference(settingName, kv.value()))
-            {
-                const PreferenceItem *item = findPreferenceByKey(settingName);
-                publish_one_data(item);
-                // Handle specific settings that require additional logic
-                if (strcmp(settingName, "RDDelayOn") == 0)
-                {
-                    NextRootDrivePwdOff = millis() + (RDDelayOn * 1000);             // Set timer for turning off
-                    NextRootDrivePwdOn = NextRootDrivePwdOff + (RDDelayOff * 1000);  // Set timer for turning on
-                }
-                else if (strcmp(settingName, "RDDelayOff") == 0)
-                {
-                    NextRootDrivePwdOn = millis() + (RDDelayOff * 1000);            // Set timer for turning on
-                    NextRootDrivePwdOff = NextRootDrivePwdOn + (RDDelayOn * 1000);  // Set timer for turning off
-                }
-                else if (strcmp(settingName, "password") == 0)
-                {
-                    connectToWiFi();
-                }
-
-                else if (strcmp(settingName, "SetPumpA_Ml") == 0 || strcmp(settingName, "SetPumpB_Ml") == 0)
-                {
-                    if (kv.value().as<int>() > 0)
-                    {
-                        run_doser_now();  // Trigger dosing pump
-                    }
-                }
-                else if (strncmp(settingName, "DRV", 3) == 0 || strncmp(settingName, "PWD", 3) == 0 ||
-                         strncmp(settingName, "FREQ", 4) == 0)
-                {
-                    MCP23017();
-                }
-
-                server.send(200, "application/json", "{\"status\":\"success\"}");
-            }
-            else
-            {
-                syslog_err("Setting not found: " + String(settingName));
-                server.send(400, "application/json", "{\"status\":\"error not found or error memory \"}");
-            }
-        }
-
-        KalmanNTC.setParameters(ntc_mea_e, ntc_est_e, ntc_q);
-        KalmanDist.setParameters(dist_mea_e, dist_est_e, dist_q);
-        KalmanEC.setParameters(ec_mea_e, ec_est_e, ec_q);
-        KalmanEcUsual.setParameters(ec_mea_e, ec_est_e, ec_q);
-
-        for (uint8_t i = 0; i < sensorCount && i < MAX_DS18B20_SENSORS; i++)
-        {
-            sensorArray[i].KalmanDallasTmp.setParameters(dallas_mea_e, dallas_est_e, dallas_q);
-        }
-    }
+void handleApiGroups(AsyncWebServerRequest *request)
+{
+    String output = ApiGroups(false);
+    request->send(200, "application/json", sanitizeString(output));
 }
