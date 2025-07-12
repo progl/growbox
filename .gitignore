@@ -21,3 +21,4 @@ ha mqtt/homeassistant/*
 platformio.ini
 node_modules/**
 scripts/saved/*
+data2/
