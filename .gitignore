@@ -22,3 +22,6 @@ platformio.ini
 node_modules/**
 scripts/saved/*
 data2/
+
+# windsurf rules
+.windsurfrules
