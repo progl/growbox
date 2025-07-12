@@ -2,7 +2,9 @@
 String rootStyle;
 String airStyle;
 #include <unordered_map>
-
+#include <Preferences.h>
+extern Preferences config_preferences;
+extern Preferences preferences;
 enum DataType
 {
     FLOAT,
@@ -16,7 +18,7 @@ struct Data
     union Value
     {
         float fValue;
-        char sValue[50];  // choose an appropriate size
+        char sValue[200];  // choose an appropriate size
         bool bValue;
         int iValue;
     } value;
@@ -37,9 +39,11 @@ struct PreferenceItem
     void *variable;
     Preferences *preferences;
 };
-
+extern int enable_ponics_online;
+extern int enable_ponics_online_logs;
 PreferenceItem preferencesArray[] = {
-    {"UPDATE_URL", DataType::STRING, Data{UPDATE_URL}, &UPDATE_URL, &preferences},
+    {"UPDATE_URL", DataType::STRING, Data{"https://ponics.online/static/wegabox/esp32-local/firmware.bin"}, &UPDATE_URL,
+     &preferences},
     {"update_token", DataType::STRING, {"default_token"}, &update_token, &preferences},
     {"ssid", DataType::STRING, {"ESP32"}, &ssid, &preferences},
     {"epo", DataType::INTEGER, {1}, &enable_ponics_online, &preferences},
@@ -166,12 +170,13 @@ PreferenceItem preferencesArray[] = {
     {"MinLightLevel", DataType::INTEGER, {10}, &MinLightLevel, &config_preferences},
     {"e_ha", DataType::INTEGER, {0}, &e_ha, &config_preferences},
     {"port_ha", DataType::INTEGER, {1883}, &port_ha, &config_preferences},
-    {"a_ha", DataType::STRING, {"192.168.1.157"}, &a_ha, &config_preferences},
+    {"a_ha", DataType::STRING, {""}, &a_ha, &config_preferences},
     {"u_ha", DataType::STRING, {""}, &u_ha, &config_preferences},
     {"p_ha", DataType::STRING, {""}, &p_ha, &config_preferences},
     {"calE", DataType::INTEGER, {0}, &calE, &config_preferences},
     {"change_pins", DataType::INTEGER, {0}, &change_pins, &config_preferences},
     {"clear_pref", DataType::INTEGER, {0}, &clear_pref, &config_preferences},
+    {"log_debug", DataType::INTEGER, {0}, &log_debug, &config_preferences},
     {"SetPumpA_Ml", DataType::FLOAT, {0.0f}, &SetPumpA_Ml, &config_preferences},
     {"StPumpA_Del", DataType::INTEGER, {700}, &StPumpA_Del, &config_preferences},
     {"StPumpA_Ret", DataType::INTEGER, {700}, &StPumpA_Ret, &config_preferences},

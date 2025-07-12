@@ -22,5 +22,4 @@ services:
       - ./mosquitto/log:/mosquitto/log
     ports:
       - "1883:1883" # Expose MQTT on port 1883
-      - "8080:8080" # Expose MQTT on port 1883
     restart: unless-stopped

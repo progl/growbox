@@ -1,10 +1,8 @@
+
+
 #include <stdint.h>
 #include <Arduino.h>
-#include "LittleFS.h"
-#ifdef ARDUINO_ARCH_ESP32
-#undef noInterrupts  // () {portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;portENTER_CRITICAL(&mux)
-#undef interrupts    // () portEXIT_CRITICAL(&mux);}
-#endif
+#include <LittleFS.h>
 #include <MCP342x.h>
 #include "GyverFilters.h"
 #include <Adafruit_AHTX0.h>
@@ -14,6 +12,7 @@
 #include <WiFiClient.h>
 #include <AsyncJson.h>
 #include <ESPAsyncWebServer.h>
+
 #include <WiFiClientSecure.h>
 #include <WiFiUdp.h>
 #include <Adafruit_MCP23X17.h>
@@ -24,30 +23,42 @@
 #include <Adafruit_BME280.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
-#include <ESPAsyncWebServer.h>
 #include <vector>
 #include <algorithm>
 #include <DNSServer.h>  // Для работы с DNS сервером
 #include <Ticker.h>
 #include <set>
-#include "ram_saver.h"
+#include <struct.h>
+
+// Task configuration
+#define WEBSERVER_TASK_STACK_SIZE 12288  // Increased stack for web server
+#define WEBSERVER_TASK_PRIORITY 3        // Increased from 2
+
+// Task stack sizes
+#define SENSOR_TASK_STACK 4096
+#define MQTT_TASK_STACK 4096
+#define DISPLAY_TASK_STACK 4096
+
+// Core assignments
+
+#define CORE_SENSORS 1
+
 Ticker restartTicker;
 String chipStr;
 // Global HTTP client
 HTTPClient http;
+WiFiClientSecure wifiClient;
 AsyncWebServer server(80);
 AsyncEventSource events("/events");  // SSE endpoint по адресу /events
 String indexHtml;
 bool waitingSecondOta = false;
-
+// Add this function prototype if not already defined
 std::set<String> notFoundCache;
 std::set<String> FoundCache;
 // WiFi client configuration
 const int WIFI_CONNECT_TIMEOUT = 5000;    // 5 seconds
 const int WIFI_RESPONSE_TIMEOUT = 10000;  // 10 seconds
-static unsigned long lastDataTime = 0;
-static bool otaTimedOut = false;
-static bool updateBegun = false;
+
 // Initialize HTTP client with timeouts
 void initWiFiClient()
 {
@@ -88,57 +99,130 @@ void cleanupWiFiClient()
 #include "esp_adc_cal.h"
 #define ONE_WIRE_BUS 23  // Порт 1-Wire
 #include <Wire.h>        // Шина I2C
-#define I2C_SDA 21       // SDA
-#define I2C_SCL 22       // SCL
+#include <preferences_common.h>
+#define I2C_SDA 21  // SDA
+#define I2C_SCL 22  // SCL
 bool isAPMode = false;
 int stack_size = 4096;
 String httpAuthUser, httpAuthPass;
 uint8_t buff[128] = {0};
 WiFiUDP udpClient;
-
+Preferences preferences;
+Preferences config_preferences;
 #include <Syslog.h>
+#include <params.h>
 Syslog syslog(udpClient, SYSLOG_PROTO_IETF);
 // Обработчик загрузки файла
 bool shouldReboot = false;
 
+// Add these at the top of your file
+#include <queue>
+#include <mutex>
+
+// Add these global variables
+struct LogMessage
+{
+    String message;
+    bool isError;
+    unsigned long timestamp;
+};
+
+std::queue<LogMessage> logQueue;
+std::mutex logMutex;
+bool logTaskRunning = false;
+TaskHandle_t logTaskHandle = NULL;
+
+// Optimized syslog functions
+void queueLogMessage(const String &message, bool isError)
+{
+    if (logQueue.size() >= 50) return;  // Prevent queue from growing too large
+
+    LogMessage logMsg;
+    logMsg.message = message;
+    logMsg.isError = isError;
+    logMsg.timestamp = millis();
+
+    std::lock_guard<std::mutex> lock(logMutex);
+    logQueue.push(std::move(logMsg));
+}
+
+void processLogMessages(void *parameter)
+{
+    while (logTaskRunning)
+    {
+        if (!logQueue.empty())
+        {
+            LogMessage logMsg;
+            {
+                std::lock_guard<std::mutex> lock(logMutex);
+                if (logQueue.empty()) continue;
+                logMsg = std::move(logQueue.front());
+                logQueue.pop();
+            }
+
+            // Format the log message
+            String formattedMsg = fFTS(float(logMsg.timestamp) / 1000, 3) + "s " + logMsg.message;
+
+            // Send to WebSocket
+
+            events.send(logMsg.message.c_str(), "log", logMsg.timestamp);
+
+            // Send to syslog if connected
+            if (!isAPMode && WiFi.status() == WL_CONNECTED)
+            {
+                syslog.log(logMsg.isError ? LOG_ERR : LOG_INFO, formattedMsg.c_str());
+            }
+            // Send to Serial
+            Serial.println(formattedMsg);
+            vTaskDelay(1);  // Yield to other tasks
+        }
+        vTaskDelay(100);  // Yield to other tasks
+    }
+    vTaskDelete(NULL);
+}
+
+// Replace your existing syslog_ng and syslog_err with these
 void syslog_ng(String x)
 {
-    if (x == nullptr)
+    if (x.length() == 0)
     {
-        Serial.println("Ошибка: syslog_ng  x null");
+        // Serial.println("Ошибка: syslog_ng пустое сообщение");
         return;
     }
 
-    events.send(x.c_str(), "log", millis());
-
-    x = fFTS(float(millis()) / 1000, 3) + "s " + x;
-    if (!isAPMode && WiFi.status() == WL_CONNECTED)
-    {
-        syslog.log(LOG_INFO, x.c_str());
-    }
-
-    Serial.println(x);
+    queueLogMessage(x, false);
 }
 
 void syslog_err(String x)
 {
-    if (x == nullptr)
+    if (x.length() == 0)
     {
-        Serial.println("Ошибка: syslog_err  x null");
+        // Serial.println("Ошибка: syslog_err пустое сообщение");
         return;
     }
-    events.send(x.c_str(), "log", millis());
 
-    x = fFTS(float(millis()) / 1000, 3) + "s " + x;
-    if (!isAPMode && WiFi.status() == WL_CONNECTED)
-    {
-        syslog.log(LOG_ERR, x.c_str());
-    }
-
-    Serial.println(x);
+    queueLogMessage(x, true);
 }
 
-// Настройки ADC
+// Call this in your setup()
+void setupLogging()
+{
+    Serial.println("before syslog config");
+    syslog.server(SYSLOG_SERVER.c_str(), SYSLOG_PORT);
+    syslog.deviceHostname(HOSTNAME.c_str());
+    syslog.appName(appName.c_str());
+    Serial.println("syslog config");
+    logTaskRunning = true;
+    xTaskCreatePinnedToCore(processLogMessages,  // Task function
+                            "log_task",          // Name
+                            4096,                // Stack size
+                            NULL,                // Parameters
+                            2,                   // Priority (1 = lower than web server)
+                            &logTaskHandle,      // Task handle
+                            1                    // Core (1 = same as web server)
+    );
+}
+
 esp_adc_cal_characteristics_t *adc_chars;
 const adc_bits_width_t width = ADC_WIDTH_BIT_12;  // Разрядность (12 бит)
 const adc_atten_t atten = ADC_ATTEN_DB_12;        // Коэффициент ослабления (0–3.3 В)
@@ -158,6 +242,7 @@ struct TaskParams
     unsigned long repeatInterval;
     SemaphoreHandle_t xSemaphore;
     unsigned long busyCounter;
+    unsigned long lastRunTime;  // Add lastRunTime field
 };
 
 struct TaskInfo
@@ -169,7 +254,7 @@ struct TaskInfo
     unsigned int minFreeStackSize;
     SemaphoreHandle_t xSemaphore;
 };
-#define MAX_TASKS 40
+#define MAX_TASKS 20
 #define US_SDA 13  // SDA
 #define US_SCL 14  // SCL
 
@@ -180,9 +265,7 @@ uint8_t LCDaddr = 0x3c;
 GyverOLED<SSD1306_128x64, OLED_BUFFER> oled;
 SemaphoreHandle_t xSemaphore_C = NULL;
 SemaphoreHandle_t xSemaphoreX_WIRE = NULL;
-Preferences preferences;
-Preferences config_preferences;
-extern AsyncWebServer server;
+
 TimerHandle_t mqttReconnectTimer;
 TimerHandle_t mqttReconnectTimerHa;
 TimerHandle_t wifiReconnectTimer;
@@ -190,13 +273,13 @@ TaskHandle_t xHandleUpdate = NULL;
 
 AsyncMqttClient mqttClient;
 AsyncMqttClient mqttClientHA;
+bool mqttClientHAConnected = false;
+bool mqttClientPonicsConnected = false;
 WiFiEventId_t wifiConnectHandler;
 String clientId, clientIdHa;
 String sessionToken = "";
 #define MAX_MQTT_QUEUE_SIZE 50
 
-#include <map>
-#include <params.h>
 #include <driver/adc.h>
 
 #include <queue>
@@ -220,301 +303,170 @@ int sseClientCount = 0;
 
 #include <dev/ec/old_adc/wega-adc.h>
 
-void removeSSEClient(const WiFiClient &client)
+// Array to store all sensor tasks
+TaskParams *sensorTasks[MAX_TASKS];
+
+// Task handles for our two worker tasks
+TaskHandle_t taskHandle1 = NULL;
+TaskHandle_t taskHandle2 = NULL;
+
+void addTask(TaskParams *taskParams)
 {
-    for (int i = 0; i < sseClientCount; i++)
+    if (taskParams && taskCount < MAX_TASKS)
     {
-        if (sseClients[i].client == client)
-        {
-            syslog_ng("Removing SSE client");
-
-            // Остановить и очистить клиент
-            sseClients[i].client.stop();
-            sseClients[i].client = WiFiClient();
-            sseClients[i].connected = false;
-
-            // Сдвигаем оставшиеся клиенты
-            for (int j = i; j < sseClientCount - 1; j++)
-            {
-                sseClients[j] = sseClients[j + 1];
-            }
-            sseClientCount--;
-            break;
-        }
-    }
-}
-
-// Функция для добавления нового SSE клиента
-void addSSEClient(const WiFiClient &client)
-{
-    // Проверяем, не добавляем ли мы существующего клиента
-    for (int i = 0; i < sseClientCount; i++)
-    {
-        if (sseClients[i].client == client)
-        {
-            syslog_ng("Client already exists");
-            return;
-        }
-    }
-
-    if (sseClientCount < MAX_SSE_CLIENTS)
-    {
-        sseClients[sseClientCount].client = client;
-        sseClients[sseClientCount].connected = true;
-        sseClientCount++;
-        syslog_ng(String("SSE client added, total: ") + sseClientCount);
-    }
-    else
-    {
-        syslog_err("SSE client limit reached");
-    }
-}
-
-// Function to send message to all connected SSE clients
-void sendSSEMessage(const String &message)
-{
-    if (message.length() == 0)
-    {
-        syslog_err("Empty message in sendSSEMessage");
-        return;
-    }
-
-    // Format the message with event type
-    String sseMessage = "event: message\n";
-    sseMessage += "data: " + message + "\n\n";
-
-    // Send to all connected clients
-    for (int i = 0; i < sseClientCount; i++)
-    {
-        if (sseClients[i].connected && sseClients[i].client.connected())
-        {
-            syslog_ng(String("Sending to client ") + i);
-
-            // Try to send message with retries
-            int retries = 3;
-            bool messageSent = false;
-            while (retries > 0)
-            {
-                sseClients[i].client.print(sseMessage);
-                sseClients[i].client.flush();
-
-                // Проверяем успешность отправки через available()
-                if (sseClients[i].client.available() == 0)
-                {
-                    messageSent = true;
-                    syslog_ng(String("Message sent to client ") + i);
-                    break;
-                }
-                retries--;
-                syslog_err(String("Failed to send message to client ") + i + String(", retries left: ") + retries);
-            }
-
-            if (!messageSent)
-            {
-                syslog_err(String("Failed to send message to client ") + i + String(" after retries"));
-                sseClients[i].connected = false;
-            }
-
-            if (retries == 0)
-            {
-                syslog_err(String("Failed to send message to client ") + i + String(" after retries"));
-                sseClients[i].connected = false;
-            }
-        }
-        else
-        {
-            syslog_err(String("Client ") + i + String(" disconnected"));
-            // Client disconnected, remove from list
-            removeSSEClient(sseClients[i].client);
-            i--;  // Adjust index since we removed an element
-        }
-    }
-}
-
-// Function to clean up disconnected SSE clients
-void cleanupSSEClients()
-{
-    syslog_ng("Starting SSE client cleanup");
-    syslog_ng(String("Total clients: ") + sseClientCount);
-
-    // Create a temporary array of active clients
-    SSEClient activeClients[MAX_SSE_CLIENTS];
-    int activeCount = 0;
-
-    // First pass: collect active clients
-    for (int i = 0; i < sseClientCount; i++)
-    {
-        if (sseClients[i].connected && sseClients[i].client.connected())
-        {
-            // Проверяем, что клиент активен
-            if (sseClients[i].client.available() > 0)
-            {
-                sseClients[i].client.read();  // Очищаем входной буфер
-            }
-            activeClients[activeCount++] = sseClients[i];
-            syslog_ng(String("Client ") + i + String(" is active"));
-        }
-        else
-        {
-            syslog_ng(String("Found disconnected client ") + i);
-            sseClients[i].client.stop();  // Clean up the client
-            sseClients[i].connected = false;
-        }
-    }
-
-    // Second pass: update the main array
-    if (activeCount < sseClientCount)
-    {
-        for (int i = 0; i < activeCount; i++)
-        {
-            sseClients[i] = activeClients[i];
-        }
-        sseClientCount = activeCount;
-        syslog_ng(String("Active clients after cleanup: ") + sseClientCount);
-    }
-    else
-    {
-        syslog_ng("No disconnected clients found");
-    }
-}
-
-// Функция для удаления SSE клиента
-void TaskTemplate(void *params)
-{
-    TaskParams *taskParams = (TaskParams *)params;
-    taskParams->busyCounter = 0;
-    syslog_ng(String("TaskTemplate " + String(taskParams->taskName) + " received task ") +
-              String(taskParams->taskName));
-    TaskInfo *currentTask = nullptr;
-    int counter = 0;
-    unsigned long lastExecutionTime = millis();
-    for (int i = 0; i < taskCount; i++)
-    {
-        if (tasks[i].taskName != NULL && taskParams->taskName != NULL &&
-            strcmp(tasks[i].taskName, taskParams->taskName) == 0)
-        {
-            {
-                counter = i;
-                syslog_ng("TaskTemplate already found task! " + String(taskParams->taskName) + " TaskTemplateCounter " +
-                          String(counter));
-                currentTask = &tasks[i];
-                break;
-            }
-        }
-    }
-
-    if (currentTask == nullptr && taskCount < MAX_TASKS)
-    {
-        syslog_ng("Adding task " + String(taskParams->taskName) + " " + String(taskParams->taskName) +
-                  " to tasks array.");
-        tasks[taskCount].taskName = strdup(taskParams->taskName);
-        tasks[taskCount].lastExecutionTime = 0;
-        tasks[taskCount].totalExecutionTime = 0;
-        tasks[taskCount].executionCount = 0;
-
-        tasks[taskCount].minFreeStackSize = uxTaskGetStackHighWaterMark(NULL);
-        tasks[taskCount].xSemaphore = taskParams->xSemaphore;
-        currentTask = &tasks[taskCount];
-        counter = taskCount;
+        // Initialize the lastRunTime to stagger task execution
+        taskParams->lastRunTime = millis() + (taskCount * 1000);  // Stagger tasks by 1 second each
+        taskParams->busyCounter = 0;
+        sensorTasks[taskCount] = taskParams;
         taskCount++;
+        syslog_ng(String("Added task: ") + taskParams->taskName);
     }
-
-    if (taskParams == nullptr)
+    else if (taskCount >= MAX_TASKS)
     {
-        syslog_ng("TaskTemplate  " + String(taskParams->taskName) +
-                  " taskParams == nullptr   received invalid parameters, deleting task counter " + String(counter) +
-                  " taskParams->taskName " + String(taskParams->taskName));
-        vTaskDelete(NULL);
+        syslog_ng("Warning: Maximum number of tasks reached!");
     }
+}
 
-    if (taskParams->xSemaphore == nullptr)
-    {
-        syslog_ng("TaskTemplate  xSemaphore == nullptr  received invalid parameters, deleting task counter " +
-                  String(counter) + " taskParams->taskName " + String(taskParams->taskName));
-        vTaskDelete(NULL);
-    }
+void workerTask(void *pvParameters)
+{
+    int taskIndex = (int)pvParameters;
+    const char *workerName = (taskIndex == 0) ? "Worker1" : "Worker2";
 
-    if (taskParams->taskName == nullptr)
-    {
-        syslog_ng("TaskTemplate  taskName == nullptr  received invalid parameters, deleting task counter " +
-                  String(counter) + " taskParams->taskName " + String(taskParams->taskName));
-        vTaskDelete(NULL);
-    }
+    syslog_ng(String("Starting ") + workerName);
 
     for (;;)
     {
-        if (OtaStart == true)
+        // Process every other task starting from taskIndex
+        for (int i = taskIndex; i < taskCount; i += 2)
         {
-            syslog_ng(String(taskParams->taskName) + " OTA start detected, deleting task");
-            // Free any allocated resources here if needed
+            TaskParams *task = sensorTasks[i];
+            if (!task)
+            {
+                syslog_ng(String(workerName) + ": Invalid task at index " + String(i));
+                continue;
+            }
 
-            vTaskDelete(NULL);  // Delete the current task
-            return;             // This line is technically unreachable but good practice
+            // OTA interrupt check
+            if (OtaStart)
+            {
+                syslog_ng(workerName + String(": OTA update starting, deleting task"));
+                vTaskDelete(NULL);
+            }
+
+            unsigned long now = millis();
+            unsigned long timeSinceLastRun = now - task->lastRunTime;
+
+            // Check if it's time to run this task
+            if (timeSinceLastRun >= task->repeatInterval)
+            {
+                // Try to take the semaphore
+                if (xSemaphoreTake(task->xSemaphore, pdMS_TO_TICKS(1)) == pdTRUE)
+                {
+                    unsigned long startTime = millis();
+                    task->busyCounter = 0;
+                    task->lastRunTime = now;
+
+                    // Execute the task function with error handling
+                    if (task->taskFunction)
+                    {
+                        syslog_ng(String(workerName) + ": Executing " + task->taskName);
+                        task->taskFunction();
+                        unsigned long execTime = millis() - startTime;
+
+                        if (execTime > task->repeatInterval / 2)
+                        {
+                            syslog_ng(String("Warning: Task ") + task->taskName + " took " + String(execTime) +
+                                      "ms to execute (interval: " + String(task->repeatInterval) + "ms)");
+                        }
+                    }
+                    else
+                    {
+                        syslog_ng(String("Error: Invalid task function for ") + task->taskName);
+                    }
+
+                    xSemaphoreGive(task->xSemaphore);
+                }
+                else if (++task->busyCounter > 1500)
+                {
+                    syslog_ng(String("Task busy: ") + task->taskName + " (worker " + String(workerName) +
+                              ", last run: " + String(timeSinceLastRun) + "ms ago)");
+                    task->busyCounter = 0;
+                }
+            }
         }
 
-        unsigned long currentTime = millis();
-        unsigned long timeSinceLastExecution = currentTime - lastExecutionTime;
+        // Small delay to prevent busy waiting
+        vTaskDelay(pdMS_TO_TICKS(1));
+    }
+}
 
-        if (timeSinceLastExecution >= taskParams->repeatInterval)
+void startTaskScheduler()
+{
+    // Start worker task 1 (handles even indices)
+    xTaskCreatePinnedToCore(workerTask, "Worker1",
+                            8192,       // Stack size
+                            (void *)0,  // Parameter (task index)
+                            1,          // Priority
+                            &taskHandle1, CORE_SENSORS);
+
+    // Start worker task 2 (handles odd indices)
+    xTaskCreatePinnedToCore(workerTask, "Worker2",
+                            8192,       // Stack size
+                            (void *)1,  // Parameter (task index)
+                            1,          // Priority
+                            &taskHandle2, CORE_SENSORS);
+}
+
+// Debug function to print task information
+void printTaskInfo()
+{
+    syslog_ng("\n=== Task Scheduler Debug Info ===");
+    syslog_ng(String("Total tasks: ") + String(taskCount));
+
+    for (int i = 0; i < taskCount; i++)
+    {
+        if (sensorTasks[i])
         {
-            if (log_debug)
-            {
-                syslog_ng("TaskTemplate  " + String(taskParams->taskName) + " Starting vTaskDelay counter " +
-                          String(counter) + "taskName" + String(taskParams->taskName));
-                syslog_ng("TaskTemplate  " + String(taskParams->taskName) + " Starting taskName" +
-                          String(taskParams->taskName));
-                syslog_ng("TaskTemplate  " + String(taskParams->taskName) +
-                          " timeSinceLastExecution >= taskParams->repeatInterval Starting taskName: " +
-                          String(taskParams->taskName));
-            }
-            if (xSemaphoreTake(taskParams->xSemaphore, (TickType_t)100) == pdTRUE)
-            {
-                taskParams->busyCounter = 0;
-                lastExecutionTime = currentTime;
-                unsigned long startTime = millis();
-
-                syslog_ng(" Start  " + String(taskParams->taskName) + " TaskTemplateCounter " + String(counter) +
-                          String(taskParams->taskName));
-
-                taskParams->taskFunction();
-
-                unsigned long endTime = millis();
-                unsigned long executionTime = endTime - startTime;
-
-                currentTask->lastExecutionTime = executionTime;
-                currentTask->totalExecutionTime += executionTime;
-                currentTask->executionCount++;
-                unsigned int currentStackSize = uxTaskGetStackHighWaterMark(NULL);
-                if (currentStackSize < currentTask->minFreeStackSize)
-                {
-                    currentTask->minFreeStackSize = currentStackSize;
-                }
-
-                syslog_ng(String(taskParams->taskName) + " End, currentStackSize " + String(currentStackSize) +
-                          " Execution time: " + String(executionTime) + "ms");
-
-                xSemaphoreGive(taskParams->xSemaphore);
-                vTaskDelay(taskParams->repeatInterval / portTICK_PERIOD_MS);
-            }
-            else
-            {
-                taskParams->busyCounter++;
-                if (taskParams->busyCounter > 15)
-                {
-                    syslog_ng(String(taskParams->taskName) + " symofore busy ");
-                }
-
-                vTaskDelay(random(500, 1501) / portTICK_PERIOD_MS);
-            }
+            syslog_ng(String("Task[") + i + "]: " + sensorTasks[i]->taskName +
+                      " (Interval: " + sensorTasks[i]->repeatInterval + "ms, " +
+                      "Last Run: " + (millis() - sensorTasks[i]->lastRunTime) + "ms ago)");
         }
         else
         {
-            vTaskDelay(random(500, 1501) / portTICK_PERIOD_MS);
+            syslog_ng(String("Task[") + i + "]: NULL");
         }
     }
-
-    syslog_ng(String(taskParams->taskName) + " EXIT Task");
+    syslog_ng("==============================\n");
 }
+
+// Call this after adding all tasks
+void initTaskScheduler()
+{
+    if (taskCount > 0)
+    {
+        syslog_ng("Initializing task scheduler with " + String(taskCount) + " tasks");
+        printTaskInfo();
+        startTaskScheduler();
+    }
+    else
+    {
+        syslog_ng("Warning: No tasks registered for scheduler!");
+    }
+}
+
+// Keep this for backward compatibility, but it won't be used directly
+void TaskTemplate(void *params)
+{
+    // This is now handled by the worker tasks
+    vTaskDelete(NULL);
+}
+// This function should be called after all tasks are added
+void setupTaskScheduler()
+{
+    // Initialize the task scheduler with two worker tasks
+    initTaskScheduler();
+}
+
 static int reconnectDelay = 1000;  // Start with 1 second
 static int reconnectAttempts = 0;
 long phvalue;
@@ -645,7 +597,7 @@ void enqueueMessage(const char *topic, const char *payload, String key = "", Str
         Serial.println("Ошибка: topic или payload равен NULL");
         return;
     }
-#if defined(ENABLE_PONICS_ONLINE)
+
     if (enable_ponics_online)
     {
         if (mqttClient.connected() and (mqtt_type == "usual" or mqtt_type == "all") and WiFi.status() == WL_CONNECTED)
@@ -653,7 +605,10 @@ void enqueueMessage(const char *topic, const char *payload, String key = "", Str
             int packet_id = mqttClient.publish(topic, 0, false, payload);
 
             String e = String(topic) + ":::" + String(payload);
-            events.send(e.c_str(), "mqtt-ponics", millis());
+            if (events.count() > 0)
+            {
+                events.send(e.c_str(), "mqtt-ponics", millis());
+            }
 
             if (packet_id == 0)
             {
@@ -664,13 +619,16 @@ void enqueueMessage(const char *topic, const char *payload, String key = "", Str
             }
         }
     }
-#endif
+
     if (mqttClientHA.connected() and (mqtt_type == "ha" or mqtt_type == "all") and WiFi.status() == WL_CONNECTED)
     {
         int packet_id = mqttClientHA.publish(topic, 0, false, payload);
 
         String e = String(topic) + ":::" + String(payload);
-        events.send(e.c_str(), "mqtt-ha", millis());
+        if (events.count() > 0)
+        {
+            events.send(e.c_str(), "mqtt-ha", millis());
+        }
         if (packet_id == 0)
         {
             int payloadSize = strlen(payload);
@@ -728,24 +686,24 @@ void publish_parameter(const String &key, float value, int precision, int timesc
     // Проверка на пустой ключ
     if (key.length() == 0)
     {
-        syslog_ng("ERROR: Parameter key is empty.");
+        syslog_ng("mqtt ERROR: Parameter key is empty.");
         return;  // Выходим, если ключ пустой
     }
 
     if (timescale == 1)
     {
-        String topic = mqttPrefix + timescale_prefix + key;  // Используем соответствующий префикс темы
+        String topic = update_token + "/" + timescale_prefix + key;  // Используем соответствующий префикс темы
         char valueStr[32];
-        if (log_debug) syslog_ng("publish_parameter topic " + topic + " value: " + String(value));
+        if (log_debug) syslog_ng("mqtt publish_parameter topic " + topic + " value: " + String(value));
 
         dtostrf(value, 1, precision, valueStr);  // Преобразуем float в строку с заданной точностью
 
-        if (log_debug) syslog_ng("published topic " + topic + " value: " + String(value));
+        if (log_debug) syslog_ng("mqtt published topic " + topic + " value: " + String(value));
         enqueueMessage(topic.c_str(), valueStr, key);
     }
     else
     {
-        String topic = mqttPrefix + data_prefix + key;  // Используем соответствующий префикс темы
+        String topic = update_token + "/" + data_prefix + key;  // Используем соответствующий префикс темы
         char valueStr[32];
 
         dtostrf(value, 1, precision, valueStr);  // Преобразуем float в строку с заданной точностью
@@ -771,7 +729,7 @@ void publish_parameter(const String &key, const String &value, int timescale)
 
     if (timescale == 1)
     {
-        String topic = mqttPrefix + timescale_prefix + key;  // Используем соответствующий префикс темы
+        String topic = update_token + "/" + timescale_prefix + key;  // Используем соответствующий префикс темы
         if (log_debug) syslog_ng("publish_parameter topic " + topic + " value: " + String(value));
 
         enqueueMessage(topic.c_str(), String(value).c_str(), key);
@@ -779,7 +737,7 @@ void publish_parameter(const String &key, const String &value, int timescale)
     }
     else
     {
-        String topic = mqttPrefix + data_prefix + key;  // Используем соответствующий префикс темы
+        String topic = update_token + "/" + data_prefix + key;  // Используем соответствующий префикс темы
 
         enqueueMessage(topic.c_str(), String(value).c_str(), key);
     }
@@ -952,8 +910,8 @@ Group groups[] = {
          {"UPDATE_URL", "Ссылка на прошивку", Param::STRING, .defaultString = UPDATE_URL.c_str()},
          {"httpAU", "Логин интерфейса", Param::STRING, .defaultString = httpAuthUser.c_str()},
          {"httpAP", "Пароль интерфейса", Param::STRING, .defaultString = httpAuthPass.c_str()},
-         {"epo", "Вкл мктт поникс(0-off, 1-on)", Param::INT, .defaultInt = 1},
-         {"epo_l", "Вкл лог поникс(0-off, 1-on)", Param::INT, .defaultInt = 1},
+         {"epo", "Вкл мктт поникс(0-off, 1-on)", Param::INT, .defaultInt = enable_ponics_online},
+         {"epo_l", "Вкл лог поникс(0-off, 1-on)", Param::INT, .defaultInt = enable_ponics_online_logs},
          {"update_token", "Ключ обновления", Param::STRING, .defaultString = update_token.c_str()},
          {"HOSTNAME", "Имя хоста", Param::STRING, .defaultString = HOSTNAME.c_str()},
          {"vpdstage", "VPD стадия", Param::STRING, .defaultString = vpdstage.c_str()},
@@ -962,6 +920,7 @@ Group groups[] = {
          {"change_pins", "поменять пины US025(HCR04)(0-off, 1-on)", Param::INT, .defaultInt = 0},
          {"clear_pref", "Сброс ВСЕХ настроек кроме wifi(0-off, 1-on)", Param::INT, .defaultInt = 0},
          {"vZapas", "Запас в трубе раствора", Param::FLOAT, .defaultFloat = 9.5},
+         {"log_debug", "Включить логирование(0-off, 1-on)", Param::INT, .defaultInt = 0},
 
      }},
 
@@ -1187,14 +1146,11 @@ const int PwdResolution2 = 8;
 #include <dev/ec/main.h>
 #include <dev/ntc/main.h>
 #include <tasks.h>
-#include <web/root.h>
+
 #include <etc/update.h>
 #include <preferences_local.h>
 #include <mqtt/mqtt.h>
 
 #include <etc/wifi_ap.h>
 #include <web/new_settings.h>
-
-#include <ram_saver_api.h>
 #include <setup.h>
-#include <loop.h>

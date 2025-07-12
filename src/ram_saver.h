@@ -30,10 +30,10 @@ struct RamSaver
     SemaphoreHandle_t mutex;       // Mutex for thread safety
     RamMultiRecord currentMinute;  // Buffer for current minute
 
-    // Thread-safe methods
-    bool takeMutex(TickType_t timeout = portMAX_DELAY) { return xSemaphoreTake(mutex, timeout) == pdTRUE; }
+    // Thread-safe methods with recursive mutex
+    bool takeMutex(TickType_t timeout = portMAX_DELAY) { return xSemaphoreTakeRecursive(mutex, timeout) == pdTRUE; }
 
-    void giveMutex() { xSemaphoreGive(mutex); }
+    void giveMutex() { xSemaphoreGiveRecursive(mutex); }
 };
 
 extern RamSaver ramSaver;

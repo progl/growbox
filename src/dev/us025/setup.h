@@ -28,13 +28,7 @@ syslog_ng("US025: Initialized, initial distance = " + String(initDist, 2) + " cm
 
 // Запуск задачи измерения
 TaskUSParams = {"US", TaskUS, 30000, xSemaphore_C};
-int err = xTaskCreatePinnedToCore(TaskTemplate, "US", stack_size, (void *)&TaskUSParams, 1, NULL, 1);
-if (err != pdPASS)
-{
-    syslog_ng("US025: Failed to create task (err=" + String(err) + ")");
-    setSensorDetected("US025", 0);
-    return;
-}
+addTask(&TaskUSParams);
 
 KalmanDist = GKalman(dist_mea_e, dist_est_e, dist_q);
 syslog_ng("US025: Task created successfully");

@@ -11,7 +11,7 @@ if (Wire.available())
     }
 
     AHT10Params = {"AHT10", AHT10, 30000, xSemaphore_C};
-    xTaskCreatePinnedToCore(TaskTemplate, "AHT10", stack_size, (void *)&AHT10Params, 1, NULL, 0);
+    addTask(&AHT10Params);
 
     setSensorDetected("AHT10", 1);
 }

@@ -16,7 +16,7 @@ else
     mcp.writeGPIOAB(0);  // Установка всех пинов в низкий уровень
 
     MCP23017Params = {"MCP23017", MCP23017, 30000, xSemaphore_C};
-    xTaskCreatePinnedToCore(TaskTemplate, "MCP23017", stack_size, (void *)&MCP23017Params, 1, NULL, 0);
+    addTask(&MCP23017Params);
 
     setSensorDetected("MCP23017", 1);
 }

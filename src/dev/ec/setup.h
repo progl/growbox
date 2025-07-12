@@ -8,7 +8,7 @@ for (int i = 0; i < 1000; i++)
     if (adc1_get_raw(ADC1_CHANNEL_5) > 0)
     {
         EC_voidParams = {"EC", EC_void, 30000, xSemaphore_C};
-        xTaskCreatePinnedToCore(TaskTemplate, "EC", stack_size, (void *)&EC_voidParams, 1, NULL, 1);
+        addTask(&EC_voidParams);
         setSensorDetected("EC", 1);
         break;
     }

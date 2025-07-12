@@ -17,6 +17,7 @@ IPAddress subnet(255, 255, 255, 0);
 String appName;
 String wifiIp;
 String UPDATE_URL = "https://ponics.online/static/wegabox/esp32-local/firmware.bin";
+String UPDATE_FS_URL = "https://ponics.online/static/wegabox/esp32-local/littlefs.bin";
 
 int US025_CHANGE_PORTS = 0;
 int ENABLE_AUTO_UPDATES = 1;

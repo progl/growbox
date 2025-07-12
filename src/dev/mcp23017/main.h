@@ -15,7 +15,7 @@ bool isPumpOn = false;  // Флаг для отслеживания состоя
 
 unsigned long MCP23017_old = millis();
 unsigned long MCP23017_Repeat = 10000;
-unsigned long ECStabTimeStart = 0;
+unsigned long ECStabTimeStart = millis();
 float aPWD = 0;
 int DRV[DRV_COUNT][BITS_PER_DRV] = {{DRV1_A, DRV1_B, DRV1_C, DRV1_D},
                                     {DRV2_A, DRV2_B, DRV2_C, DRV2_D},

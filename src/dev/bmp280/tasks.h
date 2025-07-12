@@ -32,6 +32,7 @@ void BMP280()
     publish_parameter("AirPress", AirPress, 3, 1);
     publish_parameter("AirTemp", AirTemp, 3, 1);
     publish_parameter("AirHum", AirHum, 3, 1);
+    publish_parameter("AirVPD", AirVPD, 3, 1);
 }
 
 TaskParams BMP280Params76;

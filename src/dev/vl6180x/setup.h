@@ -12,7 +12,7 @@ if (Wire.available())
     s_vl6180X.writeReg(VL6180X::SYSRANGE__MAX_CONVERGENCE_TIME, 20);
     s_vl6180X.writeReg16Bit(VL6180X::SYSALS__INTEGRATION_PERIOD, 50);
     TaskVL6180XParams = {"TaskVL6180X", TaskVL6180X, 30000, xSemaphore_C};
-    xTaskCreatePinnedToCore(TaskTemplate, "TaskVL6180X", stack_size, (void *)&TaskVL6180XParams, 1, NULL, 0);
+    addTask(&TaskVL6180XParams);
 
     setSensorDetected("VL6180X", 1);
 }

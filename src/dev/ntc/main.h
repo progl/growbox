@@ -2,7 +2,7 @@
 unsigned long NTC_old = millis();
 unsigned long NTC_Repeat = 1000;
 int ntc_daly_ms = 50;
-int NTC_MiddleCount = 10000;
+int NTC_MiddleCount = 5000;
 int ntc_avg_number = 100;
 int disable_ntc = 0;
 int first_time_ntc = 1;

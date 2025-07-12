@@ -5,7 +5,7 @@ if (Wire.available())
 {
     BMP280addr = 0x76;
     BMP280Params76 = {"BMP280", BMP280, 30000, xSemaphore_C};
-    xTaskCreatePinnedToCore(TaskTemplate, "BMP280", stack_size, (void *)&BMP280Params76, 1, NULL, 0);
+    addTask(&BMP280Params76);
 
     setSensorDetected("BMx280", 1);
 }
@@ -17,7 +17,7 @@ else
     {
         BMP280addr = 0x77;
         BMP280Params77 = {"BMP280", BMP280, 30000, xSemaphore_C};
-        xTaskCreatePinnedToCore(TaskTemplate, "BMP280", stack_size, (void *)&BMP280Params77, 1, NULL, 0);
+        addTask(&BMP280Params77);
         setSensorDetected("BMx280", 1);
     }
 }

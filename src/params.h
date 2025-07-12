@@ -1,3 +1,10 @@
+#include "GyverFilters.h"
+#include "RunningMedian.h"
+#include <map>
+#include <Preferences.h>
+
+extern Preferences preferences;
+extern String fFTS(float x, byte precision);
 struct Param
 {
     const char *name;
@@ -250,21 +257,18 @@ float max_l_level, max_l_raw, min_l_level, min_l_raw, wLevel, twLevel;
 String tR_type = "direct";
 
 String A1name, A2name, wegareply, err_wegaapi_json, dt, Reset_reason0, Reset_reason1;
-
-// Структура для хранения информации о датчике
-typedef struct
+struct Sensor
 {
     char name[50];     // Название датчика
     uint8_t detected;  // Статус детектирования: 0 - не детектирован, 1 - детектирован
-} Sensor;
+};
 
-// Массив датчиков
 Sensor sensors[] = {
     {"VL53L0X", 0}, {"MCP23017", 0}, {"HX710B", 0}, {"Dallas", 0},  {"US025", 0},   {"AHT10", 0},
     {"AM2320", 0},  {"EC", 0},       {"PR", 0},     {"ADS1115", 0}, {"MCP3421", 0}, {"VL6180X", 0},
     {"SDC30", 0},   {"NTC", 0},      {"LCD", 0},    {"BMx280", 0},  {"CCS811", 0},
 };
-const int sensorsCount = sizeof(sensors) / sizeof(sensors[0]);
+int sensorsCount = sizeof(sensors) / sizeof(sensors[0]);
 
 // Функция для изменения статуса детектирования датчика по имени
 void setSensorDetected(const char *name, uint8_t detected)
@@ -284,20 +288,16 @@ bool making_update = false;
 long ECDoserTimer;
 boolean make_doser = false;
 #define SYSLOG_PORT 514  // Порт SYSLOG сервера
+String SYSLOG_SERVER = "";
 // ponics.online
-#if __has_include(<ponics.online.h>)
-#include <ponics.online.h>
-#else
-#pragma message("Header <ponics.online.h> not found, continuing without it.")
-IPAddress MQTT_HOST(8, 8, 8, 8);
+
+IPAddress MQTT_HOST(127, 0, 0, 1);
 int MQTT_PORT = 1883;
-String SYSLOG_SERVER = "";  // Адрес SYSLOG сервера будет переопределен в ponics.online.h
-int ENABLE_PONICS_ONLINE = 1;
-const char *mqtt_mqtt_user = "";
-const char *mqtt_mqtt_password = "";
+int enable_ponics_online = 1;
+int enable_ponics_online_logs = 1;
+String mqtt_mqtt_user;
+String mqtt_mqtt_password;
 uint16_t mqtt_mqtt_port = 1883;
-String mqttPrefix;
-#endif
 
 // Переменные для параметров "calE"
 int calE = 0;
@@ -343,7 +343,7 @@ int DRV4_C_State = 0;
 int DRV4_D_State = 0;
 
 float VccRaw = 0;
-float VccRawUser = 2048;
+ 
 
 std::map<std::string, int *> variablePointers;
 

@@ -10,7 +10,7 @@ if (Wire.available())
 
     ccs811.start(CCS811_MODE_1SEC);
 
-    xTaskCreatePinnedToCore(TaskTemplate, "CCS811", stack_size, (void *)&CCS811Params, 1, NULL, 1);
+    addTask(&CCS811Params);
 
     setSensorDetected("CCS811", 1);
 }

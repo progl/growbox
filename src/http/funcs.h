@@ -9,15 +9,8 @@ void configureHttpClientForFirefox(HTTPClient &http)
     http.addHeader("Accept-Language", "en-US,en;q=0.5");
     http.addHeader("Accept-Encoding", "gzip, deflate, br");
 
-    http.setConnectTimeout(100000);
-    http.setTimeout(65535);
-}
-
-void handleRedirect(AsyncWebServerRequest *request)
-{
-    AsyncWebServerResponse *response = request->beginResponse(302);
-    response->addHeader("Location", "/");  // Адрес, на который редирект
-    request->send(response);
+    http.setTimeout(WIFI_RESPONSE_TIMEOUT);
+    http.setConnectTimeout(WIFI_CONNECT_TIMEOUT);
 }
 
 bool makeHttpRequest(String url, HTTPClient &http)
@@ -76,98 +69,3 @@ ERROR
 )=====";
 
 void errorPage(AsyncWebServerRequest *request) { request->send_P(400, "text/html", ERROR_page); }
-
-String getContentType(const String &path)
-{
-    if (path.endsWith(".html"))
-        return "text/html";
-    else if (path.endsWith(".css"))
-        return "text/css";
-    else if (path.endsWith(".js"))
-        return "application/javascript";
-    else if (path.endsWith(".json"))
-        return "application/json";
-    else if (path.endsWith(".png"))
-        return "image/png";
-    else if (path.endsWith(".jpg"))
-        return "image/jpeg";
-    else if (path.endsWith(".gif"))
-        return "image/gif";
-    else if (path.endsWith(".ico"))
-        return "image/x-icon";
-    else if (path.endsWith(".gz"))
-        return "application/x-gzip";
-    return "text/plain";
-}
-void handleFileRequest(AsyncWebServerRequest *request)
-{
-    if (request->hasArg("make_update") && request->arg("make_update").toInt() == 1)
-    {
-        handleRedirect(request);
-        return;
-    }
-
-    String path = request->url();
-    Serial.println("handleFileRequest path " + path);
-
-    if (path == "" || path.endsWith("/"))
-    {
-        path += "index.html";
-    }
-
-    if (path == "/" && isAPMode)
-    {
-        path += "captive.html";
-    }
-
-    String contentType = getContentType(path);
-    String filePath;
-    bool isGzipped = false;
-
-    // Проверка .gz файла
-    if (FoundCache.count(+".gz") || !notFoundCache.count(path + ".gz"))
-    {
-        if (LittleFS.exists(path + ".gz"))
-        {
-            filePath = path + ".gz";
-            isGzipped = true;
-            FoundCache.insert(filePath);
-        }
-        else
-        {
-            notFoundCache.insert(path + ".gz");
-        }
-    }
-
-    if (!notFoundCache.count(path))
-    {
-        if (FoundCache.count(path) || LittleFS.exists(path))
-        {
-            filePath = path;
-            FoundCache.insert(path);
-        }
-        else
-        {
-            notFoundCache.insert(path);
-        }
-    }
-
-    // Если файл найден
-    if (!filePath.isEmpty())
-    {
-        AsyncWebServerResponse *response = request->beginResponse(LittleFS, filePath, contentType);
-        if (isGzipped)
-        {
-            response->addHeader("Content-Encoding", "gzip");
-        }
-        response->addHeader("Cache-Control", "max-age=31536000, immutable");
-        response->addHeader("Access-Control-Allow-Origin", "*");
-        syslog_ng("send filePath " + filePath);
-        request->send(response);
-    }
-    else
-    {
-        syslog_ng("send filePath " + filePath + " not found");
-        request->send(404, "text/plain", "File Not Found");
-    }
-}

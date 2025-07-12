@@ -9,7 +9,7 @@ if (Wire.available())
     }
     TaskAM2320Params = {"TaskAM2320", TaskAM2320, 30000, xSemaphore_C};
 
-    xTaskCreatePinnedToCore(TaskTemplate, "TaskAM2320", stack_size, (void *)&TaskAM2320Params, 1, NULL, 1);
+    addTask(&TaskAM2320Params);
 
     setSensorDetected("AM2320", 1);
 }

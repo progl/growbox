@@ -106,7 +106,7 @@ void publish_discovery_payload(const char *sensor_name)
     char buffer[512];
 
     doc["name"] = sensor_name;
-    doc["state_topic"] = mqttPrefix + timescale_prefix + sensor_name;
+    doc["state_topic"] = update_token + "/" + timescale_prefix + sensor_name;
     doc["state_class"] = "measurement";
     doc["unique_id"] = String(HOSTNAME) + "_" + sensor_name;
     doc["device"]["identifiers"][0] = HOSTNAME;
@@ -124,7 +124,7 @@ void publish_switch_discovery_payload(Param param)
     String switch_name = String(param.name);
     JsonDocument doc;
     char buffer[512];
-    String command_topic = mqttPrefix + "set/" + String(param.name);
+    String command_topic = update_token + "/" + "set/" + String(param.name);
 
     // Проверка на наличие имени переключателя
     if (switch_name.length() == 0)
@@ -216,12 +216,13 @@ void publish_switch_discovery_payload(Param param)
 
 void subscribe_param_ha(Param param)
 {
-    String command_topic = mqttPrefix + "set/" + String(param.name);
+    String command_topic = update_token + "/" + "set/" + String(param.name);
     mqttClientHA.subscribe(command_topic.c_str(), qos);
 }
 
 void onMqttDisconnectHA(AsyncMqttClientDisconnectReason reason)
 {
+    mqttClientHAConnected = false;
     syslog_ng("mqtt mqttClientHA Disconnected. Reason: " + String((int)reason));
     syslog_ng("mqtt mqttClientHA: WiFi isConnected: " + String(WiFi.isConnected()));
     if (WiFi.isConnected())
@@ -257,6 +258,10 @@ void connectToMqttHA()
         {
             mqtt_not_connected_counter = 0;
         }
+    }
+    else
+    {
+        syslog_ng("mqtt mqttClientHA not enabled");
     }
 }
 
@@ -310,9 +315,9 @@ void publish_setting_groups()
     // Serialize JSON object to string
     String output;
     serializeJson(doc, output);
-    String topic = mqttPrefix + main_prefix + "all_groups";
+    String topic = update_token + "/" + main_prefix + "all_groups";
     enqueueMessage(topic.c_str(), output.c_str());
-    vTaskDelay(1);
+    vTaskDelay(10);
 }
 
 void processToggleParameters()
@@ -377,6 +382,7 @@ void onMqttConnectHA(bool sessionPresent)
     mqttClientHA.subscribe("homeassistant/status", 1);
     mqttClientHA.subscribe("homeassistant/growbox/status", 1);
     mqttHAConnected = 1;
+    mqttClientHAConnected = true;
     xTaskCreatePinnedToCore(mqttTaskHA, "MQTT HA Task", 4096, NULL, 1, NULL, 1);
 }
 void onMqttMessageHA(char *topic, char *payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index,
@@ -415,7 +421,7 @@ void onMqttMessageHA(char *topic, char *payload, AsyncMqttClientMessagePropertie
         for (int i = 0; i < group.numParams; i++)
         {
             Param &param = group.params[i];
-            String paramTopic = mqttPrefix + "set/" + String(param.name);
+            String paramTopic = update_token + "/" + "set/" + String(param.name);
             if (paramTopic == topic)
             {
                 if (updatePreference(param.name, message, "usual"))

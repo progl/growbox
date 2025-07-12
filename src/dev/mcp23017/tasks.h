@@ -1,3 +1,7 @@
+
+static SemaphoreHandle_t wateringMutex = xSemaphoreCreateMutex();
+static TaskHandle_t wateringTaskHandle = NULL;
+
 // Параметры шимов
 void checkMismatchedPumps(uint16_t readGPIO, uint16_t bitw)
 {
@@ -71,35 +75,67 @@ void start_ledc_pwd2()
 volatile bool isWatering = false;
 
 // Функция для отдельного потока
-static void wateringTask(void *params)
+static void wateringTask(void *param)
 {
-    std::string key = std::string(options[ECStabPomp].c_str()) + "_State";
-    int *pumpPin = (int *)params;
-    syslog_ng("Watering Task Started");
+    int pin = (int)(intptr_t)param;  // Safe cast from void* to int
+    syslog_ng("MCP23017: Watering task started, pump: " + String(pin));
+    if (pin < 0 || pin >= 16)
+    {
+        syslog_err("MCP23017: Invalid pump pin in watering task: " + String(pin));
+        vTaskDelete(NULL);
+        return;
+    }
 
-    // Включаем помпу
-    mcp.digitalWrite(*pumpPin, 1);
-    *variablePointers[key] = 1;
-    publish_parameter(options[ECStabPomp], 1, 3, 1);
+    if (options[ECStabPomp].isEmpty())
+    {
+        syslog_err("MCP23017: Empty pump option");
+        vTaskDelete(NULL);
+        return;
+    }
 
-    // Ждем заданное время
-    vTaskDelay(ECStabTime * 1000);
+    const std::string key = std::string(options[ECStabPomp].c_str()) + "_State";
 
-    // Выключаем помпу
-    mcp.digitalWrite(*pumpPin, 0);
-    *variablePointers[key] = 0;
-    readGPIO = mcp.readGPIOAB();
-    publish_parameter(options[ECStabPomp], 0, 3, 1);
+    if (xSemaphoreTake(wateringMutex, pdMS_TO_TICKS(1000)) == pdTRUE)
+    {
+        syslog_ng("MCP23017: before Watering task started, pump: " + String(pin));
 
-    // Обновляем счетчики
-    ECStabOn += ECStabTime;
-    ECStabTimeStart = millis();
-    syslog_ng("MCP23017 WATERING END WATERING");
+        // Включаем помпу
+        mcp.digitalWrite(pin, 1);
 
-    // Сбрасываем флаг
-    isWatering = false;
+        if (variablePointers.find(key) != variablePointers.end())
+        {
+            *variablePointers[key] = 1;
+        }
+        String pompName = options[ECStabPomp];
+        syslog_ng("MCP23017: Watering task started, pompName: " + pompName);
+        publish_parameter(pompName.c_str(), 1, 3, 1);
 
-    // Завершаем задачу
+        // Ждем с проверкой на отмену
+        uint32_t startTime = millis();
+        while (millis() - startTime < (ECStabTime * 1000))
+        {
+            if (ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(100)))
+            {
+                syslog_ng("MCP23017: Watering task cancelled");
+                break;
+            }
+        }
+
+        // Выключаем помпу
+        mcp.digitalWrite(pin, 0);
+        *variablePointers[key] = 0;
+        readGPIO = mcp.readGPIOAB();
+        publish_parameter(pompName.c_str(), 0, 3, 1);
+
+        // Обновляем счетчики
+        ECStabOn += ECStabTime;
+        ECStabTimeStart = millis();
+
+        syslog_ng("MCP23017: Watering task completed");
+        xSemaphoreGive(wateringMutex);
+    }
+
+    wateringTaskHandle = NULL;
     vTaskDelete(NULL);
 }
 
@@ -353,7 +389,7 @@ static void handleGPIOErrors()
                 bitString2[15 - i] = (bitw & (1 << i)) ? '1' : '0';
             }
             syslog_ng("MCP23017 WRITE readGPIO " + String(readGPIO) + " bitw " + String(bitw));
-            vTaskDelay(1);
+            vTaskDelay(10);
             GPIOerrcont++;
         }
         checkMismatchedPumps(readGPIO, bitw);
@@ -366,7 +402,8 @@ static void publishPinStates()
     {
         uint16_t mask = 1 << i;
         uint8_t status = (readGPIO & mask) ? 1 : 0;
-        publish_parameter(options[i], status, 3, 1);
+        String pompName = options[i].c_str();
+        publish_parameter(pompName.c_str(), status, 3, 1);
     }
 }
 void MCP23017()
@@ -385,41 +422,58 @@ void MCP23017()
     managePWM(pwd_val2, pwd_freq2, pwd_port2, PWD2, FREQ2, PWDport2, 2);
     // Адаптивная циркуляция для снижения скачков корневого давления
     manageRootPressure();
-    if (log_debug)
-        syslog_ng("MCP23017 WATERING ECStabEnable==1 " + String(ECStabEnable == 1) + " wEC > ECStabValue  " +
-                  String(wEC > ECStabValue) + " millis() - ECStabTimeStart  > ECStabInterval * 1000  " + " time: " +
-                  String(millis() - ECStabTimeStart > ECStabInterval * 1000) + " wLevel >= ECStabMinDist  " +
-                  String(wLevel >= ECStabMinDist) + " wLevel < ECStabMaxDist " + String(wLevel < ECStabMaxDist));
-    // Коррекция ЕС путем разбавления
-    if (ECStabEnable == 1 && wEC > ECStabValue && millis() - ECStabTimeStart > ECStabInterval * 1000 &&
-        wLevel >= ECStabMinDist && wLevel < ECStabMaxDist)
-    {
-        syslog_ng("MCP23017 WATERING ECStabTime " + String(ECStabTime) + " ECStabInterval " + String(ECStabInterval));
 
-        // Создаем задачу для полива с высшим приоритетом
-        xTaskCreate(wateringTask, "Watering", 2048, &ECStabPomp, 2, NULL);
+    // Коррекция ЕС путем разбавления
+    if (ECStabEnable == 1)
+    {
+        // Логируем текущие значения для отладки
+        String logMsg = "MCP23017 EC_STAB_CHECK: ";
+        logMsg += "wEC=" + String(wEC, 2) + "/" + String(ECStabValue, 2);
+        logMsg += ", wLevel=" + (isnan(wLevel) ? "NaN" : String(wLevel, 2));
+        logMsg += ", LevelRange=[" + String(ECStabMinDist, 2) + "-" + String(ECStabMaxDist, 2) + "]";
+        logMsg += ", TimeSinceLastRun=" + String((millis() - ECStabTimeStart) / 1000) + "s";
+        logMsg += "/" + String(ECStabInterval) + "s";
+
+        bool levelCheck = isnan(wLevel) || (wLevel > ECStabMinDist && wLevel < ECStabMaxDist);
+        bool timeCheck = millis() - ECStabTimeStart > ECStabInterval * 1000;
+        bool ecCheck = wEC > ECStabValue;
+        bool lowLevel = !isnan(wLevel) && wLevel <= ECStabMinDist;
+
+        // Логируем результаты проверок
+        logMsg += ", Checks: level=" + String(levelCheck ? "OK" : "FAIL");
+        logMsg += ", time=" + String(timeCheck ? "OK" : "WAIT");
+        logMsg += ", ec=" + String(ecCheck ? "HIGH" : "OK");
+        logMsg += ", lowLevel=" + String(lowLevel ? "YES" : "NO");
+
+        syslog_ng(logMsg);
+
+        // Основная логика включения помпы
+        if ((ecCheck && timeCheck && levelCheck) || lowLevel)
+        {
+            String startMsg = "MCP23017 WATERING_START: ";
+            startMsg += "EC=" + String(wEC, 2) + ">" + String(ECStabValue, 2);
+            startMsg += ", Interval=" + String(ECStabInterval) + "s";
+            if (!isnan(wLevel))
+            {
+                startMsg += ", Level=" + String(wLevel, 2);
+            }
+            syslog_ng(startMsg);
+
+            xTaskCreate(wateringTask, "Watering", 4096, (void *)(intptr_t)ECStabPomp, 2, NULL);
+        }
     }
     else
     {
-        if (ECStabEnable == 1)
+        // Выключение помпы при отключенной стабилизации
+        std::string key = std::string(options[ECStabPomp].c_str()) + "_State";
+        bool isPumpActiveInGPIO = (readGPIO & (1 << ECStabPomp)) != 0;
+
+        if (isPumpActiveInGPIO)
         {
-            std::string key = std::string(options[ECStabPomp].c_str()) + "_State";
-
-            bool isPumpActiveInGPIO = (readGPIO & (1 << ECStabPomp)) != 0;
-
-            if (isPumpActiveInGPIO)
-            {
-                // Выключаем помпу только если она включена
-                mcp.digitalWrite(ECStabPomp, 0);
-                *variablePointers[key] = 0;
-                readGPIO = mcp.readGPIOAB();  // Обновляем состояние после выключения
-                syslog_ng("MCP23017 WATERING DISABLE ECStabEnable==1 " + String(ECStabEnable == 1) +
-                          " wEC > ECStabValue  " + String(wEC > ECStabValue) +
-                          " millis() - ECStabTimeStart  > ECStabInterval * 1000  " +
-                          " time: " + String(millis() - ECStabTimeStart > ECStabInterval * 1000) +
-                          " wLevel >= ECStabMinDist  " + String(wLevel >= ECStabMinDist) + " wLevel < ECStabMaxDist " +
-                          String(wLevel < ECStabMaxDist));
-            }
+            mcp.digitalWrite(ECStabPomp, 0);
+            *variablePointers[key] = 0;
+            readGPIO = mcp.readGPIOAB();
+            syslog_ng("MCP23017 WATERING_DISABLED: EC stabilization disabled, turning off pump");
         }
     }
 
@@ -435,7 +489,7 @@ void MCP23017()
     {
         syslog_ng("MCP23017 WRITE readGPIO: " + String(readGPIO) + " bitw: " + String(bitw));
         mcp.writeGPIOAB(bitw);
-        vTaskDelay(1);
+        vTaskDelay(10);
         readGPIO = mcp.readGPIOAB();
     }
 
@@ -446,5 +500,27 @@ void MCP23017()
     publishPinStates();
     readGPIO = mcp.readGPIOAB();
     syslog_ng("MCP23017  readGPIO: " + String(readGPIO));
+
+    // 1) Собираем список активных битов
+    String activeList = "";
+    constexpr int NUM_OPTIONS = 16;  // у вас 16 пинов/options
+    for (int i = 0; i < 16; i++)
+    {
+        if (readGPIO & (1 << i))
+        {
+            // если есть имя в options (или DRV_Keys), то возьмём его
+            String name = (i < NUM_OPTIONS && options[i].length() > 0) ? options[i] : String("bit") + String(i);
+            activeList += name + "(" + String(i) + "), ";
+        }
+    }
+
+    // 2) Обрезаем конечную запятую и пробел
+    if (activeList.length() >= 2)
+    {
+        activeList.remove(activeList.length() - 2, 2);
+    }
+
+    // 3) Логируем
+    syslog_ng("MCP23017 readGPIO=" + String(readGPIO) + " [активны: " + activeList + "]");
 }
 TaskParams MCP23017Params;

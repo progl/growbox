@@ -97,67 +97,6 @@ void handle_calibrate(AsyncWebServerRequest *request)
     request->send(200, "application/json", sanitizeString(output));
 }
 
-void handle_token(AsyncWebServerRequest *request)
-{
-    syslog_ng("WEB /handle_token");
-    JsonDocument doc;
-    doc["uuid"] = update_token;
-    String output;
-    serializeJson(doc, output);
-    request->send(200, "application/json", sanitizeString(output));
-}
-
-void handleApiStatuses(AsyncWebServerRequest *request)
-{
-    syslog_ng("WEB /handleApiStatuses");
-    unsigned long t_millis = millis();
-
-    JsonDocument doc;
-
-    if (not_detected_sensors.isEmpty())
-    {
-        for (int i = 0; i < sensorsCount; ++i)
-        {
-            if (!sensors[i].detected)
-            {
-                not_detected_sensors += "\n" + String(sensors[i].name);
-            }
-        }
-    }
-
-    if (detected_sensors.isEmpty())
-    {
-        for (int i = 0; i < sensorsCount; ++i)
-        {
-            if (sensors[i].detected)
-            {
-                detected_sensors += "\n" + String(sensors[i].name);
-            }
-        }
-    }
-
-    doc["hostname"] = String(HOSTNAME);
-    doc["firmware"] = String(Firmware);
-    doc["vpdstage"] = vpdstage;
-    doc["ha"] = e_ha == 1 ? mqttClientHA.connected() : false;
-    doc["uptime"] = t_millis;
-    doc["wifi_rssi"] = fFTS(WiFi.RSSI(), 0);
-    doc["AirVPD"] = fFTS(AirVPD, 1);
-    doc["AirHum"] = fFTS(AirHum, 1) + "%";
-    doc["RootTemp"] = fFTS(RootTemp, 1);
-    doc["AirTemp"] = fFTS(AirTemp, 1);
-    doc["wPR"] = fFTS(wPR, 0);
-    doc["wEC"] = fFTS(wEC, 2) + " mS/cm";
-    doc["wNTC"] = fFTS(wNTC, 1);
-    doc["wpH"] = fFTS(wpH, 2);
-    doc["wLevel"] = fFTS(wLevel, 1);
-    doc["CPUTemp"] = fFTS(CPUTemp, 1);
-
-    String output;
-    serializeJson(doc, output);
-    request->send(200, "application/json", sanitizeString(output));
-}
-
 String ApiGroups(bool labels = false)
 {
     // Проверка и инициализация списков не обнаруженных и обнаруженных датчиков
@@ -224,16 +163,4 @@ String ApiGroups(bool labels = false)
     Serial.print("Serialized JSON length: ");
     Serial.println(output.length());
     return output;
-}
-
-void handleApiLabels(AsyncWebServerRequest *request)
-{
-    String output = ApiGroups(true);
-    request->send(200, "application/json", sanitizeString(output));
-}
-
-void handleApiGroups(AsyncWebServerRequest *request)
-{
-    String output = ApiGroups(false);
-    request->send(200, "application/json", sanitizeString(output));
 }

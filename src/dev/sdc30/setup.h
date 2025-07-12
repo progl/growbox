@@ -9,7 +9,7 @@ if (Wire.available())
     }
 
     TaskSDC30Params = {"TaskSDC30", TaskSDC30, 30000, xSemaphore_C};
-    xTaskCreatePinnedToCore(TaskTemplate, "TaskSDC30", stack_size, (void *)&TaskSDC30Params, 1, NULL, 0);
+    addTask(&TaskSDC30Params);
 
     setSensorDetected("SDC30", 1);
 }

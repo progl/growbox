@@ -1,3 +1,4 @@
+syslog_ng("DS18B20 start setup");
 sens18b20.begin();
 while (xSemaphoreTake(xSemaphore_C, (TickType_t)1) == pdFALSE);
 
@@ -20,7 +21,7 @@ if (sensorCount > 0)
 {
     RootTempFound = true;
     DS18B20Params = {"DS18B20", DS18B20, 30000, xSemaphore_C};
-    int DS18B20_TaskErr = xTaskCreatePinnedToCore(TaskTemplate, "DS18B20", 10000, (void *)&DS18B20Params, 1, NULL, 0);
+    addTask(&DS18B20Params);
 
     setSensorDetected("Dallas", 1);
 

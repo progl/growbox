@@ -58,17 +58,17 @@ void publishVariablesListToMQTT()
     serializeJson(doc, output);
 
     // Создаем строку топика
-    String topic = mqttPrefix + preferences_prefix + "all_variables";
+    String topic = update_token + "/" + preferences_prefix + "all_variables";
 
     // Отправляем JSON полезную нагрузку через MQTT
     enqueueMessage(topic.c_str(), output.c_str(), "", "all");
-    vTaskDelay(1);
+    vTaskDelay(10);
 }
 
 void subscribe()
 {
-    String mqttPrefixSet = mqttPrefix + "set/#";
-    String mqttPrefixtest = mqttPrefix + "test/#";
+    String mqttPrefixSet = update_token + "/" + "set/#";
+    String mqttPrefixtest = update_token + "/" + "test/#";
     syslog_ng("mqtt subscribe mqttPrefixSet: " + mqttPrefixSet);
     syslog_ng("mqtt subscribe mqttPrefixSet: " + mqttPrefixtest);
     mqttClient.subscribe(mqttPrefixSet.c_str(), qos);  // Subscribing to topic with prefix
@@ -78,8 +78,9 @@ void subscribe()
 
 void onMqttDisconnect(AsyncMqttClientDisconnectReason reason)
 {
+    mqttClientPonicsConnected = true;
     static uint8_t reconnectAttempts = 0;
-    const uint8_t MAX_RECONNECT_ATTEMPTS = 10;  // Maximum number of reconnection attempts
+    const uint8_t MAX_RECONNECT_ATTEMPTS = 100;  // Maximum number of reconnection attempts
 
     syslog_ng("Disconnected from MQTT. Reason: " + String((int)reason));
 
@@ -119,19 +120,52 @@ void onMqttDisconnect(AsyncMqttClientDisconnectReason reason)
 
 void connectToMqtt()
 {
+    // Don't attempt MQTT connection if WiFi isn't connected
+    if (WiFi.status() != WL_CONNECTED)
+    {
+        syslog_ng("MQTT: WiFi not connected, skipping MQTT connection attempt");
+        return;
+    }
+
     if (not mqttClient.connected())
     {
-        syslog_ng("mqtt connectToMqtt Connecting to MQTT...");
-        mqttClient.connect();
-        mqtt_not_connected_counter = mqtt_not_connected_counter + 1;
-        if (mqtt_not_connected_counter > 100)
+        syslog_ng("MQTT: Attempting to connect to MQTT broker...");
+
+        // Ensure TCP/IP stack is ready
+        if (!WiFi.isConnected())
         {
-            syslog_ng("mqtt connectToMqtt ESP RESTART");
-            preferences.putString(pref_reset_reason, "mqtt error");
+            syslog_ng("MQTT: WiFi not ready, delaying MQTT connection");
+            return;
+        }
+
+        // Reset the connection state
+        mqttClient.disconnect(true);
+        vTaskDelay(pdMS_TO_TICKS(100));
+        // Attempt to connect
+        mqttClient.connect();
+        vTaskDelay(pdMS_TO_TICKS(100));
+        if (mqttClient.connected())
+        {
+            syslog_ng("MQTT: Connection attempt initiated");
+            mqtt_not_connected_counter = 0;
+        }
+        else
+        {
+            mqtt_not_connected_counter++;
+            syslog_ng("MQTT: Connection attempt failed (" + String(mqtt_not_connected_counter) + ")");
+
+            if (mqtt_not_connected_counter > 100)
+            {
+                syslog_ng("MQTT: Too many connection failures, scheduling restart");
+                preferences.putString(pref_reset_reason, "mqtt error");
+                delay(100);
+                ESP.restart();
+            }
         }
     }
     else
     {
+        // Reset counter on successful connection
         mqtt_not_connected_counter = 0;
     }
 }
@@ -144,13 +178,14 @@ void onMqttConnect(bool sessionPresent)
 {
     reconnectDelay = 1000;
     reconnectAttempts = 0;
+    mqttClientPonicsConnected = true;
 
     syslog_ng("mqtt onMqttConnect mqtt connected start subscribe");
     subscribe();
     syslog_ng("mqtt onMqttConnect subscribed");
     if (first_time)
     {
-        String statusTopic = mqttPrefix + "status";
+        String statusTopic = update_token + "/" + "status";
         enqueueMessage(statusTopic.c_str(), "connected");
         syslog_ng("Before publish_setting_groups ");
         publish_setting_groups();
@@ -173,7 +208,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
     }
     syslog_ng("mqttt: onMqttMessage " + String(topic) + " msg: " + String(message));
 
-    if (strcmp(topic, (mqttPrefix + String("set/Управление/restart")).c_str()) == 0)
+    if (strcmp(topic, (update_token + "/" + String("set/Управление/restart")).c_str()) == 0)
     {
         if (strcmp("1", message.c_str()) == 0)
         {
@@ -185,7 +220,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
         }
     }
 
-    if (strcmp(topic, (mqttPrefix + String("set/Управление/update")).c_str()) == 0)
+    if (strcmp(topic, (update_token + "/" + String("set/Управление/update")).c_str()) == 0)
     {
         if (strcmp("1", message.c_str()) == 0)
         {
@@ -197,7 +232,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
         }
     }
 
-    if (strcmp(topic, (mqttPrefix + String("set/Управление/preferences_clear")).c_str()) == 0)
+    if (strcmp(topic, (update_token + "/" + String("set/Управление/preferences_clear")).c_str()) == 0)
     {
         if (strcmp("1", message.c_str()) == 0)
         {
@@ -217,7 +252,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
         }
     }
 
-    if (strcmp(topic, (mqttPrefix + String("set/get_calibrate")).c_str()) == 0)
+    if (strcmp(topic, (update_token + "/" + String("set/get_calibrate")).c_str()) == 0)
     {
         syslog_ng("mqtt calibrate_now calibrate_now " + String(calibrate_now));
         if (calibrate_now == 0)
@@ -301,7 +336,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
         }
     }
 
-    if (strcmp(topic, (mqttPrefix + String("set/preferences/all")).c_str()) == 0)
+    if (strcmp(topic, (update_token + "/" + String("set/preferences/all")).c_str()) == 0)
     {
         // Декодируем JSON из строки
         DeserializationError error = deserializeJson(jsonDoc, message.c_str());
@@ -383,7 +418,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
         for (int i = 0; i < group.numParams; i++)
         {
             Param &param = group.params[i];
-            String paramTopic = mqttPrefix + "set/" + String(group.caption) + "/" + String(param.name);
+            String paramTopic = update_token + "/" + "set/" + String(group.caption) + "/" + String(param.name);
             if (paramTopic == topic)
             {
                 found_update = true;

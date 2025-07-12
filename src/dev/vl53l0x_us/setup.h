@@ -14,7 +14,7 @@ if (Wire.available())
         s_VL53L0X.setMeasurementTimingBudget(400000);
 
         TaskVL53L0XParams = {"TaskVL53L0X", TaskVL53L0X, 30000, xSemaphore_C};
-        xTaskCreatePinnedToCore(TaskTemplate, "TaskVL53L0X", stack_size, (void *)&TaskVL53L0XParams, 1, NULL, 1);
+        addTask(&TaskVL53L0XParams);
 
         setSensorDetected("VL53L0X", 1);
     }

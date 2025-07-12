@@ -13,7 +13,7 @@ if (Wire.available())
     adc.setConvRate(ADS1115_8_SPS);
 
     ADS1115Params = {"ADS1115", ADS1115_void, 30000, xSemaphore_C};
-    xTaskCreatePinnedToCore(TaskTemplate, "ADS1115", stack_size, (void *)&ADS1115Params, 1, NULL, 1);
+    addTask(&ADS1115Params);
 
     setSensorDetected("ADS1115", 1);
 }

@@ -5,8 +5,10 @@ esptool.py --port "/dev/cu.usbserial-0001" --baud 460800  write_flash   0x10000 
 
 esptool.py  --port "/dev/cu.usbserial-0001" --baud 460800 write_flash 0x0  .pio/build/esp32-local/firmware-merged.bin 
 
+esptool.py  --port "/dev/cu.usbserial-0001" --baud 460800 write_flash 0x0  '/Users/mmatveyev/Downloads/firmware (1).bin'
 
-
+#littlefs
+esptool.py  --port "/dev/cu.usbserial-0001" --baud 460800 write_flash 0x00310000  .pio/build/esp32-local/littlefs.bin
 
 esptool.py  --port "/dev/cu.usbserial-0001" --baud 112500 write_flash 0x0  firmware-merged.bin 
 esptool.py  --port "/dev/cu.usbserial-0001" --baud 112500 write_flash 0x0  firmware-merged.bin 

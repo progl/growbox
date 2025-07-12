@@ -23,7 +23,7 @@ void AHT10()
     }
     else
     {
-        delay(100);
+        vTaskDelay(100);
         myAHT10.begin();
     }
 

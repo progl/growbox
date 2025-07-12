@@ -39,7 +39,7 @@ String get_client_id(bool ha = false)
 }
 void publish_one_data(const PreferenceItem *item, String mqtt_type = "all")
 {
-    String topic = mqttPrefix + preferences_prefix + item->key;  // Use appropriate topic prefix
+    String topic = update_token + "/" + preferences_prefix + item->key;  // Use appropriate topic prefix
     String valueStr;
     if (item->variable != nullptr)
     {
