@@ -17,3 +17,7 @@ web_test/fonts/bootstrap-icons.woff2
 xtensa-esp-elf-gdb/**
 venv/**
 ha mqtt/homeassistant/*
+.qodo
+platformio.ini
+node_modules/**
+scripts/saved/*

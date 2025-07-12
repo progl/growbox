@@ -13,7 +13,18 @@ COMMIT_NUMBER := $(shell cat commit_number.txt)
 
 commit_number:
 	@echo  "$(VERSION):$(COMMIT_NUMBER):$(COMMIT_HASH)"
+
+build:
+	bash scripts/build.sh
+
+flash:
+	bash scripts/cu-001.sh
+
+b_f:
+	bash scripts/build.sh
+	bash scripts/cu-001.sh
 # Цель форматирования
+
 format:
 	@echo "Форматирование файлов .cpp и .h в папке $(SRC_DIR)..."
 	$(FORMAT_CMD)
