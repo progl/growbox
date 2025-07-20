@@ -4,7 +4,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 
-#define RAM_SAVER_MAX_RECORDS 200  // 200 records in memory (about 3.3 hours at 1 minute intervals)
+#define RAM_SAVER_MAX_RECORDS 20  // 200 records in memory (about 3.3 hours at 1 minute intervals)
 
 struct RamMultiRecord
 {

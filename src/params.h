@@ -28,7 +28,7 @@ struct Group
 {
     const char *caption;
     int numParams;  // Количество действительных параметров
-    Param params[30];
+    Param params[40];
 };
 int sensorCount;
 struct PreferenceSetting
@@ -256,7 +256,7 @@ float max_l_level, max_l_raw, min_l_level, min_l_raw, wLevel, twLevel;
 
 String tR_type = "direct";
 
-String A1name, A2name, wegareply, err_wegaapi_json, dt, Reset_reason0, Reset_reason1;
+String wegareply, err_wegaapi_json, dt, Reset_reason0, Reset_reason1;
 struct Sensor
 {
     char name[50];     // Название датчика
@@ -343,7 +343,6 @@ int DRV4_C_State = 0;
 int DRV4_D_State = 0;
 
 float VccRaw = 0;
- 
 
 std::map<std::string, int *> variablePointers;
 
@@ -392,3 +391,32 @@ void initializeVariablePointers()
     variablePointers["DRV4_C_PK_On"] = &DRV4_C_PK_On;
     variablePointers["DRV4_D_PK_On"] = &DRV4_D_PK_On;
 }
+
+// Telegram
+String tg_bt = "";   // бот токен
+String tg_cid = "";  // chat id
+
+// wPh
+bool tg_ph_en = true;
+float tg_ph_min = 5.5f;
+float tg_ph_max = 6.5f;
+
+// wEc
+bool tg_ec_en = true;
+float tg_ec_min = 1.0f;
+float tg_ec_max = 2.0f;
+
+// wNTC
+bool tg_ntc_en = true;
+float tg_ntc_min = 15.0f;
+float tg_ntc_max = 40.0f;
+
+// RootTemp
+bool tg_rt_en = true;
+float tg_rt_min = 18.0f;
+float tg_rt_max = 24.0f;
+
+// AirTemp
+bool tg_at_en = true;
+float tg_at_min = 18.0f;
+float tg_at_max = 30.0f;

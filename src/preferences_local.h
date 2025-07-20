@@ -42,8 +42,7 @@ struct PreferenceItem
 extern int enable_ponics_online;
 extern int enable_ponics_online_logs;
 PreferenceItem preferencesArray[] = {
-    {"UPDATE_URL", DataType::STRING, Data{"https://ponics.online/static/wegabox/esp32-local/firmware.bin"}, &UPDATE_URL,
-     &preferences},
+
     {"update_token", DataType::STRING, {"default_token"}, &update_token, &preferences},
     {"ssid", DataType::STRING, {"ESP32"}, &ssid, &preferences},
     {"epo", DataType::INTEGER, {1}, &enable_ponics_online, &preferences},
@@ -53,7 +52,7 @@ PreferenceItem preferencesArray[] = {
     {"HOSTNAME", DataType::STRING, {"growbox"}, &HOSTNAME, &preferences},
     {"ntc_mea_e", DataType::FLOAT, Data(0.0f), &ntc_mea_e, &preferences},
     {"ntc_est_e", DataType::FLOAT, Data(0.0f), &ntc_est_e, &preferences},
-    {"VccRU", DataType::FLOAT, Data(2048.0f), &VccRawUser, &preferences},
+
     {"tR_type", DataType::STRING, Data("direct"), &tR_type, &preferences},
     {"ntc_q", DataType::FLOAT, Data(0.0f), &ntc_q, &preferences},
     {"vZapas", DataType::FLOAT, Data(9.5f), &vZapas, &preferences},
@@ -123,8 +122,7 @@ PreferenceItem preferencesArray[] = {
     {"eckorr", DataType::FLOAT, Data(0.0f), &eckorr, &preferences},
     {"kt", DataType::FLOAT, Data(0.0f), &kt, &preferences},
     {"pH_lkorr", DataType::FLOAT, Data(0.0f), &pH_lkorr, &preferences},
-    {"A1name", DataType::STRING, {"A1"}, &A1name, &preferences},
-    {"A2name", DataType::STRING, {"A2"}, &A2name, &preferences},
+
     {"max_l_level", DataType::FLOAT, Data(0.0f), &max_l_level, &preferences},
     {"max_l_raw", DataType::FLOAT, Data(0.0f), &max_l_raw, &preferences},
     {"min_l_level", DataType::FLOAT, Data(0.0f), &min_l_level, &preferences},
@@ -236,6 +234,30 @@ PreferenceItem preferencesArray[] = {
 
     {"httpAU", DataType::STRING, "admin", &httpAuthUser, &config_preferences},
     {"httpAP", DataType::STRING, "ponics", &httpAuthPass, &config_preferences},
+
+    {"tbt", DataType::STRING, {""}, &tg_bt, &config_preferences},    // Bot token
+    {"tcid", DataType::STRING, {""}, &tg_cid, &config_preferences},  // Chat ID
+
+    {"ph_e", DataType::INTEGER, {1}, &tg_ph_en, &config_preferences},      // pH enable
+    {"ph_min", DataType::FLOAT, {5.5f}, &tg_ph_min, &config_preferences},  // pH min
+    {"ph_max", DataType::FLOAT, {6.5f}, &tg_ph_max, &config_preferences},  // pH max
+
+    {"ec_e", DataType::INTEGER, {1}, &tg_ec_en, &config_preferences},      // EC enable
+    {"ec_min", DataType::FLOAT, {1.0f}, &tg_ec_min, &config_preferences},  // EC min
+    {"ec_max", DataType::FLOAT, {2.0f}, &tg_ec_max, &config_preferences},  // EC max
+
+    {"ntc_e", DataType::INTEGER, {1}, &tg_ntc_en, &config_preferences},       // NTC enable
+    {"ntc_min", DataType::FLOAT, {15.0f}, &tg_ntc_min, &config_preferences},  // NTC min
+    {"ntc_max", DataType::FLOAT, {40.0f}, &tg_ntc_max, &config_preferences},  // NTC max
+
+    {"rt_e", DataType::INTEGER, {1}, &tg_rt_en, &config_preferences},       // RootTemp enable
+    {"rt_min", DataType::FLOAT, {18.0f}, &tg_rt_min, &config_preferences},  // RootTemp min
+    {"rt_max", DataType::FLOAT, {24.0f}, &tg_rt_max, &config_preferences},  // RootTemp max
+
+    {"at_e", DataType::INTEGER, {1}, &tg_at_en, &config_preferences},       // AirTemp enable
+    {"at_min", DataType::FLOAT, {18.0f}, &tg_at_min, &config_preferences},  // AirTemp min
+    {"at_max", DataType::FLOAT, {30.0f}, &tg_at_max, &config_preferences},  // AirTemp max
+
 };
 
 const int preferencesCount = sizeof(preferencesArray) / sizeof(preferencesArray[0]);

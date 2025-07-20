@@ -2,6 +2,7 @@
 #include <mqtt/mqtt_ha.h>
 #include <mqtt/mqtt_usual.h>
 extern bool ram_saver_capture_current();
+extern void checkAllSensors();
 void Task60(void *parameters)
 {
     unsigned long lastCommitTime = 0;
@@ -44,7 +45,7 @@ void Task60(void *parameters)
                 syslog_err("RAM_SAVER: Failed to capture current data, skipping commit");
             }
         }
-
+        checkAllSensors();
         vTaskDelay(60000);
     }
 }

@@ -18,5 +18,5 @@ void loop()
         vTaskDelay(pdMS_TO_TICKS(500));
         ESP.restart();
     }
-    vTaskDelay(pdMS_TO_TICKS(10));
+    vTaskDelay(pdMS_TO_TICKS(5));
 }

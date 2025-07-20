@@ -1,5 +1,3 @@
-
-
 #include <stdint.h>
 #include <Arduino.h>
 #include <LittleFS.h>
@@ -30,19 +28,6 @@
 #include <set>
 #include <struct.h>
 
-// Task configuration
-#define WEBSERVER_TASK_STACK_SIZE 12288  // Increased stack for web server
-#define WEBSERVER_TASK_PRIORITY 3        // Increased from 2
-
-// Task stack sizes
-#define SENSOR_TASK_STACK 4096
-#define MQTT_TASK_STACK 4096
-#define DISPLAY_TASK_STACK 4096
-
-// Core assignments
-
-#define CORE_SENSORS 1
-
 Ticker restartTicker;
 String chipStr;
 // Global HTTP client
@@ -50,31 +35,9 @@ HTTPClient http;
 WiFiClientSecure wifiClient;
 AsyncWebServer server(80);
 AsyncEventSource events("/events");  // SSE endpoint по адресу /events
-String indexHtml;
+
 bool waitingSecondOta = false;
-// Add this function prototype if not already defined
-std::set<String> notFoundCache;
-std::set<String> FoundCache;
-// WiFi client configuration
-const int WIFI_CONNECT_TIMEOUT = 5000;    // 5 seconds
-const int WIFI_RESPONSE_TIMEOUT = 10000;  // 10 seconds
 
-// Initialize HTTP client with timeouts
-void initWiFiClient()
-{
-    http.setTimeout(WIFI_RESPONSE_TIMEOUT);
-    http.setConnectTimeout(WIFI_CONNECT_TIMEOUT);
-}
-
-// Function to clean up WiFi client
-void cleanupWiFiClient()
-{
-    if (http.connected())
-    {
-        http.end();
-    }
-    http.end();
-}
 #include <lwip/dns.h>
 #include <sstream>
 #include <cmath>
@@ -99,7 +62,7 @@ void cleanupWiFiClient()
 #include "esp_adc_cal.h"
 #define ONE_WIRE_BUS 23  // Порт 1-Wire
 #include <Wire.h>        // Шина I2C
-#include <preferences_common.h>
+// #include <preferences_common.h>
 #define I2C_SDA 21  // SDA
 #define I2C_SCL 22  // SCL
 bool isAPMode = false;
@@ -111,6 +74,7 @@ Preferences preferences;
 Preferences config_preferences;
 #include <Syslog.h>
 #include <params.h>
+
 Syslog syslog(udpClient, SYSLOG_PROTO_IETF);
 // Обработчик загрузки файла
 bool shouldReboot = false;
@@ -122,12 +86,14 @@ bool shouldReboot = false;
 // Add these global variables
 struct LogMessage
 {
-    String message;
+    char message[128];  // Фиксированный буфер
     bool isError;
     unsigned long timestamp;
 };
 
-std::queue<LogMessage> logQueue;
+// Максимальный размер очереди логов
+const size_t MAX_LOG_QUEUE_SIZE = 20;
+std::deque<LogMessage> logQueue;  // Изменяем на deque для эффективного удаления с начала
 std::mutex logMutex;
 bool logTaskRunning = false;
 TaskHandle_t logTaskHandle = NULL;
@@ -135,17 +101,31 @@ TaskHandle_t logTaskHandle = NULL;
 // Optimized syslog functions
 void queueLogMessage(const String &message, bool isError)
 {
-    if (logQueue.size() >= 50) return;  // Prevent queue from growing too large
-
     LogMessage logMsg;
-    logMsg.message = message;
     logMsg.isError = isError;
     logMsg.timestamp = millis();
 
-    std::lock_guard<std::mutex> lock(logMutex);
-    logQueue.push(std::move(logMsg));
-}
+    // Копируем строку в фиксированный буфер с проверкой длины
+    size_t msgLen = message.length();
+    if (msgLen >= sizeof(logMsg.message))
+    {
+        msgLen = sizeof(logMsg.message) - 1;
+    }
+    strncpy(logMsg.message, message.c_str(), msgLen);
+    logMsg.message[msgLen] = '\0';  // Гарантируем завершающий ноль
 
+    std::lock_guard<std::mutex> lock(logMutex);
+
+    // Проверяем, не переполнена ли очередь
+    if (logQueue.size() >= MAX_LOG_QUEUE_SIZE)
+    {
+        // Удаляем самое старое сообщение
+        logQueue.pop_front();
+    }
+
+    // Добавляем новое сообщение
+    logQueue.push_back(logMsg);
+}
 void processLogMessages(void *parameter)
 {
     while (logTaskRunning)
@@ -157,24 +137,25 @@ void processLogMessages(void *parameter)
                 std::lock_guard<std::mutex> lock(logMutex);
                 if (logQueue.empty()) continue;
                 logMsg = std::move(logQueue.front());
-                logQueue.pop();
+                logQueue.pop_front();
             }
 
-            // Format the log message
-            String formattedMsg = fFTS(float(logMsg.timestamp) / 1000, 3) + "s " + logMsg.message;
+            char formattedMsg[256];  // Use fixed buffer instead of String
+
+            snprintf(formattedMsg, sizeof(formattedMsg), "%.3fs %s", float(logMsg.timestamp) / 1000, logMsg.message);
 
             // Send to WebSocket
 
-            events.send(logMsg.message.c_str(), "log", logMsg.timestamp);
+            events.send(formattedMsg, "log", logMsg.timestamp);
 
             // Send to syslog if connected
             if (!isAPMode && WiFi.status() == WL_CONNECTED)
             {
-                syslog.log(logMsg.isError ? LOG_ERR : LOG_INFO, formattedMsg.c_str());
+                syslog.log(logMsg.isError ? LOG_ERR : LOG_INFO, formattedMsg);
             }
             // Send to Serial
             Serial.println(formattedMsg);
-            vTaskDelay(1);  // Yield to other tasks
+            vTaskDelay(50);
         }
         vTaskDelay(100);  // Yield to other tasks
     }
@@ -217,9 +198,9 @@ void setupLogging()
                             "log_task",          // Name
                             4096,                // Stack size
                             NULL,                // Parameters
-                            2,                   // Priority (1 = lower than web server)
+                            1,                   // Priority (1 = lower than web server)
                             &logTaskHandle,      // Task handle
-                            1                    // Core (1 = same as web server)
+                            0                    // Core (1 = same as web server)
     );
 }
 
@@ -282,24 +263,12 @@ String sessionToken = "";
 
 #include <driver/adc.h>
 
-#include <queue>
-
 #define SCK_PIN 13
 #define SDI_PIN 14
 #define ADS1115_MiddleCount 10000  // 6236ms за 10 тыс усреднений
 #include <debug_info_new.h>
 #include <http/funcs.h>
 // Структура для управления SSE клиентами
-struct SSEClient
-{
-    WiFiClient client;
-    bool connected;
-};
-
-// Массив SSE клиентов
-#define MAX_SSE_CLIENTS 4
-SSEClient sseClients[MAX_SSE_CLIENTS];
-int sseClientCount = 0;
 
 #include <dev/ec/old_adc/wega-adc.h>
 
@@ -407,14 +376,14 @@ void startTaskScheduler()
                             8192,       // Stack size
                             (void *)0,  // Parameter (task index)
                             1,          // Priority
-                            &taskHandle1, CORE_SENSORS);
+                            &taskHandle1, 1);
 
     // Start worker task 2 (handles odd indices)
     xTaskCreatePinnedToCore(workerTask, "Worker2",
                             8192,       // Stack size
                             (void *)1,  // Parameter (task index)
                             1,          // Priority
-                            &taskHandle2, CORE_SENSORS);
+                            &taskHandle2, 1);
 }
 
 // Debug function to print task information
@@ -478,7 +447,7 @@ float ECDoserLimit;
 float ECDoserValueA;
 float ECDoserValueB;
 int ECDoserInterval, ECDoserEnable, e_ha, port_ha;
-#define MAX_DS18B20_SENSORS 10
+#define MAX_DS18B20_SENSORS 5
 
 int E_dallas_kalman = 0;
 float dallas_mea_e = 1;
@@ -854,6 +823,34 @@ Group groups[] = {
          {"MinKickPWD", "Минимальный ШИМ помпы без пинка ", Param::INT, .defaultInt = 150},
      }},
 
+    {"TG",
+     20,
+     {
+
+         {"tbt", "Бот токен", Param::STRING, .defaultString = ""},
+         {"tcid", "ID чата", Param::STRING, .defaultString = ""},
+
+         {"ph_e", "Контроль pH (0-off, 1-on)", Param::INT, .defaultInt = 1},
+         {"ph_min", "Минимальный pH", Param::FLOAT, .defaultFloat = 5.5},
+         {"ph_max", "Максимальный pH", Param::FLOAT, .defaultFloat = 6.5},
+
+         {"ec_e", "Контроль EC (0-off, 1-on)", Param::INT, .defaultInt = 1},
+         {"ec_min", "Минимальный EC", Param::FLOAT, .defaultFloat = 1.0},
+         {"ec_max", "Максимальный EC", Param::FLOAT, .defaultFloat = 2.0},
+
+         {"ntc_e", "Контроль температуры воды (0-off, 1-on)", Param::INT, .defaultInt = 1},
+         {"ntc_min", "Мин. температура воды", Param::FLOAT, .defaultFloat = 15.0},
+         {"ntc_max", "Макс. температура воды", Param::FLOAT, .defaultFloat = 40.0},
+
+         {"rt_e", "Контроль температуры корней (0-off, 1-on)", Param::INT, .defaultInt = 1},
+         {"rt_min", "Мин. температура корней", Param::FLOAT, .defaultFloat = 18.0},
+         {"rt_max", "Макс. температура корней", Param::FLOAT, .defaultFloat = 24.0},
+
+         {"at_e", "Контроль температуры воздуха (0-off, 1-on)", Param::INT, .defaultInt = 1},
+         {"at_min", "Мин. температура воздуха", Param::FLOAT, .defaultFloat = 18.0},
+         {"at_max", "Макс. температура воздуха", Param::FLOAT, .defaultFloat = 30.0},
+     }},
+
     {"Ночной режим",
      3,
      {
@@ -907,7 +904,7 @@ Group groups[] = {
     {"Настройки",
      13,
      {
-         {"UPDATE_URL", "Ссылка на прошивку", Param::STRING, .defaultString = UPDATE_URL.c_str()},
+
          {"httpAU", "Логин интерфейса", Param::STRING, .defaultString = httpAuthUser.c_str()},
          {"httpAP", "Пароль интерфейса", Param::STRING, .defaultString = httpAuthPass.c_str()},
          {"epo", "Вкл мктт поникс(0-off, 1-on)", Param::INT, .defaultInt = enable_ponics_online},
@@ -1046,10 +1043,9 @@ Group groups[] = {
      }},
 
     {"Калибровка",
-     22,
+     35,
      {
 
-         {"VccRU", "Параметр RAW VCC для расчета своего VCC", Param::FLOAT, .defaultFloat = VccRawUser},
          {"tR_DAC", "Параметр tR_DAC для NTC", Param::FLOAT, .defaultFloat = tR_DAC},
          {"tR_B", "Параметр tR_B для NTC", Param::FLOAT, .defaultFloat = tR_B},
          {"tR_val_korr", "Линейная коррекция NTC", Param::FLOAT, .defaultFloat = tR_val_korr},
@@ -1072,28 +1068,25 @@ Group groups[] = {
          {"py1", "Коэффициент py1 для pH", Param::FLOAT, .defaultFloat = py1},
          {"py2", "Коэффициент py2 для pH", Param::FLOAT, .defaultFloat = py2},
          {"py3", "Коэффициент py3 для pH", Param::FLOAT, .defaultFloat = py3},
-         {"pH_lkorr", "Коррекция линейная pH", Param::FLOAT, .defaultFloat = pH_lkorr}
+         {"pH_lkorr", "Коррекция линейная pH", Param::FLOAT, .defaultFloat = pH_lkorr},
 
-         //    {"max_l_level", "Макс. уровень жидкости", Param::FLOAT, .defaultFloat = lc.first() ? lc.first().level :
-         //    0},
-         //    {"max_l_raw", "Сырой макс. уровень жидкости", Param::FLOAT, .defaultFloat = lc.first() ? lc.first().raw :
-         //    0},
-         //    {"min_l_level", "Мин. уровень жидкости", Param::FLOAT, .defaultFloat = lc.last() ? lc.last().level : 0},
-         //    {"min_l_raw", "Сырой мин. уровень жидкости", Param::FLOAT, .defaultFloat = lc.last() ? lc.last().raw :
-         //    0},
+         {"max_l_level", "Макс. уровень жидкости", Param::FLOAT, .defaultFloat = max_l_level},
+         {"max_l_raw", "Сырой макс. уровень жидкости", Param::FLOAT, .defaultFloat = max_l_raw},
+         {"min_l_level", "Мин. уровень жидкости", Param::FLOAT, .defaultFloat = min_l_level},
+         {"min_l_raw", "Сырой мин. уровень жидкости", Param::FLOAT, .defaultFloat = min_l_raw},
 
-         //    {"pR_DAC", "Настройка DAC для освещенности", Param::FLOAT, .defaultFloat = pR_DAC},
-         //    {"pR1", "Сопротивление R1 для освещенности", Param::FLOAT, .defaultFloat = pR1},
-         //    {"pR_raw_p1", "Коэффициент p1 освещенности", Param::FLOAT, .defaultFloat = pR_raw_p1},
-         //    {"pR_raw_p2", "Коэффициент p2 освещенности", Param::FLOAT, .defaultFloat = pR_raw_p2},
-         //    {"pR_raw_p3", "Коэффициент p3 освещенности", Param::FLOAT, .defaultFloat = pR_raw_p3},
-         //    {"pR_val_p1", "Значение p1 освещенности", Param::FLOAT, .defaultFloat = pR_val_p1},
-         //    {"pR_val_p2", "Значение p2 освещенности", Param::FLOAT, .defaultFloat = pR_val_p2},
-         //    {"pR_val_p3", "Значение p3 освещенности", Param::FLOAT, .defaultFloat = pR_val_p3},
-         //    {"pR_Rx", "Сопротивление Rx освещенности", Param::FLOAT, .defaultFloat = pR_Rx},
-         //    {"pR_T", "pR_T освещенности", Param::FLOAT, .defaultFloat = pR_T},
-         //    {"pR_x", "pR_xосвещенности", Param::FLOAT, .defaultFloat = pR_x},
-         //    {"pR_type", "Тип сенсора освещенности", Param::STRING, .defaultString = pR_type},
+         {"pR_DAC", "Настройка DAC для освещенности", Param::FLOAT, .defaultFloat = pR_DAC},
+         {"pR1", "Сопротивление R1 для освещенности", Param::FLOAT, .defaultFloat = pR1},
+         {"pR_raw_p1", "Коэффициент p1 освещенности", Param::FLOAT, .defaultFloat = pR_raw_p1},
+         {"pR_raw_p2", "Коэффициент p2 освещенности", Param::FLOAT, .defaultFloat = pR_raw_p2},
+         {"pR_raw_p3", "Коэффициент p3 освещенности", Param::FLOAT, .defaultFloat = pR_raw_p3},
+         {"pR_val_p1", "Значение p1 освещенности", Param::FLOAT, .defaultFloat = pR_val_p1},
+         {"pR_val_p2", "Значение p2 освещенности", Param::FLOAT, .defaultFloat = pR_val_p2},
+         {"pR_val_p3", "Значение p3 освещенности", Param::FLOAT, .defaultFloat = pR_val_p3},
+         {"pR_Rx", "Сопротивление Rx освещенности", Param::FLOAT, .defaultFloat = pR_Rx},
+         {"pR_T", "pR_T освещенности", Param::FLOAT, .defaultFloat = pR_T},
+         {"pR_x", "pR_xосвещенности", Param::FLOAT, .defaultFloat = pR_x},
+         {"pR_type", "Тип сенсора освещенности", Param::STRING, .defaultString = pR_type.c_str()},
      }}
 
 };
@@ -1153,4 +1146,5 @@ const int PwdResolution2 = 8;
 
 #include <etc/wifi_ap.h>
 #include <web/new_settings.h>
+#include <tgbot.h>
 #include <setup.h>

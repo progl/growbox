@@ -14,7 +14,7 @@
 #include "GyverFilters.h"  // For GKalman
 
 extern bool mqttClientHAConnected, mqttClientPonicsConnected;
-
+extern void applyTelegramSettings();
 extern void handleCoreDump(AsyncWebServerRequest *request);
 // Forward declarations from main.cpp
 typedef uint8_t DeviceAddress[8];
@@ -868,6 +868,8 @@ void setupStaticFiles()
                     request->send(400, "application/json",
                                   "{\"status\":\"error\",\"message\":\"Setting not found or memory error\"}");
                 }
+
+                applyTelegramSettings();
             }
 
             // Apply updated Kalman filter parameters
@@ -1009,5 +1011,3 @@ bool isAuthorized(AsyncWebServerRequest *request)
 
     return false;
 }
-
-// Function to generate a token

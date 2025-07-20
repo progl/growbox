@@ -74,13 +74,13 @@ void run_doser_now()
                     mcp.writeGPIOAB(bitw);
                     preferences.putFloat("SetPumpA_Ml", SetPumpA_Ml - (StPumpA_cMl / StPumpA_cStepMl * i));
                     preferences.putFloat("PumpA_SUM", PumpA_SUM + (StPumpA_cMl / StPumpA_cStepMl * i));
-                    preferences.putLong("StepA_SUM", StepA_SUM + i);
+                    preferences.putFloat("StepA_SUM", StepA_SUM + i);
                     while (OtaStart == true) vTaskDelay(1000);
                 }
             }
             preferences.putFloat("SetPumpA_Ml", SetPumpA_Ml - (StPumpA_cMl / StPumpA_cStepMl * StPumpA_cStep));
             preferences.putFloat("PumpA_SUM", PumpA_SUM + (StPumpA_cMl / StPumpA_cStepMl * StPumpA_cStep));
-            preferences.putLong("StepA_SUM", StepA_SUM + StPumpA_cStep);
+            preferences.putFloat("StepA_SUM", StepA_SUM + StPumpA_cStep);
             syslog_ng("DOSER: PumpA SetPumpA_Ml  " + String(StPumpA_cMl / StPumpA_cStepMl * StPumpA_cStep));
             syslog_ng("DOSER: PumpA StPumpA_cStep  " + String(StPumpA_cStep));
             syslog_ng("DOSER: PumpA Stop");

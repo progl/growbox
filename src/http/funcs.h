@@ -9,8 +9,8 @@ void configureHttpClientForFirefox(HTTPClient &http)
     http.addHeader("Accept-Language", "en-US,en;q=0.5");
     http.addHeader("Accept-Encoding", "gzip, deflate, br");
 
-    http.setTimeout(WIFI_RESPONSE_TIMEOUT);
-    http.setConnectTimeout(WIFI_CONNECT_TIMEOUT);
+    http.setTimeout(10000);
+    http.setConnectTimeout(5000);
 }
 
 bool makeHttpRequest(String url, HTTPClient &http)

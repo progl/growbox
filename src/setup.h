@@ -1,14 +1,36 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/timers.h>
-#include "utils/task_priority.h"
 #include "web/static_common.h"
+#include <time.h>
 
 static uint8_t activeStaticStreams = 0;
 const uint8_t MAX_STATIC_STREAMS = 3;
 
 TimerHandle_t mqttWatchdogTimer;
 extern void runDownloadTask();
+
+void setupTime()
+{
+    configTime(3 * 3600, 0, "pool.ntp.org", "time.nist.gov");  // UTC+3, без летнего времени
+    Serial.println("Ожидание синхронизации времени...");
+    struct tm timeinfo;
+    int i = 0;
+    while (!getLocalTime(&timeinfo))
+    {
+        Serial.print(".");
+        delay(500);
+        i++;
+        if (i > 3)
+        {
+            Serial.println("Время не синхронизировано!");
+            return;
+        }
+    }
+    Serial.println();
+    Serial.println("Время синхронизировано!");
+}
+
 void calibrate_adc()
 {
     // Настройка разрядности ADC
@@ -28,16 +50,9 @@ void calibrate_adc()
 void setupWifi()
 {
     // Start WiFi connection attempt if not already connected
-    if (WiFi.status() != WL_CONNECTED)
-    {
-        wifiReconnectNeeded = true;
-        initWiFiEvents();  // Initialize WiFi event handlers once
-        scheduleWiFiReconnect();
-    }
-    else
-    {
-        initWiFiEvents();  // Initialize WiFi event handlers if already connected
-    }
+    WiFi.mode(WIFI_STA);
+    initWiFiEvents();
+    connectToWiFi();
 }
 void setupTimers()
 {
@@ -210,7 +225,7 @@ void setupMQTT()
         // Configure connection parameters
         mqttClient.setCredentials(mqtt_mqtt_user.c_str(), mqtt_mqtt_password.c_str());
         mqttClient.setServer(MQTT_HOST, MQTT_PORT);
-        mqttClient.setKeepAlive(300);       // Increased from 60 to 300 seconds (5 minutes)
+        mqttClient.setKeepAlive(30);        // Increased from 60 to 300 seconds (5 minutes)
         mqttClient.setCleanSession(true);   // Start with a clean session
         mqttClient.setMaxTopicLength(256);  // Ensure sufficient buffer for topics
 
@@ -234,7 +249,7 @@ void setupHA_MQTT()
         mqttClientHA.onConnect(onMqttConnectHA);
         mqttClientHA.onMessage(onMqttMessageHA);
         mqttClientHA.onDisconnect(onMqttDisconnectHA);
-        mqttClientHA.setKeepAlive(300);  // Increased from 60 to 300 seconds (5 minutes)
+        mqttClientHA.setKeepAlive(30);  // Increased from 60 to 300 seconds (5 minutes)
 
         // Set max topic length (buffer size is not supported in this version)
 
@@ -300,9 +315,7 @@ void setupDevices()
 void setupTask60()
 {
     syslog_ng("Setting up Task60");
-
-    xTaskCreatePinnedToCore(Task60, "Task60", stack_size, NULL, 1, NULL, CORE_SENSORS);
-
+    xTaskCreatePinnedToCore(Task60, "Task60", 8112, NULL, 1, NULL, 1);
     syslog_ng("Task60 setup complete");
 }
 
@@ -310,6 +323,7 @@ void setup()
 {
     // Initialize serial communication
     Serial.begin(115200);
+
     for (Group &g : groups)
     {
         g.numParams = sizeof(g.params) / sizeof(g.params[0]);
@@ -387,6 +401,10 @@ void setup()
     {
         syslog_ng("wait ota update:  " + String(millis()));
         vTaskDelay(pdMS_TO_TICKS(1000));
+        if (millis() > 600000)
+        {
+            OtaStart = false;
+        }
     }
     syslog_ng("Firmware: " + Firmware);
     setupMQTT();
@@ -413,10 +431,12 @@ void setup()
     setupDevices();
     setupTaskScheduler();
     syslog_ng("setupTaskScheduler");
-
-    // Create RAM saver task with larger stack
-
+    setupBot();
+    syslog_ng("setupBot");
+    setupTime();
     preferences.putInt("rst_counter", 0);
     syslog_ng("setup done");
+
+    // testTelegram();
 }
 #include "loop.h"
