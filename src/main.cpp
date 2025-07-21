@@ -20,7 +20,6 @@
 #include <Adafruit_SCD30.h>
 #include <Adafruit_BME280.h>
 #include <HTTPClient.h>
-#include <ArduinoJson.h>
 #include <vector>
 #include <algorithm>
 #include <DNSServer.h>  // Для работы с DNS сервером

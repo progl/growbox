@@ -56,7 +56,7 @@ String sanitizeString(const String &input)
 
 void handleApiTasks(AsyncWebServerRequest *request)
 {
-    JsonDocument doc;
+    StaticJsonDocument<1024> doc;
     JsonArray tasksArray = doc.createNestedArray("tasks_status");
 
     for (int i = 0; i < MAX_TASKS; i++)
@@ -81,7 +81,7 @@ void handle_calibrate(AsyncWebServerRequest *request)
 {
     syslog_ng("WEB /handle_calibrate");
 
-    JsonDocument doc;
+    StaticJsonDocument<1024> doc;
     doc["wR2"] = fFTS(wR2, 2);
     doc["An"] = fFTS(An, 3);
     doc["Ap"] = fFTS(Ap, 3);
@@ -105,7 +105,7 @@ String ApiGroups(bool labels = false)
     unsigned long t_millis = millis();
 
     // Создание JSON-объекта
-    JsonDocument doc;
+    StaticJsonDocument<8024> doc;
 
     // Добавление групп настроек
     JsonObject groupsJson = doc["groups"].to<JsonObject>();

@@ -365,7 +365,7 @@ bool downloadAndUpdateIndexFile()
     }
 
     // Allocate JSON document on the stack with explicit size
-    StaticJsonDocument<4096> doc;  // Increased size for manifest
+    StaticJsonDocument<4096> doc;  // зарезервировать память
     DeserializationError error = deserializeJson(doc, manifest);
     if (error)
     {

@@ -12,6 +12,7 @@
 #include "ram_saver_api.h"
 
 #include "GyverFilters.h"  // For GKalman
+#include "esp_heap_caps.h"
 
 extern bool mqttClientHAConnected, mqttClientPonicsConnected;
 extern void applyTelegramSettings();
@@ -240,7 +241,7 @@ void handleApiGroups(AsyncWebServerRequest *request)
 void handle_token(AsyncWebServerRequest *request)
 {
     syslog_ng("WEB /handle_token");
-    JsonDocument doc;
+    StaticJsonDocument<1024> doc;
     doc["uuid"] = update_token;
     String output;
     serializeJson(doc, output);
@@ -252,7 +253,7 @@ void handleApiStatuses(AsyncWebServerRequest *request)
     syslog_ng("WEB /handleApiStatuses");
     unsigned long t_millis = millis();
 
-    JsonDocument doc;
+    StaticJsonDocument<1024> doc;
 
     if (not_detected_sensors.isEmpty())
     {
@@ -302,70 +303,85 @@ void handleApiStatuses(AsyncWebServerRequest *request)
 // Function to handle board info
 void handleBoardInfo(AsyncWebServerRequest *request)
 {
-    JsonDocument doc;
+    StaticJsonDocument<2048> doc;  // увеличенный буфер для подробного JSON
 
-    // Heap info
-    doc["heap"]["free_bytes"] = ESP.getFreeHeap();
-    doc["heap"]["max_alloc_bytes"] = ESP.getMaxAllocHeap();
+    // Инфо по куче (heap)
+    size_t freeHeap = ESP.getFreeHeap();
+    size_t maxAllocHeap = ESP.getMaxAllocHeap();
 
-    // FS (LittleFS) info
+    multi_heap_info_t heap_info;
+    heap_caps_get_info(&heap_info, MALLOC_CAP_DEFAULT);
+
+    doc["heap"]["free_bytes"] = freeHeap;
+    doc["heap"]["max_alloc_bytes"] = maxAllocHeap;
+    doc["heap"]["total_allocated_bytes"] = heap_info.total_allocated_bytes;
+    doc["heap"]["total_free_bytes"] = heap_info.total_free_bytes;
+    doc["heap"]["largest_free_block"] = heap_info.largest_free_block;
+    doc["heap"]["minimum_free_bytes_ever"] = heap_info.minimum_free_bytes;
+    doc["heap"]["free_blocks_count"] = heap_info.free_blocks;
+
+    float frag_ratio = 100.0f * (1.0f - ((float)heap_info.largest_free_block / (float)heap_info.total_free_bytes));
+    doc["heap"]["fragmentation_percent"] = frag_ratio;
+
+    // Инфо по файловой системе
     size_t fsTotal = LittleFS.totalBytes();
     size_t fsUsed = LittleFS.usedBytes();
     doc["fs"]["total_kb"] = fsTotal / 1024;
     doc["fs"]["used_kb"] = fsUsed / 1024;
     doc["fs"]["free_kb"] = (fsTotal - fsUsed) / 1024;
 
+    // Время работы
     unsigned long uptime = millis();
-    // Uptime
     doc["uptime_ms"] = uptime;
-
-    // Uptime in human-readable format
-
-    unsigned long days = uptime / 86400000;               // 1000 * 60 * 60 * 24
-    unsigned long hours = (uptime % 86400000) / 3600000;  // 1000 * 60 * 60
-    unsigned long minutes = (uptime % 3600000) / 60000;   // 1000 * 60
+    unsigned long days = uptime / 86400000;
+    unsigned long hours = (uptime % 86400000) / 3600000;
+    unsigned long minutes = (uptime % 3600000) / 60000;
     unsigned long seconds = (uptime % 60000) / 1000;
     unsigned long milliseconds = uptime % 1000;
-
     char uptimeStr[64];
     snprintf(uptimeStr, sizeof(uptimeStr), "%lud %02lu:%02lu:%02lu.%03lu", days, hours, minutes, seconds, milliseconds);
     doc["uptime"]["formatted"] = uptimeStr;
 
-    // Core temperature
-    doc["core_temp_c"] = temperatureRead();  // может вернуть NAN на некоторых модулях
+    // Температура ядра (если доступна)
+    float coreTemp = temperatureRead();
+    doc["core_temp_c"] = isnan(coreTemp) ? "" : String(coreTemp);
 
-    // Sketch info
+    // Инфо по скетчу
     doc["sketch"]["size_bytes"] = ESP.getSketchSize();
     doc["sketch"]["free_space_bytes"] = ESP.getFreeSketchSpace();
 
-    // Reset reason
-    doc["reset_reason"] = (int)esp_reset_reason();  // можно декодировать в текст позже
+    // Причина перезагрузки
+    doc["reset_reason"] = (int)esp_reset_reason();
 
-    // SDK, chip info
+    // SDK, модель чипа и др.
     doc["sdk_version"] = ESP.getSdkVersion();
     doc["firmware"] = Firmware;
     doc["chip_model"] = ESP.getChipModel();
     doc["chip_revision"] = ESP.getChipRevision();
     doc["cpu_freq_mhz"] = ESP.getCpuFreqMHz();
 
-    // Wi-Fi info (если подключено)
+    // Wi-Fi статус
     if (WiFi.isConnected())
     {
         doc["wifi"]["ssid"] = WiFi.SSID();
         doc["wifi"]["rssi"] = WiFi.RSSI();
         doc["wifi"]["ip"] = WiFi.localIP().toString();
+        doc["wifi"]["connected"] = true;
     }
     else
     {
         doc["wifi"]["connected"] = false;
     }
 
-    // Ответ
+    // Статистика использования памяти JsonDocument
+    doc["json_doc_memory_usage"] = doc.memoryUsage();
+    doc["json_doc_capacity"] = doc.capacity();
+
+    // Отправляем JSON ответ
     String output;
     serializeJsonPretty(doc, output);
     request->send(200, "application/json", output);
 }
-
 void handleRedirect(AsyncWebServerRequest *request)
 {
     AsyncWebServerResponse *response = request->beginResponse(302);
@@ -669,7 +685,7 @@ void setupStaticFiles()
             // Когда получен весь body
             if (index + len == total)
             {
-                JsonDocument doc;
+                StaticJsonDocument<1024> doc;
                 DeserializationError error = deserializeJson(doc, body);
                 if (error)
                 {

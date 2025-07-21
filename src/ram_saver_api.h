@@ -139,7 +139,8 @@ static void handleTestRamSaverData(AsyncWebServerRequest* request)
     delay(10);
 
     // Return response
-    JsonDocument doc;
+
+    StaticJsonDocument<512> doc;
     doc["status"] = success ? "success" : "error";
     doc["message"] = success ? "Generated test data" : "Failed to generate test data";
     doc["recordCount"] = success ? recordCount : 0;
@@ -155,7 +156,7 @@ void setupRamSaverAPI()
     server.on("/api/ram_saver/status", HTTP_GET,
               [](AsyncWebServerRequest* req)
               {
-                  JsonDocument doc;
+                  StaticJsonDocument<512> doc;
                   doc["isRunning"] = true;
                   String resp;
                   serializeJson(doc, resp);
@@ -167,7 +168,7 @@ void setupRamSaverAPI()
               [](AsyncWebServerRequest* req)
               {
                   ram_saver_clear();
-                  JsonDocument doc;
+                  StaticJsonDocument<512> doc;
                   doc["status"] = "success";
                   doc["message"] = "RAM Saver started";
                   doc["recordCount"] = 0;
@@ -180,7 +181,7 @@ void setupRamSaverAPI()
     server.on("/api/ram_saver/stop", HTTP_POST,
               [](AsyncWebServerRequest* req)
               {
-                  JsonDocument doc;
+                  StaticJsonDocument<512> doc;
                   doc["status"] = "success";
                   doc["message"] = "RAM Saver stopped";
                   doc["recordCount"] = RAM_SAVER_MAX_RECORDS;
@@ -194,7 +195,7 @@ void setupRamSaverAPI()
               [](AsyncWebServerRequest* req)
               {
                   ram_saver_clear();
-                  JsonDocument doc;
+                  StaticJsonDocument<512> doc;
                   doc["status"] = "success";
                   doc["message"] = "RAM Saver data cleared";
                   doc["recordCount"] = 0;

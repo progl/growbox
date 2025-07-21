@@ -8,7 +8,7 @@ const unsigned long PARAM_UPDATE_COOLDOWN = 5000;
 
 void publishVariablesListToMQTT()
 {
-    JsonDocument doc;
+    StaticJsonDocument<1024> doc;
     JsonObject root = doc.to<JsonObject>();
 
     int arraySize =
@@ -201,7 +201,8 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
                    size_t total)
 {
     String message;
-    JsonDocument jsonDoc;
+
+    StaticJsonDocument<512> jsonDoc;  // зарезервировать память
     for (int i = 0; i < len; i++)
     {
         message += (char)payload[i];

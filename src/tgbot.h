@@ -128,7 +128,7 @@ bool telegramApiRequest(const String &method, const String &params, String &resp
 
 bool processMessageResponse(const String &response, String &outMsgId)
 {
-    JsonDocument doc;
+    StaticJsonDocument<512> doc;
     deserializeJson(doc, response);
     if (!doc.containsKey("result"))
     {
@@ -152,7 +152,7 @@ bool sendMessage(const String &text, String &outMsgId)
         syslog_ng("TG send: Empty chat id or message");
         return false;
     }
-    JsonDocument doc;
+    StaticJsonDocument<512> doc;
     doc["chat_id"] = tg_cid;
     doc["text"] = escapeMarkdownV2(HOSTNAME + ": " + text);
     doc["parse_mode"] = "MarkdownV2";
@@ -178,7 +178,7 @@ bool editMessageOrSendNew(SensorConfig &cfg, const String &text)
         syslog_ng("TG edit: Sending new message");
         return sendMessage(text, cfg.lastMsgId);
     }
-    JsonDocument doc;
+    StaticJsonDocument<512> doc;
     doc["chat_id"] = tg_cid;
     doc["message_id"] = cfg.lastMsgId.toInt();
     doc["text"] = escapeMarkdownV2(HOSTNAME + ": " + text);
@@ -188,7 +188,7 @@ bool editMessageOrSendNew(SensorConfig &cfg, const String &text)
     String response;
     if (!telegramApiRequest("editMessageText", payload, response))
     {
-        JsonDocument errorDoc;
+        StaticJsonDocument<512> errorDoc;
         if (deserializeJson(errorDoc, response))
         {
             if (errorDoc.containsKey("description"))

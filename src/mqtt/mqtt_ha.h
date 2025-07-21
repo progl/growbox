@@ -102,7 +102,7 @@ bool updatePreference(const char *settingName, const String &value, String mqtt_
 
 void publish_discovery_payload(const char *sensor_name)
 {
-    JsonDocument doc;
+    StaticJsonDocument<512> doc;
     char buffer[512];
 
     doc["name"] = sensor_name;
@@ -122,7 +122,7 @@ void publish_discovery_payload(const char *sensor_name)
 void publish_switch_discovery_payload(Param param)
 {
     String switch_name = String(param.name);
-    JsonDocument doc;
+    StaticJsonDocument<512> doc;
     char buffer[512];
     String command_topic = update_token + "/" + "set/" + String(param.name);
 
@@ -272,7 +272,7 @@ void onMqttReconnectTimerHa(TimerHandle_t xTimer)
 
 void publish_setting_groups()
 {
-    JsonDocument doc;
+    StaticJsonDocument<512> doc;
     JsonObject root = doc.to<JsonObject>();
 
     for (Group &group : groups)
