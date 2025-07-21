@@ -2,6 +2,6 @@
 #define FW_COMMIT_H
 
 // Current firmware version
-String firmware_commit = "alpha:1625:524f3f7";
+String firmware_commit = "alpha:1637:8c88fb6";
 
 #endif  // FW_COMMIT_H

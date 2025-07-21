@@ -373,14 +373,14 @@ void startTaskScheduler()
 {
     // Start worker task 1 (handles even indices)
     xTaskCreatePinnedToCore(workerTask, "Worker1",
-                            8192,       // Stack size
+                            3072,       // Stack size
                             (void *)0,  // Parameter (task index)
                             1,          // Priority
                             &taskHandle1, 1);
 
     // Start worker task 2 (handles odd indices)
     xTaskCreatePinnedToCore(workerTask, "Worker2",
-                            8192,       // Stack size
+                            3072,       // Stack size
                             (void *)1,  // Parameter (task index)
                             1,          // Priority
                             &taskHandle2, 1);

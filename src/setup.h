@@ -315,7 +315,7 @@ void setupDevices()
 void setupTask60()
 {
     syslog_ng("Setting up Task60");
-    xTaskCreatePinnedToCore(Task60, "Task60", 8112, NULL, 1, NULL, 1);
+    xTaskCreatePinnedToCore(Task60, "Task60", 8192, NULL, 1, NULL, 1);
     syslog_ng("Task60 setup complete");
 }
 
@@ -323,6 +323,7 @@ void setup()
 {
     // Initialize serial communication
     Serial.begin(115200);
+    heap_caps_malloc_extmem_enable(32);
 
     for (Group &g : groups)
     {
@@ -429,11 +430,13 @@ void setup()
     }
     syslog_ng("setup setupDevices");
     setupDevices();
+    setupTime();
+    syslog_ng("setupTime");
     setupTaskScheduler();
     syslog_ng("setupTaskScheduler");
     setupBot();
     syslog_ng("setupBot");
-    setupTime();
+
     preferences.putInt("rst_counter", 0);
     syslog_ng("setup done");
 
