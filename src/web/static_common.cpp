@@ -301,36 +301,61 @@ void handleApiStatuses(AsyncWebServerRequest *request)
 }
 
 // Function to handle board info
+
 void handleBoardInfo(AsyncWebServerRequest *request)
 {
-    StaticJsonDocument<2048> doc;  // увеличенный буфер для подробного JSON
+    StaticJsonDocument<2048> doc;
 
-    // Инфо по куче (heap)
+    // --- Heap info ---
     size_t freeHeap = ESP.getFreeHeap();
     size_t maxAllocHeap = ESP.getMaxAllocHeap();
 
     multi_heap_info_t heap_info;
     heap_caps_get_info(&heap_info, MALLOC_CAP_DEFAULT);
 
+    size_t min_free_size_ever = heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT);
+
     doc["heap"]["free_bytes"] = freeHeap;
     doc["heap"]["max_alloc_bytes"] = maxAllocHeap;
     doc["heap"]["total_allocated_bytes"] = heap_info.total_allocated_bytes;
     doc["heap"]["total_free_bytes"] = heap_info.total_free_bytes;
     doc["heap"]["largest_free_block"] = heap_info.largest_free_block;
-    doc["heap"]["minimum_free_bytes_ever"] = heap_info.minimum_free_bytes;
+    doc["heap"]["minimum_free_bytes"] = heap_info.minimum_free_bytes;
     doc["heap"]["free_blocks_count"] = heap_info.free_blocks;
+    doc["heap"]["min_free_size_ever"] = min_free_size_ever;
 
     float frag_ratio = 100.0f * (1.0f - ((float)heap_info.largest_free_block / (float)heap_info.total_free_bytes));
     doc["heap"]["fragmentation_percent"] = frag_ratio;
 
-    // Инфо по файловой системе
+    // --- PSRAM info ---
+    bool psramAvailable = esp_spiram_is_initialized();
+    doc["psram"]["enabled"] = psramAvailable;
+
+    if (psramAvailable)
+    {
+        size_t psramSize = esp_spiram_get_size();
+        size_t psramFree = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
+        size_t psramMinFreeEver = heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM);
+
+        doc["psram"]["size_bytes"] = psramSize;
+        doc["psram"]["free_bytes"] = psramFree;
+        doc["psram"]["min_free_bytes_ever"] = psramMinFreeEver;
+    }
+    else
+    {
+        doc["psram"]["size_bytes"] = 0;
+        doc["psram"]["free_bytes"] = 0;
+        doc["psram"]["min_free_bytes_ever"] = 0;
+    }
+
+    // --- FS info ---
     size_t fsTotal = LittleFS.totalBytes();
     size_t fsUsed = LittleFS.usedBytes();
     doc["fs"]["total_kb"] = fsTotal / 1024;
     doc["fs"]["used_kb"] = fsUsed / 1024;
     doc["fs"]["free_kb"] = (fsTotal - fsUsed) / 1024;
 
-    // Время работы
+    // --- Uptime ---
     unsigned long uptime = millis();
     doc["uptime_ms"] = uptime;
     unsigned long days = uptime / 86400000;
@@ -342,25 +367,25 @@ void handleBoardInfo(AsyncWebServerRequest *request)
     snprintf(uptimeStr, sizeof(uptimeStr), "%lud %02lu:%02lu:%02lu.%03lu", days, hours, minutes, seconds, milliseconds);
     doc["uptime"]["formatted"] = uptimeStr;
 
-    // Температура ядра (если доступна)
+    // --- Core temp ---
     float coreTemp = temperatureRead();
     doc["core_temp_c"] = isnan(coreTemp) ? "" : String(coreTemp);
 
-    // Инфо по скетчу
+    // --- Sketch info ---
     doc["sketch"]["size_bytes"] = ESP.getSketchSize();
     doc["sketch"]["free_space_bytes"] = ESP.getFreeSketchSpace();
 
-    // Причина перезагрузки
+    // --- Reset reason ---
     doc["reset_reason"] = (int)esp_reset_reason();
 
-    // SDK, модель чипа и др.
+    // --- SDK and chip info ---
     doc["sdk_version"] = ESP.getSdkVersion();
     doc["firmware"] = Firmware;
     doc["chip_model"] = ESP.getChipModel();
     doc["chip_revision"] = ESP.getChipRevision();
     doc["cpu_freq_mhz"] = ESP.getCpuFreqMHz();
 
-    // Wi-Fi статус
+    // --- WiFi info ---
     if (WiFi.isConnected())
     {
         doc["wifi"]["ssid"] = WiFi.SSID();
@@ -373,15 +398,16 @@ void handleBoardInfo(AsyncWebServerRequest *request)
         doc["wifi"]["connected"] = false;
     }
 
-    // Статистика использования памяти JsonDocument
+    // --- JSON doc memory usage ---
     doc["json_doc_memory_usage"] = doc.memoryUsage();
     doc["json_doc_capacity"] = doc.capacity();
 
-    // Отправляем JSON ответ
+    // --- Send response ---
     String output;
     serializeJsonPretty(doc, output);
     request->send(200, "application/json", output);
 }
+
 void handleRedirect(AsyncWebServerRequest *request)
 {
     AsyncWebServerResponse *response = request->beginResponse(302);

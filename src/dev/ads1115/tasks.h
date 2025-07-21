@@ -12,6 +12,8 @@ void ADS1115_void()
     }
     pHmV = sensorValue / cont;
 
-    syslog_ng("ADS1115 pHmV:" + fFTS(pHmV, 3));
+    char buf[64];
+    snprintf(buf, sizeof(buf), "ADS1115 pHmV:%.3f", pHmV);
+    syslog_ng(buf);
 }
 TaskParams ADS1115Params;

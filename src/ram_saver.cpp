@@ -112,8 +112,9 @@ bool ram_saver_capture_current()
     ramSaver.currentMinute.PumpA_SUM = PumpA_SUM;
     ramSaver.currentMinute.PumpB_SUM = PumpB_SUM;
 
-    String logMsg = "RAM_SAVER: Data captured - Temp: " + String(ramSaver.currentMinute.AirTemp, 1) +
-                    "°C, Hum: " + String(ramSaver.currentMinute.AirHum, 1) + "%";
+    char logMsg[128];
+    snprintf(logMsg, sizeof(logMsg), "RAM_SAVER: Data captured - Temp: %.1f°C, Hum: %.1f%%",
+             ramSaver.currentMinute.AirTemp, ramSaver.currentMinute.AirHum);
     syslog_ng(logMsg);
 
     _giveMutexIfHeld();
