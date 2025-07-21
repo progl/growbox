@@ -3,9 +3,7 @@
 #include <Arduino.h>
 
 // Forward declarations
-extern void syslog_ng(String message);
-extern void syslog_err(String message);
-
+extern void syslogf(const char* fmt, ...);
 // Global variables from the project
 extern float RootTemp;
 extern float AirTemp;
@@ -38,7 +36,7 @@ static inline void _giveMutexIfHeld()
 // ------------------ Инициализация ------------------
 void ram_saver_init()
 {
-    syslog_ng("RAM_SAVER: Initializing RAM saver...");
+    syslogf("RAM_SAVER: Initializing RAM saver...");
 
     // Initialize mutex
     if (!ramSaver.mutex)
@@ -46,14 +44,14 @@ void ram_saver_init()
         ramSaver.mutex = xSemaphoreCreateRecursiveMutex();
         if (!ramSaver.mutex)
         {
-            syslog_err("RAM_SAVER: Failed to create mutex");
+            syslogf("RAM_SAVER: Failed to create mutex");
             return;
         }
-        syslog_ng("RAM_SAVER: Recursive mutex created successfully");
+        syslogf("RAM_SAVER: Recursive mutex created successfully");
     }
     else
     {
-        syslog_ng("RAM_SAVER: Mutex already exists");
+        syslogf("RAM_SAVER: Mutex already exists");
     }
 
     // Initialize RAM buffer
@@ -64,15 +62,15 @@ void ram_saver_init()
         memset(ramSaver.records, 0, sizeof(ramSaver.records));
         memset(&ramSaver.currentMinute, 0, sizeof(ramSaver.currentMinute));
         _giveMutexIfHeld();
-        syslog_ng("RAM_SAVER: RAM buffer initialized with 200 records");
+        syslogf("RAM_SAVER: RAM buffer initialized with 200 records");
     }
     else
     {
-        syslog_err("RAM_SAVER: Could not initialize RAM buffer - mutex timeout");
+        syslogf("RAM_SAVER: Could not initialize RAM buffer - mutex timeout");
         return;
     }
 
-    syslog_ng("RAM_SAVER: Initialization complete");
+    syslogf("RAM_SAVER: Initialization complete");
 }
 
 // ------------------ Очистка ------------------
@@ -91,11 +89,11 @@ void ram_saver_clear()
 // ------------------ Захват данных ------------------
 bool ram_saver_capture_current()
 {
-    syslog_ng("RAM_SAVER: Capturing current data...");
+    syslogf("RAM_SAVER: Capturing current data...");
 
     if (!_takeMutexOrFail(pdMS_TO_TICKS(1000)))
     {
-        syslog_err("RAM_SAVER: Could not take mutex in capture_current");
+        syslogf("RAM_SAVER: Could not take mutex in capture_current");
         return false;
     }
 
@@ -115,7 +113,7 @@ bool ram_saver_capture_current()
     char logMsg[128];
     snprintf(logMsg, sizeof(logMsg), "RAM_SAVER: Data captured - Temp: %.1f°C, Hum: %.1f%%",
              ramSaver.currentMinute.AirTemp, ramSaver.currentMinute.AirHum);
-    syslog_ng(logMsg);
+    syslogf(logMsg);
 
     _giveMutexIfHeld();
     return true;
@@ -126,19 +124,20 @@ void ram_saver_commit_minute()
 {
     if (!_takeMutexOrFail(pdMS_TO_TICKS(1000)))
     {
-        syslog_err("RAM_SAVER: Could not take mutex in commit_minute");
+        syslogf("RAM_SAVER: Could not take mutex in commit_minute");
     }
     else
     {
-        String logMsg = "RAM_SAVER: Storing record " + String(ramSaver.count) + " at position " + String(ramSaver.head);
-        syslog_ng(logMsg);
+        char logMsg[128];
+        snprintf(logMsg, sizeof(logMsg), "RAM_SAVER: Storing record %d at position %d", ramSaver.count, ramSaver.head);
+        syslogf(logMsg);
 
         ramSaver.records[ramSaver.head] = ramSaver.currentMinute;
         ramSaver.head = (ramSaver.head + 1) % RAM_SAVER_MAX_RECORDS;
         if (ramSaver.count < RAM_SAVER_MAX_RECORDS) ramSaver.count++;
 
-        logMsg = "RAM_SAVER: Record stored. Total records: " + String(ramSaver.count);
-        syslog_ng(logMsg);
+        snprintf(logMsg, sizeof(logMsg), "RAM_SAVER: Record stored. Total records: %d", ramSaver.count);
+        syslogf(logMsg);
         _giveMutexIfHeld();
     }
 
@@ -208,9 +207,10 @@ void print_memory_stats(const char* tag)
         lastPrintTime = now;
         TaskHandle_t currentTask = xTaskGetCurrentTaskHandle();
         UBaseType_t stackHighWaterMark = uxTaskGetStackHighWaterMark(currentTask);
-        String logMsg = String(tag) + ": Heap: " + String(ESP.getFreeHeap()) + " free (min " +
-                        String(ESP.getMinFreeHeap()) + "), " + "Stack: " + String(stackHighWaterMark * 4) + " free, " +
-                        "Records: " + String(ramSaver.count) + "/" + String(RAM_SAVER_MAX_RECORDS);
-        syslog_ng(logMsg);
+        char logMsg[256];
+        snprintf(logMsg, sizeof(logMsg), "%s: Heap: %d free (min %d), Stack: %d free, Records: %d/%d", tag,
+                 ESP.getFreeHeap(), ESP.getMinFreeHeap(), stackHighWaterMark * 4, ramSaver.count,
+                 RAM_SAVER_MAX_RECORDS);
+        syslogf(logMsg);
     }
 }

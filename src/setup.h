@@ -3,7 +3,7 @@
 #include <freertos/timers.h>
 #include "web/static_common.h"
 #include <time.h>
-
+extern void syslogf(const char *fmt, ...);
 static uint8_t activeStaticStreams = 0;
 const uint8_t MAX_STATIC_STREAMS = 3;
 
@@ -67,7 +67,7 @@ void setupTimers()
         }
         else
         {
-            syslog_ng("WiFi not connected, MQTT connection will be attempted after WiFi connects");
+            syslogf("WiFi not connected, MQTT connection will be attempted after WiFi connects");
         }
 
         mqttReconnectTimer =
@@ -75,13 +75,13 @@ void setupTimers()
 
         if (mqttReconnectTimer == NULL)
         {
-            syslog_ng("CRITICAL: Failed to create MQTT reconnect timer - system may be unstable");
+            syslogf("CRITICAL: Failed to create MQTT reconnect timer - system may be unstable");
             // Consider rebooting if this is a critical timer
             // ESP.restart();
         }
         else
         {
-            syslog_ng("Created MQTT reconnect timer successfully");
+            syslogf("Created MQTT reconnect timer successfully");
         }
     }
 
@@ -96,15 +96,15 @@ void setupTimers()
 
     if (mqttReconnectTimerHa == NULL)
     {
-        syslog_ng("CRITICAL: Failed to create MQTT HA reconnect timer - system may be unstable");
+        syslogf("CRITICAL: Failed to create MQTT HA reconnect timer - system may be unstable");
     }
     else
     {
-        syslog_ng("Created MQTT HA reconnect timer successfully");
+        syslogf("Created MQTT HA reconnect timer successfully");
     }
 
     // WiFi reconnection is now handled by tasks instead of timers
-    syslog_ng("WiFi reconnection using task-based approach");
+    syslogf("WiFi reconnection using task-based approach");
 }
 
 void setup_preferences()
@@ -153,18 +153,18 @@ void setupMDNS()
     if (!err)
     {
         printf("MDNS Init failed for hostname: %s\n", HOSTNAME.c_str());
-        syslog_ng("MDNS Init failed for hostname: " + String(HOSTNAME));
+        syslogf("MDNS Init failed for hostname: %s", HOSTNAME.c_str());
         return;  // Exit if mDNS initialization fails
     }
 
     // Add HTTP service
     if (!MDNS.addService("http", "tcp", 80))
     {
-        syslog_ng("Failed to add HTTP service to mDNS");
+        syslogf("Failed to add HTTP service to mDNS");
     }
     else
     {
-        syslog_ng("Added HTTP service to mDNS");
+        syslogf("Added HTTP service to mDNS");
     }
 
     // Add any additional services here
@@ -176,7 +176,7 @@ void setupMDNS()
     // Add TXT record (optional)
     MDNS.addServiceTxt("http", "tcp", "version", "1.0");
 
-    syslog_ng("mDNS responder started for " + String(HOSTNAME) + ".local");
+    syslogf("mDNS responder started for %s.local", HOSTNAME.c_str());
 }
 
 void setupDisplay()
@@ -203,8 +203,8 @@ void setupResetReasons()
     Reset_reason0 = reset_reason(rtc_get_reset_reason(0));
     Reset_reason1 = reset_reason(rtc_get_reset_reason(1));
 
-    syslog_ng("Reset_reason CPU0: " + Reset_reason0);
-    syslog_ng("Reset_reason CPU1: " + Reset_reason1);
+    syslogf("Reset_reason CPU0: %s", Reset_reason0.c_str());
+    syslogf("Reset_reason CPU1: %s", Reset_reason1.c_str());
 }
 
 void setupI2C() { Wire.begin(I2C_SDA, I2C_SCL); }
@@ -214,14 +214,12 @@ void setupMQTT()
 {
     if (enable_ponics_online)
     {
-        syslog_ng("mqtt MQTT: Initializing connection to " +
-
-                  MQTT_HOST.toString() + ":" + String(MQTT_PORT));
+        syslogf("mqtt MQTT: Initializing connection to %s:%d", MQTT_HOST.toString().c_str(), MQTT_PORT);
 
         // Generate unique client ID with random suffix
         clientId = get_client_id();
         mqttClient.setClientId(clientId.c_str());
-        syslog_ng("mqtt MQTT: Client ID: " + clientId);
+        syslogf("mqtt MQTT: Client ID: %s", clientId.c_str());
         // Configure connection parameters
         mqttClient.setCredentials(mqtt_mqtt_user.c_str(), mqtt_mqtt_password.c_str());
         mqttClient.setServer(MQTT_HOST, MQTT_PORT);
@@ -234,7 +232,7 @@ void setupMQTT()
         mqttClient.onDisconnect(onMqttDisconnect);
         mqttClient.onMessage(onMqttMessage);
 
-        syslog_ng("MQTT: Using credentials for user: " + String(mqtt_mqtt_user));
+        syslogf("MQTT: Using credentials for user: %s", mqtt_mqtt_user.c_str());
     }
 }
 
@@ -245,7 +243,7 @@ void setupHA_MQTT()
         // Generate a random 3-digit number (100-999)
         clientIdHa = get_client_id(true);
         mqttClientHA.setClientId(clientIdHa.c_str());
-        syslog_ng("HA mqttClientHA Client ID: " + clientIdHa);
+        syslogf("HA mqttClientHA Client ID: %s", clientIdHa.c_str());
         mqttClientHA.onConnect(onMqttConnectHA);
         mqttClientHA.onMessage(onMqttMessageHA);
         mqttClientHA.onDisconnect(onMqttDisconnectHA);
@@ -258,14 +256,14 @@ void setupHA_MQTT()
         if (validateAndConvertIP(a_ha.c_str(), mqttServerHA))
         {
             // If IP is valid, use IP address
-            syslog_ng("HA MQTT: Using IP address: " + mqttServerHA.toString() + ":" + String(port_ha));
+            syslogf("HA MQTT: Using IP address: %s:%d", mqttServerHA.toString().c_str(), port_ha);
             mqttClientHA.setServer(mqttServerHA, port_ha);
         }
         else
         {
             if (a_ha.length() > 0)
             {  // If not a valid IP, try with hostname
-                syslog_ng("HA MQTT: Using hostname: " + String(a_ha) + ":" + String(port_ha));
+                syslogf("HA MQTT: Using hostname: %s:%d", a_ha.c_str(), port_ha);
                 mqttClientHA.setServer(a_ha.c_str(), port_ha);
             }
         }
@@ -274,12 +272,12 @@ void setupHA_MQTT()
         if (u_ha.length() > 0 && p_ha.length() > 0)
         {
             mqttClientHA.setCredentials(u_ha.c_str(), p_ha.c_str());
-            syslog_ng("HA MQTT: Using credentials for user: " + String(u_ha));
+            syslogf("HA MQTT: Using credentials for user: %s", u_ha.c_str());
         }
     }
     else
     {
-        syslog_ng("HA mqttClientHA: Not enabled");
+        syslogf("HA mqttClientHA: Not enabled");
     }
 }
 
@@ -314,15 +312,17 @@ void setupDevices()
 // Helper function to create tasks with error handling and logging
 void setupTask60()
 {
-    syslog_ng("Setting up Task60");
+    syslogf("Setting up Task60");
     xTaskCreatePinnedToCore(Task60, "Task60", 8192, NULL, 1, NULL, 1);
-    syslog_ng("Task60 setup complete");
+    syslogf("Task60 setup complete");
 }
 
 void setup()
 {
     // Initialize serial communication
     Serial.begin(115200);
+    psramInit();  // обычно вызывается автоматически
+
     heap_caps_malloc_extmem_enable(32);
 
     for (Group &g : groups)
@@ -330,23 +330,23 @@ void setup()
         g.numParams = sizeof(g.params) / sizeof(g.params[0]);
     }
 #if __has_include("ponics.online.h")
-    syslog_ng("Including ponics.online.h");
-    syslog_ng("ponics token: " + String(update_token));
+    syslogf("Including ponics.online.h");
+    syslogf("ponics token: %s", update_token.c_str());
 #include "ponics.online.h"
-    syslog_ng("ponics.online.h included successfully");
+    syslogf("ponics.online.h included successfully");
 
 #else
-    syslog_ng("ponics.online.h not found, skipping");
+    syslogf("ponics.online.h not found, skipping");
 #endif
 
     // Initialize file system
     if (!LittleFS.begin(true))
     {
-        syslog_ng("Failed to mount LittleFS");
+        syslogf("Failed to mount LittleFS");
     }
     else
     {
-        syslog_ng("LittleFS mounted successfully");
+        syslogf("LittleFS mounted successfully");
     }
 
     // Initialize RAM Saver
@@ -366,14 +366,14 @@ void setup()
     if (preferences.getInt("upd", 0) == 1)
     {
         force_update = true;
-        syslog_ng("update: starting auto update");
+        syslogf("update: starting auto update");
         make_update();
-        syslog_ng("update: auto update completed");
+        syslogf("update: auto update completed");
     }
     else
     {
         force_update = false;
-        syslog_ng("update: no auto update requested");
+        syslogf("update: no auto update requested");
     }
 
     // Handle restart counter for OTA
@@ -385,7 +385,7 @@ void setup()
         for (int i = 0; i < 40; i++)
         {
             vTaskDelay(pdMS_TO_TICKS(1000));
-            syslog_ng("waiting for OTA update: " + String(i));
+            syslogf("waiting for OTA update: %d", i);
             if (OtaStart)
             {
                 break;
@@ -400,14 +400,14 @@ void setup()
     }
     while (OtaStart == true)
     {
-        syslog_ng("wait ota update:  " + String(millis()));
+        syslogf("wait ota update:  %d", millis());
         vTaskDelay(pdMS_TO_TICKS(1000));
         if (millis() > 600000)
         {
             OtaStart = false;
         }
     }
-    syslog_ng("Firmware: " + Firmware);
+    syslogf("Firmware: %s", Firmware.c_str());
     setupMQTT();
     setupHA_MQTT();
     calibrate_adc();
@@ -418,27 +418,27 @@ void setup()
 
     if (xTimerStart(mqttReconnectTimerHa, 0) != pdPASS)
     {
-        syslog_ng("Failed to start MQTT HA reconnect timer");
+        syslogf("Failed to start MQTT HA reconnect timer");
     }
 
     if (enable_ponics_online == 1 && mqttReconnectTimer != NULL)
     {
         if (xTimerStart(mqttReconnectTimer, 0) != pdPASS)
         {
-            syslog_ng("Failed to start MQTT reconnect timer");
+            syslogf("Failed to start MQTT reconnect timer");
         }
     }
-    syslog_ng("setup setupDevices");
+    syslogf("setup setupDevices");
     setupDevices();
     setupTime();
-    syslog_ng("setupTime");
+    syslogf("setupTime");
     setupTaskScheduler();
-    syslog_ng("setupTaskScheduler");
+    syslogf("setupTaskScheduler");
     setupBot();
-    syslog_ng("setupBot");
+    syslogf("setupBot");
 
     preferences.putInt("rst_counter", 0);
-    syslog_ng("setup done");
+    syslogf("setup done");
 
     // testTelegram();
 }

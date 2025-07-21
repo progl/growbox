@@ -14,6 +14,6 @@ void ADS1115_void()
 
     char buf[64];
     snprintf(buf, sizeof(buf), "ADS1115 pHmV:%.3f", pHmV);
-    syslog_ng(buf);
+    syslogf(buf);
 }
 TaskParams ADS1115Params;

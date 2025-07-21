@@ -103,14 +103,14 @@ bool telegramApiRequest(const String &method, const String &params, String &resp
 {
     if (tg_bt.isEmpty())
     {
-        syslog_ng("TG API: Bot token not set");
+        syslogf("TG API: Bot token not set");
         return false;
     }
     HTTPClient https;
     String url = "https://api.telegram.org/bot" + tg_bt + "/" + method;
     if (!https.begin(tgClient, url))
     {
-        syslog_ng("TG API: Unable to connect");
+        syslogf("TG API: Unable to connect");
         return false;
     }
     https.addHeader("Content-Type", "application/json");
@@ -120,7 +120,7 @@ bool telegramApiRequest(const String &method, const String &params, String &resp
     https.end();
     if (httpCode != 200)
     {
-        syslog_ng("TG API: Request failed, code: " + String(httpCode));
+        syslogf("TG API: Request failed, code: %d", httpCode);
         return false;
     }
     return true;
@@ -132,7 +132,7 @@ bool processMessageResponse(const String &response, String &outMsgId)
     deserializeJson(doc, response);
     if (!doc.containsKey("result"))
     {
-        syslog_ng("TG API: No 'result' in response");
+        syslogf("TG API: No 'result' in response");
         return false;
     }
     if (doc["result"].containsKey("message_id"))
@@ -140,7 +140,7 @@ bool processMessageResponse(const String &response, String &outMsgId)
         outMsgId = String(doc["result"]["message_id"].as<int>());
         return true;
     }
-    syslog_ng("TG API: message_id not found");
+    syslogf("TG API: message_id not found");
     return false;
 }
 
@@ -149,7 +149,7 @@ bool sendMessage(const String &text, String &outMsgId)
     outMsgId = "";
     if (tg_cid.isEmpty() || text.isEmpty())
     {
-        syslog_ng("TG send: Empty chat id or message");
+        syslogf("TG send: Empty chat id or message");
         return false;
     }
     StaticJsonDocument<512> doc;
@@ -170,12 +170,12 @@ bool editMessageOrSendNew(SensorConfig &cfg, const String &text)
 {
     if (tg_cid.isEmpty() || text.isEmpty())
     {
-        syslog_ng("TG edit: Empty chat id or text");
+        syslogf("TG edit: Empty chat id or text");
         return false;
     }
     if (cfg.lastMsgId.isEmpty())
     {
-        syslog_ng("TG edit: Sending new message");
+        syslogf("TG edit: Sending new message");
         return sendMessage(text, cfg.lastMsgId);
     }
     StaticJsonDocument<512> doc;
@@ -196,7 +196,7 @@ bool editMessageOrSendNew(SensorConfig &cfg, const String &text)
                 String desc = errorDoc["description"].as<String>();
                 if (desc.indexOf("message to edit not found") >= 0 || desc.indexOf("message can't be edited") >= 0)
                 {
-                    syslog_ng("TG edit: Message not found, sending new");
+                    syslogf("TG edit: Message not found, sending new");
                     return sendMessage(text, cfg.lastMsgId);
                 }
             }
@@ -212,7 +212,7 @@ void checkSensor(int i)
     SensorConfig &cfg = tg_sensors[i];
     if (!cfg.enabled)
     {
-        syslog_ng(String("TG: Sensor ") + cfg.name + " monitoring disabled");
+        syslogf("TG: Sensor %s monitoring disabled", cfg.name);
         return;
     }
     float value = getSensorValue(i);
@@ -227,7 +227,7 @@ void checkSensor(int i)
             cfg.alarmStartTime = getTimeString();
             cfg.alarmEndTime = "";
             cfg.editCount = 0;  // 🆕 сброс при новом аларме
-            syslog_ng(String("TG: ") + cfg.name + " alarm started");
+            syslogf("TG: %s alarm started", cfg.name);
         }
         if (!cfg.alarmSent)
         {
@@ -241,7 +241,7 @@ void checkSensor(int i)
             {
                 cfg.alarmSent = true;
                 cfg.lastEdit = millis();
-                syslog_ng(String("TG: ") + cfg.name + " alarm sent");
+                syslogf("TG: %s alarm sent", cfg.name);
             }
         }
         else if (cfg.lastMsgId.length() > 0 && millis() - cfg.lastEdit > 10000)
@@ -263,7 +263,7 @@ void checkSensor(int i)
         if (sendMessage(okMsg, dummy))
         {
             cfg.okSent = true;
-            syslog_ng(String("TG: ") + cfg.name + " back to normal");
+            syslogf("TG: %s back to normal", cfg.name);
         }
         cfg.alarmActive = false;
         cfg.alarmSent = false;
@@ -274,7 +274,7 @@ void checkAllSensors()
 {
     if (tg_bt.isEmpty() || tg_cid.isEmpty() || !bot_connected)
     {
-        syslog_ng("TG: Bot not ready");
+        syslogf("TG: Bot not ready");
         return;
     }
     for (int i = 0; i < (sizeof(tg_sensors) / sizeof(tg_sensors[0])); i++)
@@ -288,7 +288,7 @@ void setupBot()
 {
     if (tg_bt.isEmpty())
     {
-        syslog_ng("TG: No bot token");
+        syslogf("TG: No bot token");
         return;
     }
     static bool sslClientInit = false;
@@ -302,7 +302,7 @@ void setupBot()
     if (sendMessage("🔔 GrowBox запущен! FW: " + Firmware, dummy))
     {
         bot_connected = true;
-        syslog_ng("TG: Bot connected");
+        syslogf("TG: Bot connected");
     }
 }
 
@@ -313,19 +313,19 @@ void applyTelegramSettings()
     tg_sensors[2] = SensorConfig("Темп. воды", tg_ntc_en, tg_ntc_min, tg_ntc_max);
     tg_sensors[3] = SensorConfig("Темп. корней", tg_rt_en, tg_rt_min, tg_rt_max);
     tg_sensors[4] = SensorConfig("Темп. воздуха", tg_at_en, tg_at_min, tg_at_max);
-    syslog_ng("TG: Settings applied");
+    syslogf("TG: Settings applied");
 }
 
 void testTelegram()
 {
-    syslog_ng("[TG] Starting test...");
+    syslogf("[TG] Starting test...");
     String msgId1, msgId2;
     // Тест 1
-    syslog_ng("[TG test] Test 1: Send and edit message");
+    syslogf("[TG test] Test 1: Send and edit message");
     bool sent1 = sendMessage("Тестовое сообщение 1", msgId1);
     if (!sent1)
     {
-        syslog_ng("[TG test] ERROR: Failed to send message 1");
+        syslogf("[TG test] ERROR: Failed to send message 1");
         return;
     }
     delay(1000);
@@ -335,11 +335,11 @@ void testTelegram()
     bool sent2 = sendMessage("Тестовое сообщение 2", msgId2);
     if (!sent2)
     {
-        syslog_ng("[TG test] ERROR: Failed to send message 2");
+        syslogf("[TG test] ERROR: Failed to send message 2");
         return;
     }
     delay(3000);
     tg_sensors[0].lastMsgId = msgId2;
     editMessageOrSendNew(tg_sensors[0], "Тестовое сообщение 2 - отредактировано в " + getTimeString());
-    syslog_ng("[TG test] Test completed");
+    syslogf("[TG test] Test completed");
 }

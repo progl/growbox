@@ -33,12 +33,12 @@ bool createDirectories(String path)
         {
             if (!LittleFS.mkdir(currentPath))
             {
-                syslog_ng("mkdir failed: " + currentPath);
+                syslogf("mkdir failed: %s", currentPath.c_str());
                 return false;
             }
             else
             {
-                syslog_ng("mkdir ok: " + currentPath);
+                syslogf("mkdir ok: %s", currentPath.c_str());
             }
         }
 
@@ -56,8 +56,7 @@ bool checkFreeSpace(size_t requiredSpace)
     size_t usedBytes = LittleFS.usedBytes();
     size_t freeSpace = totalBytes - usedBytes;
 
-    syslog_ng("update: Storage: Total: " + String(totalBytes) + ", Used: " + String(usedBytes) +
-              ", Free: " + String(freeSpace));
+    syslogf("update: Storage: Total: %s, Used: %s, Free: %s", String(totalBytes), String(usedBytes), String(freeSpace));
 
     return freeSpace >= requiredSpace;
 }
@@ -69,12 +68,12 @@ void updateFirmware(uint8_t* data, size_t len)
     Serial.print('.');
 
     if (currentLength != totalLength) return;
-    syslog_ng("update: end update, Rebooting");
+    syslogf("update: end update, Rebooting");
     boolean update_status = Update.end(true);
     if (Update.isFinished())
     {
-        syslog_ng("update: update_status " + String(update_status));
-        syslog_ng("update: update_status successfully Rebooting");
+        syslogf("update: update_status %s", String(update_status));
+        syslogf("update: update_status successfully Rebooting");
         preferences.putString(pref_reset_reason, "update");
         WiFi.disconnect(true);
         delay(100);
@@ -82,8 +81,8 @@ void updateFirmware(uint8_t* data, size_t len)
     }
     else
     {
-        syslog_ng("update: update_status " + String(update_status));
-        syslog_ng("update: Update not finished? Something went wrong!");
+        syslogf("update: update_status %s", String(update_status));
+        syslogf("update: Update not finished? Something went wrong!");
     }
 }
 
@@ -110,18 +109,18 @@ bool downloadAsset(const String& url, const String& localPath)
     http.setUserAgent("GrowBox/1.0");
     http.setReuse(true);
 
-    syslog_ng("downloadAsset: " + url);
+    syslogf("downloadAsset: %s", url.c_str());
     // Get file size first
     if (!http.begin(wifiClient, url.c_str()))
     {
-        syslog_ng("downloadAsset: Failed to connect to " + url);
+        syslogf("downloadAsset: Failed to connect to %s", url.c_str());
         return false;
     }
 
     int httpCode = http.GET();
     if (httpCode != HTTP_CODE_OK)
     {
-        syslog_ng("HTTP GET failed, error: " + String(http.errorToString(httpCode).c_str()));
+        syslogf("HTTP GET failed, error: %s", http.errorToString(httpCode).c_str());
         http.end();
         return false;
     }
@@ -130,7 +129,7 @@ bool downloadAsset(const String& url, const String& localPath)
     if (contentLength <= 0) int contentLength = http.getSize();
     if (contentLength <= 0)
     {
-        syslog_ng("Invalid content length");
+        syslogf("Invalid content length");
         http.end();
         return false;
     }
@@ -138,7 +137,7 @@ bool downloadAsset(const String& url, const String& localPath)
     // Check free space (add some extra margin)
     if (!checkFreeSpace(contentLength + 1024))
     {
-        syslog_ng("Not enough free space to download " + url);
+        syslogf("Not enough free space to download %s", url.c_str());
         http.end();
         return false;
     }
@@ -150,7 +149,7 @@ bool downloadAsset(const String& url, const String& localPath)
         String dirPath = localPath.substring(0, lastSlash);
         if (!createDirectories(dirPath))
         {
-            syslog_ng("Failed to create directory: " + dirPath);
+            syslogf("Failed to create directory: %s", dirPath.c_str());
             http.end();
             return false;
         }
@@ -161,14 +160,14 @@ bool downloadAsset(const String& url, const String& localPath)
     {
         closeAllOpenFiles();
         LittleFS.remove(localPath);
-        syslog_ng("Removed existing file: " + localPath);
+        syslogf("Removed existing file: %s", localPath.c_str());
     }
 
     // Open file for writing
     File file = LittleFS.open(localPath, "w");
     if (!file)
     {
-        syslog_ng("Failed to create file: " + localPath);
+        syslogf("Failed to create file: %s", localPath.c_str());
         http.end();
         return false;
     }
@@ -177,7 +176,7 @@ bool downloadAsset(const String& url, const String& localPath)
     WiFiClient* stream = http.getStreamPtr();
     if (!stream)
     {
-        syslog_ng("Failed to get HTTP stream");
+        syslogf("Failed to get HTTP stream");
         file.close();
         http.end();
         return false;
@@ -197,7 +196,7 @@ bool downloadAsset(const String& url, const String& localPath)
                 size_t written = file.write(buffer, c);
                 if (written != (size_t)c)
                 {
-                    syslog_ng("Write failed: " + String(written) + " bytes written, expected " + String(c));
+                    syslogf("Write failed: %s bytes written, expected %s", String(written), String(c));
                     file.close();
                     http.end();
                     return false;
@@ -221,12 +220,12 @@ bool downloadAsset(const String& url, const String& localPath)
 
     if (totalRead != (size_t)contentLength)
     {
-        syslog_ng("Download incomplete: " + String(totalRead) + " of " + String(contentLength));
+        syslogf("Download incomplete: %s of %s", String(totalRead), String(contentLength));
         LittleFS.remove(localPath);
         return false;
     }
 
-    syslog_ng("Successfully downloaded: " + localPath + " (" + String(totalRead) + " bytes)");
+    syslogf("Successfully downloaded: %s (%s bytes)", localPath.c_str(), String(totalRead));
     return true;
 }
 
@@ -323,7 +322,7 @@ bool downloadAndUpdateIndexFile()
     String manifest;
     for (int attempt = 0; attempt < maxRetries && !success; attempt++)
     {
-        syslog_ng("Downloading manifest, attempt " + String(attempt + 1));
+        syslogf("Downloading manifest, attempt %s", String(attempt + 1));
 
         // Configure HTTP client for this attempt
         http.setReuse(false);
@@ -337,17 +336,17 @@ bool downloadAndUpdateIndexFile()
             if (httpCode == HTTP_CODE_OK)
             {
                 manifest = http.getString();
-                syslog_ng("Successfully downloaded manifest");
+                syslogf("Successfully downloaded manifest");
                 success = true;
             }
             else
             {
-                syslog_ng("HTTP GET failed with code: " + String(httpCode));
+                syslogf("HTTP GET failed with code: %s", String(httpCode));
             }
         }
         else
         {
-            syslog_ng("Failed to connect to " + assetsManifestUrl);
+            syslogf("Failed to connect to %s", assetsManifestUrl.c_str());
         }
         http.end();
         // wifiClient.stop();
@@ -360,7 +359,7 @@ bool downloadAndUpdateIndexFile()
 
     if (!success)
     {
-        syslog_ng("Failed to download manifest after " + String(maxRetries) + " attempts");
+        syslogf("Failed to download manifest after %s attempts", String(maxRetries));
         return false;
     }
 
@@ -369,18 +368,18 @@ bool downloadAndUpdateIndexFile()
     DeserializationError error = deserializeJson(doc, manifest);
     if (error)
     {
-        syslog_ng("Failed to parse manifest: " + String(error.c_str()));
+        syslogf("Failed to parse manifest: %s", String(error.c_str()));
         return false;
     }
 
     if (!doc["files"].is<JsonArray>())
     {
-        syslog_ng("Invalid manifest format: missing or invalid 'files' array");
+        syslogf("Invalid manifest format: missing or invalid 'files' array");
         return false;
     }
 
     JsonArray files = doc["files"].as<JsonArray>();
-    syslog_ng("Found " + String(files.size()) + " files in manifest");
+    syslogf("Found %s files in manifest", String(files.size()));
 
     // Download each file
     for (JsonVariant file : files)
@@ -391,12 +390,12 @@ bool downloadAndUpdateIndexFile()
         // Ensure fsPath starts with a single slash and doesn't contain query parameters
         String fsPath = filePath;
 
-        syslog_ng("Downloading: " + fullUrl);
-        syslog_ng("Saving to: " + fsPath);
+        syslogf("Downloading: %s", fullUrl.c_str());
+        syslogf("Saving to: %s", fsPath.c_str());
 
         if (!downloadAsset(fullUrl, fsPath))
         {
-            syslog_ng("Failed to download: " + fullUrl);
+            syslogf("Failed to download: %s", fullUrl.c_str());
         }
 
         // Add small delay between downloads
@@ -419,19 +418,19 @@ bool doFirmwareUpdate()
     configureHttpClientForFirefox(http);
     if (!makeHttpRequest(UPDATE_URL, http))
     {
-        syslog_ng("update: HTTP request failed.");
+        syslogf("update: HTTP request failed.");
         return false;
     }
     totalLength = http.getSize();
-    syslog_ng("update: Starting firmware update... totalLength " + String(totalLength));
+    syslogf("update: Starting firmware update... totalLength %s", String(totalLength));
 
     if (totalLength <= 0)
     {
-        syslog_ng("update: Invalid firmware size");
+        syslogf("update: Invalid firmware size");
         return false;
     }
     bool upd = Update.begin(totalLength, U_FLASH);
-    syslog_ng("update: begin " + String(upd));
+    syslogf("update: begin %s", String(upd));
 
     WiFiClient* stream = http.getStreamPtr();
     int len = totalLength;
@@ -444,13 +443,13 @@ bool doFirmwareUpdate()
     {
         if (millis() - updateStartTime > 900000)
         {  // 90 sec timeout
-            syslog_ng("update: Total timeout exceeded");
+            syslogf("update: Total timeout exceeded");
             Update.abort();
             return false;
         }
         if (millis() - lastProgressTime > 10000)
         {  // 10 sec no progress
-            syslog_ng("update: Progress timeout");
+            syslogf("update: Progress timeout");
             Update.abort();
             return false;
         }
@@ -462,13 +461,13 @@ bool doFirmwareUpdate()
             int c = stream->readBytes(buff, min(size, sizeof(buff)));
             if (c <= 0)
             {
-                syslog_ng("update: Read failed or no data");
+                syslogf("update: Read failed or no data");
                 Update.abort();
                 return false;
             }
             if (Update.write(buff, c) != c)
             {
-                syslog_ng("update: Write failed c " + String(c));
+                syslogf("update: Write failed c %s", String(c));
                 Update.abort();
                 return false;
             }
@@ -478,7 +477,7 @@ bool doFirmwareUpdate()
             int percentage = (bytesDownloaded * 100) / totalLength;
             if (percentage != lastPercentageSent)
             {
-                syslog_ng("update: Updating: " + String(percentage) + "%");
+                syslogf("update: Updating: %s%%", String(percentage));
                 lastPercentageSent = percentage;
             }
             if (bytesDownloaded % 4096 == 0) vTaskDelay(1);
@@ -487,17 +486,17 @@ bool doFirmwareUpdate()
     }
     if (len != 0)
     {
-        syslog_ng("update: Size mismatch");
+        syslogf("update: Size mismatch");
         Update.abort();
         return false;
     }
     if (!Update.end(true))
     {
-        syslog_ng("update: Update end failed");
+        syslogf("update: Update end failed");
         return false;
     }
 
-    syslog_ng("update: Update successful, rebooting...");
+    syslogf("update: Update successful, rebooting...");
     preferences.putString(pref_reset_reason, "update");
     http.end();  // закрыть соединение
     preferences.putInt("upd", 0);
@@ -511,25 +510,25 @@ bool doFilesystemUpdate()
 
     if (!makeHttpRequest(UPDATE_FS_URL, http))
     {
-        syslog_ng("update: HTTP request for filesystem update failed.");
+        syslogf("update: HTTP request for filesystem update failed.");
         return false;
     }
 
     totalLength = http.getSize();
-    syslog_ng("update: Starting filesystem update... totalLength " + String(totalLength));
+    syslogf("update: Starting filesystem update... totalLength %s", String(totalLength));
 
     if (totalLength <= 0)
     {
-        syslog_ng("update: Invalid filesystem image size");
+        syslogf("update: Invalid filesystem image size");
         return false;
     }
 
     // Begin the update with U_SPIFFS for LittleFS
     bool upd = Update.begin(totalLength, U_SPIFFS);
-    syslog_ng("update: begin filesystem update " + String(upd));
+    syslogf("update: begin filesystem update %s", String(upd));
     if (!upd)
     {
-        syslog_ng("update: Not enough space for filesystem update");
+        syslogf("update: Not enough space for filesystem update");
         return false;
     }
 
@@ -544,13 +543,13 @@ bool doFilesystemUpdate()
     {
         if (millis() - updateStartTime > 900000)
         {  // 90 sec timeout
-            syslog_ng("update: Filesystem update timeout");
+            syslogf("update: Filesystem update timeout");
             Update.abort();
             return false;
         }
         if (millis() - lastProgressTime > 10000)
         {  // 10 sec no progress
-            syslog_ng("update: Filesystem update progress timeout");
+            syslogf("update: Filesystem update progress timeout");
             Update.abort();
             return false;
         }
@@ -562,13 +561,13 @@ bool doFilesystemUpdate()
             int c = stream->readBytes(buff, min(size, sizeof(buff)));
             if (c <= 0)
             {
-                syslog_ng("update: Filesystem read failed or no data");
+                syslogf("update: Filesystem read failed or no data");
                 Update.abort();
                 return false;
             }
             if (Update.write(buff, c) != c)
             {
-                syslog_ng("update: Filesystem write failed, written " + String(c));
+                syslogf("update: Filesystem write failed, written %s", String(c));
                 Update.abort();
                 return false;
             }
@@ -578,7 +577,7 @@ bool doFilesystemUpdate()
             int percentage = (bytesDownloaded * 100) / totalLength;
             if (percentage != lastPercentageSent)
             {
-                syslog_ng("update: Updating filesystem: " + String(percentage) + "%");
+                syslogf("update: Updating filesystem: %s%%", String(percentage));
                 lastPercentageSent = percentage;
             }
             if (bytesDownloaded % 4096 == 0) vTaskDelay(1);
@@ -588,18 +587,18 @@ bool doFilesystemUpdate()
 
     if (len != 0)
     {
-        syslog_ng("update: Filesystem size mismatch");
+        syslogf("update: Filesystem size mismatch");
         Update.abort();
         return false;
     }
 
     if (!Update.end(true))
     {
-        syslog_ng("update: Filesystem update end failed: " + String(Update.getError()));
+        syslogf("update: Filesystem update end failed: %s", String(Update.getError()));
         return false;
     }
 
-    syslog_ng("update: Filesystem update successful, rebooting...");
+    syslogf("update: Filesystem update successful, rebooting...");
     preferences.putString(pref_reset_reason, "fs_update");
     http.end();
     preferences.putInt("fs_upd", 0);
@@ -618,12 +617,12 @@ void make_update()
         if (doFirmwareUpdate())
         {
             fw_update = true;
-            syslog_ng("update: firmware update successful");
+            syslogf("update: firmware update successful");
         }
         if (doFilesystemUpdate())
         {
             fs_update = true;
-            syslog_ng("update: filesystem update successful");
+            syslogf("update: filesystem update successful");
         }
         if (fw_update || fs_update)
         {
@@ -635,7 +634,7 @@ void make_update()
     }
     else
     {
-        syslog_ng("update: auto-update skipping update due to conditions not met");
+        syslogf("update: auto-update skipping update due to conditions not met");
         making_update = false;
         OtaStart = false;
         percentage = 0;

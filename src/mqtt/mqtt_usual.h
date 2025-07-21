@@ -8,7 +8,7 @@ const unsigned long PARAM_UPDATE_COOLDOWN = 5000;
 
 void publishVariablesListToMQTT()
 {
-    StaticJsonDocument<1024> doc;
+    StaticJsonDocument<4096> doc;
     JsonObject root = doc.to<JsonObject>();
 
     int arraySize =
@@ -22,7 +22,7 @@ void publishVariablesListToMQTT()
 
         if (item == nullptr)
         {
-            syslog_ng("ERROR: Preference item not found for key: " + key);
+            syslogf("ERROR: Preference item not found for key: %s", String(key));
             continue;
         }
 
@@ -43,13 +43,13 @@ void publishVariablesListToMQTT()
                     root[key] = item->preferences->getBool(key.c_str(), *(bool *)item->variable);
                     break;
                 default:
-                    syslog_ng("ERROR: Unsupported data type for key: " + key);
+                    syslogf("ERROR: Unsupported data type for key: %s", String(key));
                     break;
             }
         }
         else
         {
-            syslog_ng("ERROR: Preferences not found for key: " + key);
+            syslogf("ERROR: Preferences not found for key: %s", String(key));
         }
     }
 
@@ -69,11 +69,11 @@ void subscribe()
 {
     String mqttPrefixSet = update_token + "/" + "set/#";
     String mqttPrefixtest = update_token + "/" + "test/#";
-    syslog_ng("mqtt subscribe mqttPrefixSet: " + mqttPrefixSet);
-    syslog_ng("mqtt subscribe mqttPrefixSet: " + mqttPrefixtest);
+    syslogf("mqtt subscribe mqttPrefixSet: %s", mqttPrefixSet);
+    syslogf("mqtt subscribe mqttPrefixSet: %s", mqttPrefixtest);
     mqttClient.subscribe(mqttPrefixSet.c_str(), qos);  // Subscribing to topic with prefix
     mqttClient.subscribe(mqttPrefixtest.c_str(), qos);
-    syslog_ng("mqtt end subscribe");
+    syslogf("mqtt end subscribe");
 }
 
 void onMqttDisconnect(AsyncMqttClientDisconnectReason reason)
@@ -82,12 +82,12 @@ void onMqttDisconnect(AsyncMqttClientDisconnectReason reason)
     static uint8_t reconnectAttempts = 0;
     const uint8_t MAX_RECONNECT_ATTEMPTS = 100;  // Maximum number of reconnection attempts
 
-    syslog_ng("Disconnected from MQTT. Reason: " + String((int)reason));
+    syslogf("Disconnected from MQTT. Reason: %d", (int)reason);
 
     // Check if WiFi is still connected
     if (WiFi.status() != WL_CONNECTED)
     {
-        syslog_ng("WiFi not connected, waiting for WiFi before MQTT reconnection");
+        syslogf("WiFi not connected, waiting for WiFi before MQTT reconnection");
         return;
     }
 
@@ -96,7 +96,7 @@ void onMqttDisconnect(AsyncMqttClientDisconnectReason reason)
 
     if (reconnectAttempts > MAX_RECONNECT_ATTEMPTS)
     {
-        syslog_ng("Max MQTT reconnection attempts reached. Restarting...");
+        syslogf("Max MQTT reconnection attempts reached. Restarting...");
         shouldReboot = true;
         return;
     }
@@ -107,8 +107,7 @@ void onMqttDisconnect(AsyncMqttClientDisconnectReason reason)
         reconnectDelay = min(reconnectDelay * 2, 300000);
     }
 
-    syslog_ng("Reconnect attempt " + String(reconnectAttempts) + "/" + String(MAX_RECONNECT_ATTEMPTS) + " in " +
-              String(reconnectDelay / 1000) + " seconds");
+    syslogf("Reconnect attempt %d/%d in %d seconds", reconnectAttempts, MAX_RECONNECT_ATTEMPTS, reconnectDelay / 1000);
 
     // Clean up any existing MQTT state
     mqttClient.disconnect(true);
@@ -123,18 +122,18 @@ void connectToMqtt()
     // Don't attempt MQTT connection if WiFi isn't connected
     if (WiFi.status() != WL_CONNECTED)
     {
-        syslog_ng("MQTT: WiFi not connected, skipping MQTT connection attempt");
+        syslogf("MQTT: WiFi not connected, skipping MQTT connection attempt");
         return;
     }
 
     if (not mqttClient.connected())
     {
-        syslog_ng("MQTT: Attempting to connect to MQTT broker...");
+        syslogf("MQTT: Attempting to connect to MQTT broker...");
 
         // Ensure TCP/IP stack is ready
         if (!WiFi.isConnected())
         {
-            syslog_ng("MQTT: WiFi not ready, delaying MQTT connection");
+            syslogf("MQTT: WiFi not ready, delaying MQTT connection");
             return;
         }
 
@@ -146,17 +145,17 @@ void connectToMqtt()
         vTaskDelay(pdMS_TO_TICKS(100));
         if (mqttClient.connected())
         {
-            syslog_ng("MQTT: Connection attempt initiated");
+            syslogf("MQTT: Connection attempt initiated");
             mqtt_not_connected_counter = 0;
         }
         else
         {
             mqtt_not_connected_counter++;
-            syslog_ng("MQTT: Connection attempt failed (" + String(mqtt_not_connected_counter) + ")");
+            syslogf("MQTT: Connection attempt failed (%d)", mqtt_not_connected_counter);
 
             if (mqtt_not_connected_counter > 100)
             {
-                syslog_ng("MQTT: Too many connection failures, scheduling restart");
+                syslogf("MQTT: Too many connection failures, scheduling restart");
                 preferences.putString(pref_reset_reason, "mqtt error");
                 delay(100);
                 ESP.restart();
@@ -180,21 +179,21 @@ void onMqttConnect(bool sessionPresent)
     reconnectAttempts = 0;
     mqttClientPonicsConnected = true;
 
-    syslog_ng("mqtt onMqttConnect mqtt connected start subscribe");
+    syslogf("mqtt onMqttConnect mqtt connected start subscribe");
     subscribe();
-    syslog_ng("mqtt onMqttConnect subscribed");
+    syslogf("mqtt onMqttConnect subscribed");
     if (first_time)
     {
         String statusTopic = update_token + "/" + "status";
         enqueueMessage(statusTopic.c_str(), "connected");
-        syslog_ng("Before publish_setting_groups ");
+        syslogf("Before publish_setting_groups ");
         publish_setting_groups();
-        syslog_ng("Before publishVariablesListToMQTT ");
+        syslogf("Before publishVariablesListToMQTT ");
         publishVariablesListToMQTT();
         first_time = false;
-        syslog_ng("After publishVariablesListToMQTT");
+        syslogf("After publishVariablesListToMQTT");
     }
-    syslog_ng("mqtt onMqttConnect end");
+    syslogf("mqtt onMqttConnect end");
 }
 
 void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index,
@@ -207,13 +206,13 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
     {
         message += (char)payload[i];
     }
-    syslog_ng("mqttt: onMqttMessage " + String(topic) + " msg: " + String(message));
+    syslogf("mqttt: onMqttMessage %s msg: %s", String(topic), String(message));
 
     if (strcmp(topic, (update_token + "/" + String("set/Управление/restart")).c_str()) == 0)
     {
         if (strcmp("1", message.c_str()) == 0)
         {
-            syslog_ng("mqtt restart");
+            syslogf("mqtt restart");
             enqueueMessage(topic, "0");
             preferences.putString(pref_reset_reason, "mqtt rest");
             shouldReboot = true;
@@ -225,7 +224,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
     {
         if (strcmp("1", message.c_str()) == 0)
         {
-            syslog_ng("mqtt update");
+            syslogf("mqtt update");
             preferences.putInt("upd", 1);
             force_update = true;
             OtaStart = true;
@@ -237,14 +236,14 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
     {
         if (strcmp("1", message.c_str()) == 0)
         {
-            syslog_ng("mqtt preferences_clear");
+            syslogf("mqtt preferences_clear");
             preferences.clear();
             config_preferences.clear();
             config_preferences.end();
             preferences.end();
             nvs_flash_erase_partition("nvs");  // Reformats
             nvs_flash_init_partition("nvs");   // Initializes
-            syslog_ng("clear_pref");
+            syslogf("clear_pref");
             preferences.begin("settings", false);
             config_preferences.begin("config", false, "config");
             preferences.putString("ssid", ssid);
@@ -255,11 +254,11 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
 
     if (strcmp(topic, (update_token + "/" + String("set/get_calibrate")).c_str()) == 0)
     {
-        syslog_ng("mqtt calibrate_now calibrate_now " + String(calibrate_now));
+        syslogf("mqtt calibrate_now calibrate_now %d", calibrate_now);
         if (calibrate_now == 0)
         {
             calibrate_now = 1;
-            syslog_ng("mqtt calibrate_now message.c_str() " + String(message.c_str()));
+            syslogf("mqtt calibrate_now message.c_str() %s", message.c_str());
 
             if (!strcmp("temp-tab", message.c_str()))
             {
@@ -271,7 +270,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
                 publish_parameter("wNTC", wNTC, 3, 0);
                 publish_parameter("now", wNTC, 0, 0);
 
-                syslog_ng("mqtt calibrate_now temp");
+                syslogf("mqtt calibrate_now temp");
             }
 
             if (!strcmp("ec-tab", message.c_str()))
@@ -293,7 +292,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
                 publish_parameter("wECnt", ec_notermo, 3, 0);
                 publish_parameter("wR2", wR2, 3, 0);
                 publish_parameter("now", millis(), 0, 0);
-                syslog_ng("mqtt calibrate_now ec");
+                syslogf("mqtt calibrate_now ec");
                 if (enabled_kalman == 1)
                 {
                     EC_KAL_E = 1;
@@ -307,7 +306,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
                 publish_parameter("pHraw", pHraw, 3, 0);
                 publish_parameter("wpH", wpH, 3, 0);
                 publish_parameter("now", millis(), 0, 0);
-                syslog_ng("mqtt MCP3421");
+                syslogf("mqtt MCP3421");
             }
 
             if (!strcmp("photoresistor-tab", message.c_str()))
@@ -316,7 +315,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
                 publish_parameter("PR", PR, 3, 0);
                 publish_parameter("wPR", wPR, 3, 0);
                 publish_parameter("now", millis(), 0, 0);
-                syslog_ng("mqtt PR_void");
+                syslogf("mqtt PR_void");
             }
 
             if (!strcmp("bak-tab", message.c_str()))
@@ -326,10 +325,10 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
                 publish_parameter("DstRAW", DstRAW, 3, 0);
                 publish_parameter("wLevel", wLevel, 3, 0);
                 publish_parameter("now", millis(), 0, 0);
-                syslog_ng("mqtt bak");
+                syslogf("mqtt bak");
             }
 
-            syslog_ng("mqtt get_calibrate");
+            syslogf("mqtt get_calibrate");
 
             calibrate_now = 0;
 
@@ -341,10 +340,10 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
     {
         // Декодируем JSON из строки
         DeserializationError error = deserializeJson(jsonDoc, message.c_str());
-        syslog_ng("JSON mqtt preferences/all");
+        syslogf("JSON mqtt preferences/all");
         if (error)
         {
-            syslog_ng("JSON decode failed: " + String(error.c_str()));
+            syslogf("JSON decode failed: %s", String(error.c_str()));
             return;
         }
 
@@ -366,7 +365,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
                             if (preferencesArray[i].preferences->putFloat(
                                     preferencesArray[i].key, jsonDoc[preferencesArray[i].key].as<float>()) == 0)
                             {
-                                syslog_ng("mqtt error save pref " + String(preferencesArray[i].key));
+                                syslogf("mqtt error save pref %s", String(preferencesArray[i].key));
                             }
                         }
                         break;
@@ -379,7 +378,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
                             if (preferencesArray[i].preferences->putString(
                                     preferencesArray[i].key, jsonDoc[preferencesArray[i].key].as<const char *>()) == 0)
                             {
-                                syslog_ng("mqtt error save pref " + String(preferencesArray[i].key));
+                                syslogf("mqtt error save pref %s", String(preferencesArray[i].key));
                             }
                         }
                         break;
@@ -391,7 +390,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
                             if (preferencesArray[i].preferences->putBool(
                                     preferencesArray[i].key, jsonDoc[preferencesArray[i].key].as<bool>()) == 0)
                             {
-                                syslog_ng("mqtt error save pref " + String(preferencesArray[i].key));
+                                syslogf("mqtt error save pref %s", String(preferencesArray[i].key));
                             }
                         }
                         break;
@@ -403,7 +402,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
                             if (preferencesArray[i].preferences->putInt(
                                     preferencesArray[i].key, jsonDoc[preferencesArray[i].key].as<int>()) == 0)
                             {
-                                syslog_ng("mqtt error save pref " + String(preferencesArray[i].key));
+                                syslogf("mqtt error save pref %s", String(preferencesArray[i].key));
                             }
                         }
                         break;
@@ -423,7 +422,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
             if (paramTopic == topic)
             {
                 found_update = true;
-                syslog_ng("MQTT: Update  found " + String(param.name) + " " + String(message));
+                syslogf("MQTT: Update  found %s %s", String(param.name), String(message));
 
                 std::string paramKey(param.name);
 
@@ -436,22 +435,21 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
 
                     if (updatePreference(param.name, message, "ha"))
                     {
-                        syslog_ng("MQTT: updatePreference  " + String(param.name) + " " + String(message));
+                        syslogf("MQTT: updatePreference  %s %s", String(param.name), String(message));
                         return;
                     }
                 }
                 else
                 {
-                    syslog_ng("MQTT: Update ignored for " + String(param.name) + ", cooldown active. Wait " +
-                              String((PARAM_UPDATE_COOLDOWN - (currentTime - paramLastUpdate[paramKey])) / 1000.0, 1) +
-                              "s");
+                    syslogf("MQTT: Update ignored for %s, cooldown active. Wait %f s", String(param.name),
+                            (PARAM_UPDATE_COOLDOWN - (currentTime - paramLastUpdate[paramKey])) / 1000.0);
                 }
             }
         }
     }
     if (!found_update)
     {
-        syslog_ng("MQTT: Update not found " + String(message));
+        syslogf("MQTT: Update not found %s", String(message));
     }
 }
 void publish_params_all(int all = 1)
@@ -460,7 +458,7 @@ void publish_params_all(int all = 1)
 
     if (calE == 1)
     {
-        syslog_ng("publich calibtate params");
+        syslogf("publich calibtate params");
 
         publish_parameter("RootTemp", RootTemp, 3, 0);
         publish_parameter("NTC_RAW", NTC_RAW, 3, 0);

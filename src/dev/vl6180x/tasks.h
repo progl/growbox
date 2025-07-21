@@ -1,7 +1,7 @@
 
 void TaskVL6180X()
 {
-    syslog_ng("VL6180X Range:" + fFTS(s_vl6180X.readRangeContinuousMillimeters(), 0));
+    syslogf("VL6180X Range:%sms", fFTS(s_vl6180X.readRangeContinuousMillimeters(), 0));
 
     s_vl6180X.setScaling(vl6180XScalling);
     // int32_t rangemm = s_vl6180X.readRangeSingleMillimeters();
@@ -38,12 +38,12 @@ void TaskVL6180X()
     VL6180X_RangeAVG.add(VL6180X_RangeRM.getMedian() / 10);
     Dist = VL6180X_RangeAVG.getAverage();
 
-    syslog_ng("VL6180X: dist=" + fFTS(Dist, 3));
-    syslog_ng("VL6180X: range=" + String(rangemm) + " mm");
-    syslog_ng("VL6180X: Scalling: " + String(vl6180XScalling));
-    syslog_ng("VL6180X: Error/Count " + String(err) + "/" + String(cont));
-    syslog_ng("VL6180X: Highest= " + fFTS(VL6180X_RangeRM.getHighest(), 1));
-    syslog_ng("VL6180X: Lowest= " + fFTS(VL6180X_RangeRM.getLowest(), 1));
+    syslogf("VL6180X: dist=%sms", fFTS(Dist, 3));
+    syslogf("VL6180X: range=%sms mm", String(rangemm));
+    syslogf("VL6180X: Scalling: %s", String(vl6180XScalling));
+    syslogf("VL6180X: Error/Count %s/%s", String(err), String(cont));
+    syslogf("VL6180X: Highest= %sms", fFTS(VL6180X_RangeRM.getHighest(), 1));
+    syslogf("VL6180X: Lowest= %sms", fFTS(VL6180X_RangeRM.getLowest(), 1));
 
     publish_parameter("Dist", Dist, 3, 1);
 }

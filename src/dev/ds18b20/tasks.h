@@ -6,8 +6,8 @@ void DS18B20()
     for (uint8_t i = 0; i < sensorCount && i < MAX_DS18B20_SENSORS; i++)
     {
         float tempC = sens18b20.getTempC(sensorArray[i].address);
-        syslog_ng("DS18B20 Sensor " + String(i) + " adr: " + deviceAddressToString(sensorArray[i].address) +
-                  " Temp: " + fFTS(tempC, 3));
+        syslogf("DS18B20 Sensor %s adr: %s Temp: %s", String(i), deviceAddressToString(sensorArray[i].address),
+                fFTS(tempC, 3));
         if (tempC != DEVICE_DISCONNECTED_C)
         {
             if (E_dallas_kalman)
@@ -27,7 +27,7 @@ void DS18B20()
 
             if (sensorArray[i].key == "RootTemp")
             {
-                syslog_ng("DS18B20 found by address RootTemp Sensor: " + fFTS(tempC, 3));
+                syslogf("DS18B20 found by address RootTemp Sensor: %s", fFTS(tempC, 3));
                 RootTemp = tempC;
                 Kornevoe = AirTemp - RootTemp;
 
@@ -37,7 +37,7 @@ void DS18B20()
             if (sensorArray[i].key == "wNTC")
             {
                 wNTC = tempC;
-                syslog_ng("DS18B20 found by address wNTC Sensor: " + fFTS(tempC, 3));
+                syslogf("DS18B20 found by address wNTC Sensor: %s", fFTS(tempC, 3));
                 publish_parameter("wNTC", wNTC, 3, 1);
             }
         }

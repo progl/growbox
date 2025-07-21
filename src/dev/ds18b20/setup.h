@@ -1,4 +1,4 @@
-syslog_ng("DS18B20 start setup");
+syslogf("DS18B20 start setup");
 sens18b20.begin();
 while (xSemaphoreTake(xSemaphore_C, (TickType_t)1) == pdFALSE);
 
@@ -16,7 +16,7 @@ for (int attempt = 0; attempt < 10; ++attempt)
 }
 
 // sens18b20.requestTemperatures();
-syslog_ng("DS18B20 Found 1-W devices:" + fFTS(sensorCount, 0));
+syslogf("DS18B20 Found 1-W devices:%s", fFTS(sensorCount, 0));
 if (sensorCount > 0)
 {
     RootTempFound = true;
@@ -37,8 +37,8 @@ if (sensorCount > 0)
         sens18b20.getAddress(currentAddress, i);
 
         memcpy(dallasAdresses[i].address, currentAddress, sizeof(DeviceAddress));
-        syslog_ng("DS18B20 Sensor " + String(i) + " adr: " + deviceAddressToString(currentAddress) +
-                  " Temp: " + fFTS(sens18b20.getTempC(currentAddress), 3));
+        syslogf("DS18B20 Sensor %s adr: %s Temp: %s", String(i), deviceAddressToString(currentAddress),
+                fFTS(sens18b20.getTempC(currentAddress), 3));
         for (uint8_t j = 0; j < MAX_DS18B20_SENSORS; j++)  // Adjust MAX_SENSOR_ARRAY_SIZE as needed
         {
             if (sensorArray[j].key == "")
@@ -47,16 +47,16 @@ if (sensorCount > 0)
                 {
                     memcpy(sensorArray[j].address, currentAddress, sizeof(DeviceAddress));
                     sensorArray[j].key = "RootTemp";
-                    syslog_ng("DS18B20 Sensor " + String(i) + " adr: " + deviceAddressToString(currentAddress) +
-                              " User adr RootTemp: " + deviceAddressToString(sensorArray[j].address));
+                    syslogf("DS18B20 Sensor %s adr: %s User adr RootTemp: %s", String(i),
+                            deviceAddressToString(currentAddress), deviceAddressToString(sensorArray[j].address));
                     break;
                 }
                 if (memcmp(deviceAdrCompareNTC, currentAddress, sizeof(DeviceAddress)) == 0)
                 {
                     memcpy(sensorArray[j].address, currentAddress, sizeof(DeviceAddress));
                     sensorArray[j].key = "wNTC";
-                    syslog_ng("DS18B20 Sensor " + String(i) + " adr: " + deviceAddressToString(currentAddress) +
-                              " User adr wNTC: " + deviceAddressToString(sensorArray[j].address));
+                    syslogf("DS18B20 Sensor %s adr: %s User adr wNTC: %s", String(i),
+                            deviceAddressToString(currentAddress), deviceAddressToString(sensorArray[j].address));
                     break;
                 }
             }

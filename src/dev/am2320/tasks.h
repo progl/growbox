@@ -15,15 +15,15 @@ void TaskAM2320()
         Kornevoe = AirTemp - RootTemp;
 
         AirVPD = calculateVPD(AirTemp, AirHum);
-        syslog_ng("AM2320 AirTemp " + fFTS(AirTemp, 0));
-        syslog_ng("AM2320 AirHum " + fFTS(AirHum, 0));
+        syslogf("AM2320 AirTemp %s", fFTS(AirTemp, 0));
+        syslogf("AM2320 AirHum %s", fFTS(AirHum, 0));
     }
     else
     {
         delay(2000);
         int status = AM2320.read();
         Serial.println(status);
-        syslog_ng("AM2320 error " + fFTS(status, 0));
+        syslogf("AM2320 error %s", fFTS(status, 0));
     }
 }
 TaskParams TaskAM2320Params;

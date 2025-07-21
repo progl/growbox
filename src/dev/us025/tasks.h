@@ -1,26 +1,42 @@
-// TaskUS using HCSR04::dist() which returns distance in cm
-static const uint8_t MAX_ERRORS = 5;
-static uint8_t errorCount = 0;
+/// ----------------- Константы и состояние -----------------
+static constexpr uint8_t MAX_ERRORS = 5;
 static constexpr float MIN_VALID_DISTANCE = 2.0f;
 static constexpr float MAX_VALID_DISTANCE = MAX_DISTANCE_CM;
+
+static uint8_t errorCount = 0;
 static uint32_t last_successful_measurement = 0;
 
+// ----------------- Утилита форматирования для логов -----------------
+static inline const char* f2(float v, int prec = 2)
+{
+    static char buf[32];  // безопасный общий буфер
+    if (isnan(v))
+    {
+        return "NaN";
+    }
+    snprintf(buf, sizeof(buf), "%.*f", prec, v);
+    return buf;
+}
+
+// ----------------- Основная задача -----------------
 void TaskUS()
 {
-    // Читаем и логируем температуру
+    // Температура воздуха для компенсации
     float tempC = isnan(AirTemp) ? 20.0f : AirTemp;
-    syslog_ng("US025: AirTemp " + fFTS(tempC, 2) + " °C");
+    syslogf("US025: AirTemp %s°C", f2(tempC, 2));
 
-    // Первое измерение (возвращает см или NAN при таймауте)
+    // Первое измерение
     float newDist = distanceSensor->dist();
     if (isnan(newDist))
     {
-        errorCount++;
-        syslog_ng("US025: Ping timeout, errors=" + String(errorCount));
-        if (errorCount >= MAX_ERRORS)
+        if (++errorCount >= MAX_ERRORS)
         {
-            syslog_ng("US025: Too many ping errors, sensor disconnected");
+            syslogf("US025: Ping timeout x%d, sensor disconnected", errorCount);
             setSensorDetected("US025", 0);
+        }
+        else
+        {
+            syslogf("US025: Ping timeout, errors=%d", errorCount);
         }
         vTaskDelay(pdMS_TO_TICKS(50));
         return;
@@ -29,12 +45,14 @@ void TaskUS()
     // Проверка диапазона
     if (newDist < MIN_VALID_DISTANCE || newDist > MAX_VALID_DISTANCE)
     {
-        errorCount++;
-        syslog_ng("US025: Invalid measurement=" + fFTS(newDist, 2) + ", errors=" + String(errorCount));
-        if (errorCount >= MAX_ERRORS)
+        if (++errorCount >= MAX_ERRORS)
         {
-            syslog_ng("US025: Too many invalid readings, sensor disconnected");
+            syslogf("US025: Distance %.2fcm out of range, sensor disconnected", newDist);
             setSensorDetected("US025", 0);
+        }
+        else
+        {
+            syslogf("US025: Distance %.2fcm invalid, errors=%d", newDist, errorCount);
         }
         return;
     }
@@ -44,22 +62,23 @@ void TaskUS()
 
     // Фильтрация Калманом
     float kalmanDist = KalmanDist.filtered(newDist);
-    syslog_ng("US025: Raw=" + fFTS(newDist, 2) + "cm Kalman=" + fFTS(kalmanDist, 2) + "cm");
+    syslogf("US025: Raw=%s Kalman=%s", f2(newDist), f2(kalmanDist));
+
+    // Второе измерение для проверки
     float secondDist = distanceSensor->dist();
     if (isnan(secondDist))
     {
-        syslog_ng("US025: Second ping timeout");
+        syslogf("US025: Second ping timeout");
         return;
     }
 
-    if (fabs(secondDist - newDist) > 5.0f)
+    if (fabsf(secondDist - newDist) > 5.0f)
     {
-        syslog_ng("US025: Inconsistent: " + fFTS(newDist, 2) + " vs " + fFTS(secondDist, 2));
+        syslogf("US025: Inconsistent readings: %s vs %s", f2(newDist), f2(secondDist));
         return;
     }
 
-    // Обновляем фильтр Калмана
-    kalmanDist = KalmanDist.filtered(secondDist);
+    // Дополнительная стабилизация фильтра (первый раз прогнать много итераций)
     if (first_Dist)
     {
         first_Dist = false;
@@ -68,30 +87,33 @@ void TaskUS()
             kalmanDist = KalmanDist.filtered(secondDist);
         }
     }
+    else
+    {
+        kalmanDist = KalmanDist.filtered(secondDist);
+    }
 
-    // Окончательное расстояние
+    // Окончательное значение
     float finalDist = (DIST_KAL_E == 1) ? kalmanDist : secondDist;
 
-    // Вычисление уровня воды
+    // Вычисляем уровень воды по калибровке
     if (max_l_raw != min_l_raw)
     {
         wLevel = (min_l_level * max_l_raw - min_l_raw * max_l_level + finalDist * (max_l_level - min_l_level)) /
                  (max_l_raw - min_l_raw);
-        if (wLevel >= 0)
+        if (wLevel >= 0.0001)
         {
             publish_parameter("wLevel", wLevel, 3, 1);
         }
         else
         {
-            syslog_ng("US025: Water level out of range=" + fFTS(wLevel, 2));
+            syslogf("US025: Water level out of range=%s", f2(wLevel));
         }
     }
     else
     {
-        syslog_ng("US025: Invalid calibration params");
+        syslogf("US025: Invalid calibration params");
     }
 
-    // Метка времени успешного измерения
     last_successful_measurement = millis();
 }
 

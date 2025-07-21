@@ -15,11 +15,11 @@ void configureHttpClientForFirefox(HTTPClient &http)
 
 bool makeHttpRequest(String url, HTTPClient &http)
 {
-    syslog_ng("update: makeHttpRequest start");
+    syslogf("update: makeHttpRequest start");
     int retryCount = 0;
     const int maxRetries = 50;
 
-    syslog_ng("update: makeHttpRequest ");
+    syslogf("update: makeHttpRequest ");
     int resp = 0;
     int http_begin = 0;
 
@@ -34,24 +34,23 @@ bool makeHttpRequest(String url, HTTPClient &http)
             resp = http.GET();
         }
 
-        syslog_ng("update: Response " + String(resp) + " Retry " + String(retryCount) + " http_begin " +
-
-                  String(http_begin) + " resp " + String(resp) + " UPDATE_URL " + String(UPDATE_URL));
+        syslogf("update: Response %s Retry %s http_begin %s resp %s UPDATE_URL %s", String(resp), String(retryCount),
+                String(http_begin), String(resp), String(UPDATE_URL));
         if (resp == 200)
         {
             return true;  // Successful connection
         }
         else
         {
-            syslog_ng("update:HTTP GET failed: resp " + String(resp) + " error " + http.errorToString(resp) +
-                      " getSize " + String(http.getSize()));
+            syslogf("update:HTTP GET failed: resp %s error %s getSize %s", String(resp),
+                    String(http.errorToString(resp)), String(http.getSize()));
         }
         retryCount++;
         http.end();
         vTaskDelay(50 / portTICK_PERIOD_MS);  // Delay between attempts
     }
 
-    syslog_ng("update: Failed to connect after " + String(maxRetries) + " retries");
+    syslogf("update: Failed to connect after %s retries", String(maxRetries));
     return false;  // Connection failed
 }
 

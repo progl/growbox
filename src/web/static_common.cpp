@@ -141,8 +141,8 @@ extern PreferenceItem *findPreferenceByKey(const char *key);
 extern void connectToWiFi();
 extern void run_doser_now();
 extern void MCP23017();
-extern void syslog_err(String message);
-extern void syslog_ng(String message);
+
+extern void syslogf(const char *format, ...);
 extern bool downloadAndUpdateIndexFile();
 extern void clearLittleFS();
 extern String sanitizeString(const String &input);
@@ -179,9 +179,9 @@ extern AsyncWebServer server;
 
 void runDownloadTask()
 {
-    syslog_ng("Starting download task...");
-    syslog_ng("Free heap: " + String(ESP.getFreeHeap()) + " bytes");
-    syslog_ng("Largest free block: " + String(ESP.getMaxAllocHeap()) + " bytes");
+    syslogf("Starting download task...");
+    syslogf("Free heap: %u bytes", ESP.getFreeHeap());
+    syslogf("Largest free block: %u bytes", ESP.getMaxAllocHeap());
 
     OtaStart = true;
     bool success = false;
@@ -195,21 +195,21 @@ void runDownloadTask()
 
     if (WiFi.status() == WL_CONNECTED)
     {
-        syslog_ng("WiFi connected, starting download...");
+        syslogf("WiFi connected, starting download...");
         success = downloadAndUpdateIndexFile();
     }
     else
     {
-        syslog_ng("Failed to connect to WiFi");
+        syslogf("Failed to connect to WiFi");
     }
 
     if (success)
     {
-        syslog_ng("update: Successfully updated index.html.gz");
+        syslogf("update: Successfully updated index.html.gz");
     }
     else
     {
-        syslog_ng("update: Failed to update index.html.gz");
+        syslogf("update: Failed to update index.html.gz");
     }
 
     OtaStart = false;
@@ -218,7 +218,7 @@ void runDownloadTask()
 void handleUpdate(AsyncWebServerRequest *request)
 {
     preferences.putInt("upd", 1);
-    syslog_ng("update: make_update start update firmware - wait 40-60 seconds, page will reload automatically");
+    syslogf("update: make_update start update firmware - wait 40-60 seconds, page will reload automatically");
     OtaStart = true;
     force_update = true;
     percentage = 1;
@@ -240,7 +240,7 @@ void handleApiGroups(AsyncWebServerRequest *request)
 
 void handle_token(AsyncWebServerRequest *request)
 {
-    syslog_ng("WEB /handle_token");
+    syslogf("WEB /handle_token");
     StaticJsonDocument<1024> doc;
     doc["uuid"] = update_token;
     String output;
@@ -250,7 +250,7 @@ void handle_token(AsyncWebServerRequest *request)
 
 void handleApiStatuses(AsyncWebServerRequest *request)
 {
-    syslog_ng("WEB /handleApiStatuses");
+    syslogf("WEB /handleApiStatuses");
     unsigned long t_millis = millis();
 
     StaticJsonDocument<1024> doc;
@@ -520,7 +520,7 @@ void setupOtaProgress()
         [](size_t done, size_t total)
         {
             float pct = (done * 100.0f) / total;
-            syslog_ng("[OTA] Progress: " + String(pct, 1) + "% (" + String(done) + "/" + String(total) + ")");
+            syslogf("[OTA] Progress: %f%% (%lu/%lu)", pct, done, total);
         });
 }
 
@@ -529,7 +529,7 @@ void handleOtaRequest(AsyncWebServerRequest *request)
 {
     if (otaTimedOut)
     {
-        syslog_ng("[OTA] Timeout occurred before POST finalized");
+        syslogf("[OTA] Timeout occurred before POST finalized");
         auto resp = request->beginResponse(408, "text/plain", "OTA timeout");
         resp->addHeader("Connection", "close");
         request->send(resp);
@@ -541,12 +541,12 @@ void handleOtaRequest(AsyncWebServerRequest *request)
     if (request->hasParam("multi", true) && request->getParam("multi", true)->value() == "1")
     {
         waitingSecondOta = true;
-        syslog_ng("[OTA] First part uploaded, waiting for second...");
+        syslogf("[OTA] First part uploaded, waiting for second...");
     }
     else
     {
         waitingSecondOta = false;
-        syslog_ng("[OTA] All parts uploaded, reboot requested");
+        syslogf("[OTA] All parts uploaded, reboot requested");
         shouldReboot = true;
     }
 
@@ -565,7 +565,7 @@ void handleOtaUpload(AsyncWebServerRequest *request, String filename, size_t ind
     if (index == 0 && !updateBegun)
     {
         totalExpected = request->contentLength();
-        syslog_ng("[OTA] Begin upload, expected size: " + String(totalExpected));
+        syslogf("[OTA] Begin upload, expected size: %lu", totalExpected);
         lastDataTime = millis();
         updateBegun = true;
 
@@ -579,12 +579,12 @@ void handleOtaUpload(AsyncWebServerRequest *request, String filename, size_t ind
 
         if (dest.equalsIgnoreCase("littlefs"))
         {
-            syslog_ng("[OTA] Starting FS OTA update...");
+            syslogf("[OTA] Starting FS OTA update...");
             Update.begin(UPDATE_SIZE_UNKNOWN, U_SPIFFS);
         }
         else
         {
-            syslog_ng("[OTA] Starting firmware (flash) OTA update...");
+            syslogf("[OTA] Starting firmware (flash) OTA update...");
             Update.begin(UPDATE_SIZE_UNKNOWN, U_FLASH);
         }
     }
@@ -596,7 +596,7 @@ void handleOtaUpload(AsyncWebServerRequest *request, String filename, size_t ind
     size_t written = Update.write(data, len);
     if (written != len)
     {
-        syslog_ng("[OTA] Write failed: " + String(Update.errorString()));
+        syslogf("[OTA] Write failed: %s", Update.errorString());
         Update.abort();
         updateBegun = false;
         otaTimedOut = true;
@@ -608,14 +608,13 @@ void handleOtaUpload(AsyncWebServerRequest *request, String filename, size_t ind
     if (millis() - lastProgressUpdate > 1000)
     {  // Update progress every second
         float progress = (Update.progress() * 100.0f) / Update.size();
-        syslog_ng("[OTA] Progress: " + String(progress, 1) + "% (" + String(Update.progress()) + "/" +
-                  String(Update.size()) + ")");
+        syslogf("[OTA] Progress: %f%% (%lu/%lu)", progress, Update.progress(), Update.size());
         lastProgressUpdate = millis();
     }
     // Check for timeout
     if (millis() - lastDataTime > OTA_TIMEOUT_MS)
     {
-        syslog_ng("[OTA] Upload timed out");
+        syslogf("[OTA] Upload timed out");
         Update.abort();
         updateBegun = false;
         otaTimedOut = true;
@@ -628,11 +627,11 @@ void handleOtaUpload(AsyncWebServerRequest *request, String filename, size_t ind
         bool ok = Update.end(true);
         if (ok && !Update.hasError())
         {
-            syslog_ng("[OTA] OTA Update Success");
+            syslogf("[OTA] OTA Update Success");
         }
         else
         {
-            syslog_ng("[OTA] OTA Failed: " + String(Update.errorString()));
+            syslogf("[OTA] OTA Failed: %s", Update.errorString());
         }
         updateBegun = false;
     }
@@ -828,7 +827,7 @@ void setupStaticFiles()
                 request->send(401, "application/json", "{\"error\":\"Unauthorized\"}");
                 return;
             }
-            syslog_ng("saveSettings (via AsyncCallbackJsonWebHandler)");
+            syslogf("saveSettings (via AsyncCallbackJsonWebHandler)");
 
             if (!json.is<JsonObject>())
             {
@@ -853,7 +852,7 @@ void setupStaticFiles()
                     nvs_flash_erase_partition("nvs");  // Reformat NVS
                     nvs_flash_init_partition("nvs");   // Reinit
 
-                    syslog_ng("clear_pref");
+                    syslogf("clear_pref");
 
                     preferences.begin("settings", false);
                     config_preferences.begin("config", false);
@@ -866,7 +865,7 @@ void setupStaticFiles()
                 }
 
                 String groupName = getGroupNameByParameter(settingName);
-                syslog_ng("Group name for " + String(settingName) + ": " + groupName);
+                syslogf("Group name for %s: %s", settingName, groupName.c_str());
 
                 if (updatePreference(settingName, kv.value()))
                 {
@@ -906,7 +905,7 @@ void setupStaticFiles()
                 }
                 else
                 {
-                    syslog_err("Setting not found or error: " + String(settingName));
+                    syslogf("Setting not found or error: %s", settingName);
                     request->send(400, "application/json",
                                   "{\"status\":\"error\",\"message\":\"Setting not found or memory error\"}");
                 }
@@ -954,7 +953,7 @@ void setupStaticFiles()
                       request->send(401, "application/json", "{\"error\":\"Unauthorized\"}");
                       return;
                   }
-                  syslog_ng("update files task created");
+                  syslogf("update files task created");
                   request->send(200, "application/json",
                                 "{\"status\":\"success\", \"message\":\"static update task created\"}");
                   preferences.putInt("upd_static", 1);

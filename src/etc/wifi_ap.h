@@ -13,7 +13,7 @@ bool serverStarted;
 extern bool isAPMode;
 extern String ssid, password, wifiIp;
 extern void connectToMqtt();
-extern void syslog_ng(String x);
+extern void syslogf(const char *fmt, ...);
 
 bool tryConnectToWiFi();
 void WiFiEvent(WiFiEvent_t event);
@@ -86,10 +86,8 @@ bool tryConnectToWiFi()
     {
         return true;
     }
-    String logMsg = "WiFi: Connecting to ";
-    logMsg += ssid;
-    logMsg += " [password hidden]";
-    syslog_ng(logMsg);
+
+    syslogf("WiFi: Connecting to %s [password hidden]", ssid.c_str());
 
     WiFi.begin(ssid.c_str(), password.c_str());
     bool connected = WiFi.waitForConnectResult(5000) == WL_CONNECTED;
@@ -123,19 +121,19 @@ void WiFiEvent(WiFiEvent_t event)
     switch (event)
     {
         case ARDUINO_EVENT_WIFI_STA_CONNECTED:
-            syslog_ng("WiFi: Connected to AP");
+            syslogf("WiFi: Connected to AP");
             break;
 
         case ARDUINO_EVENT_WIFI_STA_GOT_IP:
             wifiIp = WiFi.localIP().toString();
-            syslog_ng("WiFi: Got IP " + wifiIp);
+            syslogf("WiFi: Got IP %s", wifiIp.c_str());
 
             // Start web server if not already running
             if (!serverStarted)
             {
                 setupStaticFiles();
                 serverStarted = true;
-                syslog_ng("Web: Server started");
+                syslogf("Web: Server started");
             }
             // Start MQTT if enabled
             if (enable_ponics_online)

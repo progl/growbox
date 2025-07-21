@@ -1,7 +1,7 @@
 
 void TaskLCD()
 {
-    syslog_ng("LCD update: 1");
+    syslogf("LCD update: 1");
     oled.clear();
     oled.home();
     oled.setScale(3);
@@ -13,7 +13,7 @@ void TaskLCD()
 
     if (AirTemp or AirHum or CO2 or AirPress)
     {
-        syslog_ng("LCD update: 2");
+        syslogf("LCD update: 2");
 
         oled.clear();
         oled.home();
@@ -29,7 +29,7 @@ void TaskLCD()
 
     if ((wEC and !isnan(wEC)) or (wpH and !isnan(wpH)) or (wNTC and !isnan(wNTC)))
     {
-        syslog_ng("LCD update: 3");
+        syslogf("LCD update: 3");
         oled.clear();
         oled.home();
         oled.setScale(2);

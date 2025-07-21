@@ -26,7 +26,8 @@
 #include <Ticker.h>
 #include <set>
 #include <struct.h>
-
+#include <logger.h>
+auto safeFloat = [](float v) { return (isnan(v) || isinf(v)) ? 0.0f : v; };
 Ticker restartTicker;
 String chipStr;
 // Global HTTP client
@@ -166,7 +167,6 @@ void syslog_ng(String x)
 {
     if (x.length() == 0)
     {
-        // Serial.println("Ошибка: syslog_ng пустое сообщение");
         return;
     }
 
@@ -287,11 +287,11 @@ void addTask(TaskParams *taskParams)
         taskParams->busyCounter = 0;
         sensorTasks[taskCount] = taskParams;
         taskCount++;
-        syslog_ng(String("Added task: ") + taskParams->taskName);
+        syslogf("Added task: %s", taskParams->taskName);
     }
     else if (taskCount >= MAX_TASKS)
     {
-        syslog_ng("Warning: Maximum number of tasks reached!");
+        syslogf("Warning: Maximum number of tasks reached!");
     }
 }
 
@@ -300,7 +300,7 @@ void workerTask(void *pvParameters)
     int taskIndex = (int)pvParameters;
     const char *workerName = (taskIndex == 0) ? "Worker1" : "Worker2";
 
-    syslog_ng(String("Starting ") + workerName);
+    syslogf("Starting %s", workerName);
 
     for (;;)
     {
@@ -310,14 +310,14 @@ void workerTask(void *pvParameters)
             TaskParams *task = sensorTasks[i];
             if (!task)
             {
-                syslog_ng(String(workerName) + ": Invalid task at index " + String(i));
+                syslogf("%s: Invalid task at index %d", workerName, i);
                 continue;
             }
 
             // OTA interrupt check
             if (OtaStart)
             {
-                syslog_ng(workerName + String(": OTA update starting, deleting task"));
+                syslogf("%s: OTA update starting, deleting task", workerName);
                 vTaskDelete(NULL);
             }
 
@@ -337,27 +337,27 @@ void workerTask(void *pvParameters)
                     // Execute the task function with error handling
                     if (task->taskFunction)
                     {
-                        syslog_ng(String(workerName) + ": Executing " + task->taskName);
+                        syslogf("%s: Executing %s", workerName, task->taskName);
                         task->taskFunction();
                         unsigned long execTime = millis() - startTime;
 
                         if (execTime > task->repeatInterval / 2)
                         {
-                            syslog_ng(String("Warning: Task ") + task->taskName + " took " + String(execTime) +
-                                      "ms to execute (interval: " + String(task->repeatInterval) + "ms)");
+                            syslogf("Warning: Task %s took %ums to execute (interval: %ums)", task->taskName, execTime,
+                                    task->repeatInterval);
                         }
                     }
                     else
                     {
-                        syslog_ng(String("Error: Invalid task function for ") + task->taskName);
+                        syslogf("Error: Invalid task function for %s", task->taskName);
                     }
 
                     xSemaphoreGive(task->xSemaphore);
                 }
                 else if (++task->busyCounter > 1500)
                 {
-                    syslog_ng(String("Task busy: ") + task->taskName + " (worker " + String(workerName) +
-                              ", last run: " + String(timeSinceLastRun) + "ms ago)");
+                    syslogf("Task busy: %s (worker %s, last run: %ums ago)", task->taskName, workerName,
+                            timeSinceLastRun);
                     task->busyCounter = 0;
                 }
             }
@@ -388,23 +388,22 @@ void startTaskScheduler()
 // Debug function to print task information
 void printTaskInfo()
 {
-    syslog_ng("\n=== Task Scheduler Debug Info ===");
-    syslog_ng(String("Total tasks: ") + String(taskCount));
+    syslogf("\n=== Task Scheduler Debug Info ===");
+    syslogf("Total tasks: %d", taskCount);
 
     for (int i = 0; i < taskCount; i++)
     {
         if (sensorTasks[i])
         {
-            syslog_ng(String("Task[") + i + "]: " + sensorTasks[i]->taskName +
-                      " (Interval: " + sensorTasks[i]->repeatInterval + "ms, " +
-                      "Last Run: " + (millis() - sensorTasks[i]->lastRunTime) + "ms ago)");
+            syslogf("Task[%d]: %s (Interval: %ums, Last Run: %ums ago)", i, sensorTasks[i]->taskName,
+                    sensorTasks[i]->repeatInterval, millis() - sensorTasks[i]->lastRunTime);
         }
         else
         {
-            syslog_ng(String("Task[") + i + "]: NULL");
+            syslogf("Task[%d]: NULL", i);
         }
     }
-    syslog_ng("==============================\n");
+    syslogf("==============================\n");
 }
 
 // Call this after adding all tasks
@@ -412,13 +411,13 @@ void initTaskScheduler()
 {
     if (taskCount > 0)
     {
-        syslog_ng("Initializing task scheduler with " + String(taskCount) + " tasks");
+        syslogf("Initializing task scheduler with %d tasks", taskCount);
         printTaskInfo();
         startTaskScheduler();
     }
     else
     {
-        syslog_ng("Warning: No tasks registered for scheduler!");
+        syslogf("Warning: No tasks registered for scheduler!");
     }
 }
 
@@ -581,9 +580,8 @@ void enqueueMessage(const char *topic, const char *payload, String key = "", Str
             if (packet_id == 0)
             {
                 int payloadSize = strlen(payload);
-                syslog_ng("Payload size: " + String(payloadSize));
-                syslog_ng(" error enqueueMessage: publish packet_id " + String(packet_id) + " topic " + String(topic) +
-                          " payload " + String(payload));
+                syslogf("Payload size: %d", payloadSize);
+                syslogf(" error enqueueMessage: publish packet_id %d topic %s payload %s", packet_id, topic, payload);
             }
         }
     }
@@ -601,9 +599,8 @@ void enqueueMessage(const char *topic, const char *payload, String key = "", Str
         {
             int payloadSize = strlen(payload);
 
-            syslog_ng("Payload size: " + String(payloadSize));
-            syslog_ng(" error enqueueMessage: publish packet_id " + String(packet_id) + " topic " + String(topic) +
-                      " payload " + String(payload));
+            syslogf("Payload size: %d", payloadSize);
+            syslogf(" error enqueueMessage: publish packet_id %d topic %s payload %s", packet_id, topic, payload);
         }
     }
 }
@@ -654,7 +651,7 @@ void publish_parameter(const String &key, float value, int precision, int timesc
     // Проверка на пустой ключ
     if (key.length() == 0)
     {
-        syslog_ng("mqtt ERROR: Parameter key is empty.");
+        syslogf("mqtt ERROR: Parameter key is empty.");
         return;  // Выходим, если ключ пустой
     }
 
@@ -662,11 +659,11 @@ void publish_parameter(const String &key, float value, int precision, int timesc
     {
         String topic = update_token + "/" + timescale_prefix + key;  // Используем соответствующий префикс темы
         char valueStr[32];
-        if (log_debug) syslog_ng("mqtt publish_parameter topic " + topic + " value: " + String(value));
+        if (log_debug) syslogf("mqtt publish_parameter topic %s value: %f", topic.c_str(), value);
 
         dtostrf(value, 1, precision, valueStr);  // Преобразуем float в строку с заданной точностью
 
-        if (log_debug) syslog_ng("mqtt published topic " + topic + " value: " + String(value));
+        if (log_debug) syslogf("mqtt published topic %s value: %s", topic.c_str(), valueStr);
         enqueueMessage(topic.c_str(), valueStr, key);
     }
     else
@@ -684,24 +681,24 @@ void publish_parameter(const String &key, const String &value, int timescale)
     // Проверка на пустой ключ
     if (key.length() == 0)
     {
-        syslog_ng("ERROR: Parameter key is empty.");
+        syslogf("ERROR: Parameter key is empty.");
         return;  // Выходим, если ключ пустой
     }
 
     // Проверка на пустое значение
     if (value.length() == 0)
     {
-        syslog_ng("ERROR: Parameter value is empty for key: " + key);
+        syslogf("ERROR: Parameter value is empty for key: %s", key.c_str());
         return;  // Выходим, если значение пустое
     }
 
     if (timescale == 1)
     {
         String topic = update_token + "/" + timescale_prefix + key;  // Используем соответствующий префикс темы
-        if (log_debug) syslog_ng("publish_parameter topic " + topic + " value: " + String(value));
+        if (log_debug) syslogf("publish_parameter topic %s value: %s", topic.c_str(), value.c_str());
 
         enqueueMessage(topic.c_str(), String(value).c_str(), key);
-        if (log_debug) syslog_ng("published topic " + topic + " value: " + String(value));
+        if (log_debug) syslogf("published topic %s value: %s", topic.c_str(), value.c_str());
     }
     else
     {
@@ -737,20 +734,22 @@ void get_ec()
 
         wR2 = (R2p + R2n) / 2;
 
-        syslog_ng("make_raschet before calculation: An: " + fFTS(An, 3) + ", R1: " + fFTS(R1, 3) +
-                  ", Rx1: " + fFTS(Rx1, 3) + ", Dr: " + fFTS(Dr, 3) + ", Ap: " + fFTS(Ap, 3) +
-                  ", Rx2: " + fFTS(Rx2, 3) + ", R2p: " + fFTS(R2p, 3) + ", R2n: " + fFTS(R2n, 3) +
-                  ", wR2: " + fFTS(wR2, 3) + ", An: " + fFTS(An, 3));
+        syslogf(
+            "make_raschet before calculation: An: %s, R1: %s, Rx1: %s, Dr: %s, Ap: %s, Rx2: %s, R2p: %s, R2n: %s, wR2: "
+            "%s, An: %s",
+            fFTS(An, 3).c_str(), fFTS(R1, 3).c_str(), fFTS(Rx1, 3).c_str(), fFTS(Dr, 3).c_str(), fFTS(Ap, 3).c_str(),
+            fFTS(Rx2, 3).c_str(), fFTS(R2p, 3).c_str(), fFTS(R2n, 3).c_str(), fFTS(wR2, 3).c_str(),
+            fFTS(An, 3).c_str());
 
         if (wR2 > 0)
         {
             float eb = (-log10(ec1 / ec2)) / (log10(ex2 / ex1));
             float ea = pow(ex1, -eb) * ec1;
             ec_notermo = ea * pow(wR2, eb);
-            syslog_ng("make_raschet eb: " + fFTS(eb, 3) + " ec: " + fFTS(ec_notermo, 3) + "ea: " + fFTS(ea, 3) +
-                      " wNTC: " + fFTS(wNTC, 3));
+            syslogf("make_raschet eb: %s ec: %s ea: %s wNTC: %s", fFTS(eb, 3).c_str(), fFTS(ec_notermo, 3).c_str(),
+                    fFTS(ea, 3).c_str(), fFTS(wNTC, 3).c_str());
             wEC_ususal = ec_notermo / (1 + kt * (wNTC - 25)) + eckorr;
-            syslog_ng("EC_KAL_E: " + fFTS(EC_KAL_E, 3));
+            syslogf("EC_KAL_E: %s", fFTS(EC_KAL_E, 3).c_str());
 
             if (EC_KAL_E == 1)
             {

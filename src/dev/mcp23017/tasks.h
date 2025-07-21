@@ -22,14 +22,14 @@ void checkMismatchedPumps(uint16_t readGPIO, uint16_t bitw)
     }
     else
     {
-        syslog_ng("MCP23017: All pumps match correctly.");
+        syslogf("MCP23017: All pumps match correctly.");
     }
 }
 
 void start_ledc_pwd(int pwdChannel, int &pwd_val, int pwd_freq, int pwd_port, const char *pwd_name)
 {
-    syslog_ng(String("MCP23017 start_ledc_") + pwd_name + " PORT:" + String(pwd_port) + " VALUE:" + String(pwd_val) +
-              " FREQ:" + String(pwd_freq));
+    syslogf("MCP23017 start_ledc_%s PORT:%s VALUE:%s FREQ:%s", pwd_name, String(pwd_port), String(pwd_val),
+            String(pwd_freq));
     lcd(String(pwd_name) + "-" + String(pwd_freq) + "Hz:" + String(pwd_val));
     ledcSetup(pwdChannel, pwd_freq, PwdResolution1);
     ledcAttachPin(pwd_port, pwdChannel);
@@ -78,17 +78,17 @@ volatile bool isWatering = false;
 static void wateringTask(void *param)
 {
     int pin = (int)(intptr_t)param;  // Safe cast from void* to int
-    syslog_ng("MCP23017: Watering task started, pump: " + String(pin));
+    syslogf("MCP23017: Watering task started, pump: %d", pin);
     if (pin < 0 || pin >= 16)
     {
-        syslog_err("MCP23017: Invalid pump pin in watering task: " + String(pin));
+        syslogf("MCP23017: Invalid pump pin in watering task: %d", pin);
         vTaskDelete(NULL);
         return;
     }
 
     if (options[ECStabPomp].isEmpty())
     {
-        syslog_err("MCP23017: Empty pump option");
+        syslogf("MCP23017: Empty pump option");
         vTaskDelete(NULL);
         return;
     }
@@ -97,7 +97,7 @@ static void wateringTask(void *param)
 
     if (xSemaphoreTake(wateringMutex, pdMS_TO_TICKS(1000)) == pdTRUE)
     {
-        syslog_ng("MCP23017: before Watering task started, pump: " + String(pin));
+        syslogf("MCP23017: before Watering task started, pump: %s", String(pin));
 
         // Включаем помпу
         mcp.digitalWrite(pin, 1);
@@ -107,7 +107,7 @@ static void wateringTask(void *param)
             *variablePointers[key] = 1;
         }
         String pompName = options[ECStabPomp];
-        syslog_ng("MCP23017: Watering task started, pompName: " + pompName);
+        syslogf("MCP23017: Watering task started, pompName: %s", pompName.c_str());
         publish_parameter(pompName.c_str(), 1, 3, 1);
 
         // Ждем с проверкой на отмену
@@ -116,7 +116,7 @@ static void wateringTask(void *param)
         {
             if (ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(100)))
             {
-                syslog_ng("MCP23017: Watering task cancelled");
+                syslogf("MCP23017: Watering task cancelled");
                 break;
             }
         }
@@ -131,7 +131,7 @@ static void wateringTask(void *param)
         ECStabOn += ECStabTime;
         ECStabTimeStart = millis();
 
-        syslog_ng("MCP23017: Watering task completed");
+        syslogf("MCP23017: Watering task completed");
         xSemaphoreGive(wateringMutex);
     }
 
@@ -144,11 +144,11 @@ static void manageRootPressure()
 {
     if (RootPomp == 1)
     {
-        syslog_ng("MCP23017 RootPomp on");
+        syslogf("MCP23017 RootPomp on");
 
         if (RootPwdOn == 1)
         {
-            syslog_ng("MCP23017 RootPwdOn");
+            syslogf("MCP23017 RootPwdOn");
             bool condition1 = (RootPwdTemp == 1 && RootTemp > AirTemp && RootTemp > 15 && Dist > RootDistMin);
             bool condition2 = (PwdNtcRoot != 0 && RootTemp - wNTC < PwdNtcRoot);
             bool condition3 = (PwdDifPR > 0 && wPR > PwdDifPR) || (PwdDifPR == 0);
@@ -172,7 +172,7 @@ static void manageRootPressure()
 
                         if (t == 0)
                         {
-                            syslog_ng("MCP23017 error put KickOnce ");
+                            syslogf("MCP23017 error put KickOnce ");
                         }
                     }
                     pwd_val_root += PwdStepUp;
@@ -184,7 +184,7 @@ static void manageRootPressure()
             *variablePointers["PWD2"] = pwd_val_root;
             if (t == 0)
             {
-                syslog_ng("MCP23017 error put PWD2 ");
+                syslogf("MCP23017 error put PWD2 ");
             }
         }
         else
@@ -197,7 +197,7 @@ static void manageRootPressure()
 
             if (t == 0)
             {
-                syslog_ng("MCP23017 error put " + options[SelectedRP] + "_State");
+                syslogf("MCP23017 error put %s", options[SelectedRP] + "_State");
             }
         }
     }
@@ -218,16 +218,16 @@ static void managePompNight(bool min_light)
 
             if (t == 0)
             {
-                syslog_ng("MCP23017 PompNight error put PompNight_State");
+                syslogf("MCP23017 PompNight error put PompNight_State");
             }
 
             if (PR != -1)
             {
-                syslog_ng("MCP23017 PompNight enable");
+                syslogf("MCP23017 PompNight enable");
             }
             else
             {
-                syslog_ng("MCP23017 PompNight STOP");
+                syslogf("MCP23017 PompNight STOP");
             }
         }
     }
@@ -258,8 +258,8 @@ static void managePeriodicPump(bool min_light)
     if ((RDWorkNight == 1 && min_light && RDEnable == 1) || (RDEnable == 1))
     {
         if (log_debug)
-            syslog_ng("MCP23017 PERIODICA START + RDWorkNight " + String(RDWorkNight == 1) + " min_light " +
-                      String(min_light) + " RDEnable " + String(RDEnable == 1));
+            syslogf("MCP23017 PERIODICA START + RDWorkNight %s min_light %s RDEnable %s", String(RDWorkNight == 1),
+                    String(min_light), String(RDEnable == 1));
 
         if (millis() > NextRootDrivePwdOn)
         {
@@ -271,13 +271,13 @@ static void managePeriodicPump(bool min_light)
 
                 if (t == 0)
                 {
-                    syslog_ng("MCP23017 error put RDSelectedRP state");
+                    syslogf("MCP23017 error put RDSelectedRP state");
                 }
                 t = preferences.putInt("PWD2", RDPWD);
                 *variablePointers["PWD2"] = RDPWD;
                 if (t == 0)
                 {
-                    syslog_ng("MCP23017 error put RDPWD");
+                    syslogf("MCP23017 error put RDPWD");
                 }
                 NextRootDrivePwdOff = millis() + (RDDelayOn * 1000);
                 NextRootDrivePwdOn = NextRootDrivePwdOff + (RDDelayOff * 1000);
@@ -295,7 +295,7 @@ static void managePeriodicPump(bool min_light)
 
                 if (t == 0)
                 {
-                    syslog_ng("MCP23017 error put RDSelectedRPsate");
+                    syslogf("MCP23017 error put RDSelectedRP state");
                 }
                 isPumpOn = false;
             }
@@ -341,14 +341,13 @@ static void updateDriverStates()
                     ledcAttachPin((i < 2) ? PWDport1 : PWDport2, pwdChannel);
                     PwdPompKick(pwdChannel, KickUpMax, KickUpStrart, pwd, KickUpTime);
                     ledcWrite(pwdChannel, pwd);
-                    syslog_ng(String("MCP23017 PWD DRV" + String(i) + " pin " + String(DRV[i][j]) +
-                                     " POMP KICK: executed! " + DRV_PK_On_Keys[i][j] + " FREQ: " + String(freq) +
-                                     " PWD: " + String(pwd)));
+                    syslogf("MCP23017 PWD DRV %s pin %s POMP KICK: executed! %s FREQ: %s PWD: %s", String(i),
+                            String(DRV[i][j]), DRV_PK_On_Keys[i][j], String(freq), String(pwd));
                 }
                 else
                 {
-                    syslog_ng(String("MCP23017 PWD DRV" + String(i) + " pin " + String(DRV[i][j]) +
-                                     " POMP KICK: skipped! FREQ: " + String(freq) + " PWD: " + String(pwd)));
+                    syslogf("MCP23017 PWD DRV %s pin %s POMP KICK: skipped! FREQ: %s PWD: %s", String(i),
+                            String(DRV[i][j]), String(freq), String(pwd));
                 }
             }
         }
@@ -364,12 +363,12 @@ static void handleGPIOErrors()
         {
             if (GPIOerrcont == 10)
             {
-                syslog_ng("MCP23017 10 resetMCP23017");
+                syslogf("MCP23017 10 resetMCP23017");
                 resetMCP23017();
             }
             if (GPIOerrcont == 20)
             {
-                syslog_ng("MCP23017 20 resetMCP23017");
+                syslogf("MCP23017 20 resetMCP23017");
                 resetMCP23017();
                 preferences.putString(pref_reset_reason, "mcp");
                 shouldReboot = true;
@@ -388,7 +387,7 @@ static void handleGPIOErrors()
                 bitString[15 - i] = (readGPIO & (1 << i)) ? '1' : '0';
                 bitString2[15 - i] = (bitw & (1 << i)) ? '1' : '0';
             }
-            syslog_ng("MCP23017 WRITE readGPIO " + String(readGPIO) + " bitw " + String(bitw));
+            syslogf("MCP23017 WRITE readGPIO %s bitw %s", String(readGPIO), String(bitw));
             vTaskDelay(10);
             GPIOerrcont++;
         }
@@ -426,38 +425,39 @@ void MCP23017()
     // Коррекция ЕС путем разбавления
     if (ECStabEnable == 1)
     {
-        // Логируем текущие значения для отладки
-        String logMsg = "MCP23017 EC_STAB_CHECK: ";
-        logMsg += "wEC=" + String(wEC, 2) + "/" + String(ECStabValue, 2);
-        logMsg += ", wLevel=" + (isnan(wLevel) ? "NaN" : String(wLevel, 2));
-        logMsg += ", LevelRange=[" + String(ECStabMinDist, 2) + "-" + String(ECStabMaxDist, 2) + "]";
-        logMsg += ", TimeSinceLastRun=" + String((millis() - ECStabTimeStart) / 1000) + "s";
-        logMsg += "/" + String(ECStabInterval) + "s";
-
         bool levelCheck = isnan(wLevel) || (wLevel > ECStabMinDist && wLevel < ECStabMaxDist);
         bool timeCheck = millis() - ECStabTimeStart > ECStabInterval * 1000;
         bool ecCheck = wEC > ECStabValue;
         bool lowLevel = !isnan(wLevel) && wLevel <= ECStabMinDist;
 
-        // Логируем результаты проверок
-        logMsg += ", Checks: level=" + String(levelCheck ? "OK" : "FAIL");
-        logMsg += ", time=" + String(timeCheck ? "OK" : "WAIT");
-        logMsg += ", ec=" + String(ecCheck ? "HIGH" : "OK");
-        logMsg += ", lowLevel=" + String(lowLevel ? "YES" : "NO");
-
-        syslog_ng(logMsg);
+        syslogf(
+            "MCP23017 EC_STAB_CHECK: wEC=%.2f/%.2f, wLevel=%s, LevelRange=[%.2f-%.2f], "
+            "TimeSinceLastRun=%lus/%lus, Checks: level=%s, time=%s, ec=%s, lowLevel=%s",
+            wEC, ECStabValue, isnan(wLevel) ? "NaN" : String(wLevel, 2).c_str(), ECStabMinDist, ECStabMaxDist,
+            (millis() - ECStabTimeStart) / 1000, ECStabInterval, levelCheck ? "OK" : "FAIL", timeCheck ? "OK" : "WAIT",
+            ecCheck ? "HIGH" : "OK", lowLevel ? "YES" : "NO");
 
         // Основная логика включения помпы
         if ((ecCheck && timeCheck && levelCheck) || lowLevel)
         {
-            String startMsg = "MCP23017 WATERING_START: ";
-            startMsg += "EC=" + String(wEC, 2) + ">" + String(ECStabValue, 2);
-            startMsg += ", Interval=" + String(ECStabInterval) + "s";
+            char startMsg[128];
+
+            // если wLevel не NaN – подготовим строку, иначе пустая
+            char levelBuf[32];
             if (!isnan(wLevel))
             {
-                startMsg += ", Level=" + String(wLevel, 2);
+                snprintf(levelBuf, sizeof(levelBuf), ", Level=%.2f", wLevel);
             }
-            syslog_ng(startMsg);
+            else
+            {
+                levelBuf[0] = '\0';  // ничего не добавляем
+            }
+
+            snprintf(startMsg, sizeof(startMsg), "MCP23017 WATERING_START: EC=%.2f>%.2f, Interval=%lus%s", wEC,
+                     ECStabValue, ECStabInterval, levelBuf);
+
+            // дальше отправляем в лог
+            syslogf(startMsg);
 
             xTaskCreate(wateringTask, "Watering", 4096, (void *)(intptr_t)ECStabPomp, 2, NULL);
         }
@@ -473,7 +473,7 @@ void MCP23017()
             mcp.digitalWrite(ECStabPomp, 0);
             *variablePointers[key] = 0;
             readGPIO = mcp.readGPIOAB();
-            syslog_ng("MCP23017 WATERING_DISABLED: EC stabilization disabled, turning off pump");
+            syslogf("MCP23017 WATERING_DISABLED: EC stabilization disabled, turning off pump");
         }
     }
 
@@ -487,7 +487,7 @@ void MCP23017()
     // Обновляем GPIO
     if (readGPIO != bitw)
     {
-        syslog_ng("MCP23017 WRITE readGPIO: " + String(readGPIO) + " bitw: " + String(bitw));
+        syslogf("MCP23017 WRITE readGPIO: %s bitw: %s", String(readGPIO), String(bitw));
         mcp.writeGPIOAB(bitw);
         vTaskDelay(10);
         readGPIO = mcp.readGPIOAB();
@@ -499,7 +499,7 @@ void MCP23017()
     // Публикация состояния пинов
     publishPinStates();
     readGPIO = mcp.readGPIOAB();
-    syslog_ng("MCP23017  readGPIO: " + String(readGPIO));
+    syslogf("MCP23017  readGPIO: %s", String(readGPIO));
 
     // 1) Собираем список активных битов
     String activeList = "";
@@ -521,6 +521,6 @@ void MCP23017()
     }
 
     // 3) Логируем
-    syslog_ng("MCP23017 readGPIO=" + String(readGPIO) + " [активны: " + activeList + "]");
+    syslogf("MCP23017 readGPIO=%s [активны: %s]", String(readGPIO), activeList);
 }
 TaskParams MCP23017Params;

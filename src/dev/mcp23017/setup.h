@@ -2,12 +2,12 @@ while (xSemaphoreTake(xSemaphore_C, (TickType_t)1) == pdFALSE);
 
 if (!mcp.begin_I2C())
 {
-    syslog_ng("mcp23017 Begin Error.");
+    syslogf("mcp23017 Begin Error.");
     setSensorDetected("MCP23017", 0);
 }
 else
 {
-    syslog_ng("mcp23017 Begin.");
+    syslogf("mcp23017 Begin.");
 
     for (int i = 0; i < 16; i++)
     {

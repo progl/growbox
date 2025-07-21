@@ -15,12 +15,12 @@ void TaskCPUTEMP()
 
     if (success)
     {
-        syslog_ng("CPU Temperature:  " + fFTS(CPUTemp, 2));
+        syslogf("CPU Temperature: %s", fFTS(CPUTemp, 2));
         publish_parameter("CPUTemp", CPUTemp, 3, 1);
     }
     else
     {
-        syslog_ng("Failed to read CPU temperature\n");
+        syslogf("Failed to read CPU temperature");
     }
 }
 

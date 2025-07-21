@@ -10,25 +10,25 @@ else
     US_ECHO_PIN = 13;
 }
 
-syslog_ng("US025: US_TRIG_PIN: " + String(US_TRIG_PIN));
-syslog_ng("US025: US_ECHO_PIN: " + String(US_ECHO_PIN));
+syslogf("US025: US_TRIG_PIN: %s", String(US_TRIG_PIN));
+syslogf("US025: US_ECHO_PIN: %s", String(US_ECHO_PIN));
 
 distanceSensor = new HCSR04(US_TRIG_PIN, US_ECHO_PIN);
 float initDist = distanceSensor->dist();
 if (isnan(initDist) || initDist < 1.0f || initDist > MAX_DISTANCE_CM)
 {
-    syslog_ng("US025: Initial measurement out of range or invalid: " + String(initDist));
+    syslogf("US025: Initial measurement out of range or invalid: %sms", String(initDist));
     setSensorDetected("US025", 0);
     return;
 }
 
 // Успешная инициализация
 setSensorDetected("US025", 1);
-syslog_ng("US025: Initialized, initial distance = " + String(initDist, 2) + " cm");
+syslogf("US025: Initialized, initial distance = %sms", String(initDist, 2));
 
 // Запуск задачи измерения
 TaskUSParams = {"US", TaskUS, 30000, xSemaphore_C};
 addTask(&TaskUSParams);
 
 KalmanDist = GKalman(dist_mea_e, dist_est_e, dist_q);
-syslog_ng("US025: Task created successfully");
+syslogf("US025: Task created successfully");

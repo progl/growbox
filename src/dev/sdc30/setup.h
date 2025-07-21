@@ -5,7 +5,7 @@ if (Wire.available())
 {
     if (airSensor.begin() == false)  // Pass the Wire port to the .begin() function
     {
-        syslog_ng("SDC30: Air sensor not detected.");
+        syslogf("SDC30: Air sensor not detected.");
     }
 
     TaskSDC30Params = {"TaskSDC30", TaskSDC30, 30000, xSemaphore_C};

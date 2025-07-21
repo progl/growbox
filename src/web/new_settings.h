@@ -24,7 +24,7 @@ void setVPDStyles(String vpdstage)
 
 void handleReset(AsyncWebServerRequest *request)
 {
-    syslog_ng("WEB /reset");
+    syslogf("WEB /reset");
 
     // Отправляем ответ клиенту
     request->send(200, "text/plain", "restart");
@@ -79,7 +79,7 @@ void handleApiTasks(AsyncWebServerRequest *request)
 
 void handle_calibrate(AsyncWebServerRequest *request)
 {
-    syslog_ng("WEB /handle_calibrate");
+    syslogf("WEB /handle_calibrate");
 
     StaticJsonDocument<1024> doc;
     doc["wR2"] = fFTS(wR2, 2);
@@ -101,7 +101,7 @@ String ApiGroups(bool labels = false)
 {
     // Проверка и инициализация списков не обнаруженных и обнаруженных датчиков
 
-    syslog_ng("WEB /groups labels " + String(labels));
+    syslogf("WEB /groups labels %s", String(labels));
     unsigned long t_millis = millis();
 
     // Создание JSON-объекта
@@ -143,7 +143,7 @@ String ApiGroups(bool labels = false)
             }
             else
             {
-                syslog_ng("ERROR: Could not find preferences for " + String(param.name));
+                syslogf("ERROR: Could not find preferences for %s", String(param.name));
             }
         }
     }

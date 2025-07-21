@@ -13,7 +13,7 @@ if (Wire.available())
 }
 else
 {
-    syslog_ng("MCP3421 error Wire request - no device?");
+    syslogf("MCP3421 error Wire request - no device?");
 }
 
 xSemaphoreGive(xSemaphore_C);

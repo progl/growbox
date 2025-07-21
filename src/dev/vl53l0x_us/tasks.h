@@ -15,7 +15,7 @@ void TaskVL53L0X()
         range0 = s_VL53L0X.readRangeContinuousMillimeters();
         if (s_VL53L0X.timeoutOccurred())
         {
-            syslog_ng("VL53L0X: TIMEOUT");
+            syslogf("VL53L0X: TIMEOUT");
         }
         if (range0 < 8000)
         {
@@ -33,14 +33,14 @@ void TaskVL53L0X()
     if (abs(Dist - range) > 4)
     {
         VL53L0X_RangeAVG.clear();
-        syslog_ng("VL53L0X: Reset average filter");
+        syslogf("VL53L0X: Reset average filter");
     }
 
     publish_parameter("Dist", Dist, 3, 1);
-    syslog_ng("VL53L0X: dist=" + fFTS(Dist, 3));
-    syslog_ng("VL53L0X: Error/Count " + String(err) + "/" + String(cont));
-    syslog_ng("VL53L0X: Highest= " + fFTS(VL53L0X_RangeRM.getHighest(), 1));
-    syslog_ng("VL53L0X: Lowest= " + fFTS(VL53L0X_RangeRM.getLowest(), 1));
+    syslogf("VL53L0X: dist=%sms", fFTS(Dist, 3));
+    syslogf("VL53L0X: Error/Count %s/%s", String(err), String(cont));
+    syslogf("VL53L0X: Highest= %sms", fFTS(VL53L0X_RangeRM.getHighest(), 1));
+    syslogf("VL53L0X: Lowest= %sms", fFTS(VL53L0X_RangeRM.getLowest(), 1));
     Wire.begin(I2C_SDA, I2C_SCL);
 }
 TaskParams TaskVL53L0XParams;

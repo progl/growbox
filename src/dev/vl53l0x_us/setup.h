@@ -6,7 +6,7 @@ Wire.requestFrom(static_cast<uint16_t>(0x29), static_cast<uint8_t>(1));
 
 if (Wire.available())
 {
-    syslog_ng("I2C-US found: 0x29 laser distance sensor");
+    syslogf("I2C-US found: 0x29 laser distance sensor");
     if (s_VL53L0X.init())
     {
         s_VL53L0X.startContinuous();

@@ -1,7 +1,7 @@
 
 void run_doser_now()
 {
-    syslog_ng("ECDoserEnable" + String(ECDoserEnable));
+    syslogf("ECDoserEnable %s", String(ECDoserEnable));
     if (ECDoserEnable == 0)
     {
         return;
@@ -13,8 +13,8 @@ void run_doser_now()
     bool run_correction = false;
     if ((SetPumpA_Ml > 0 and AOn != 0) or (SetPumpB_Ml > 0 and BOn != 0))
     {
-        syslog_ng("DOSER: PumpA remains ml=" + fFTS(SetPumpA_Ml, 30));
-        syslog_ng("DOSER: PumpB remains ml=" + fFTS(SetPumpB_Ml, 30));
+        syslogf("DOSER: PumpA remains ml=%s", fFTS(SetPumpA_Ml, 30));
+        syslogf("DOSER: PumpB remains ml=%s", fFTS(SetPumpB_Ml, 30));
         make_doser = true;
         AA = StPumpA_A;
         AB = StPumpA_B;
@@ -57,10 +57,10 @@ void run_doser_now()
 
         if (SetPumpA_Ml > 0 and AOn != 0)
         {
-            syslog_ng("DOSER: PumpA Start");
-            syslog_ng("DOSER: ADel" + String(ADel));
-            syslog_ng("DOSER: ARet" + String(ARet));
-            syslog_ng("DOSER: StPumpA_cStep" + String(StPumpA_cStep));
+            syslogf("DOSER: PumpA Start");
+            syslogf("DOSER: ADel %s", String(ADel));
+            syslogf("DOSER: ARet %s", String(ARet));
+            syslogf("DOSER: StPumpA_cStep %s", String(StPumpA_cStep));
             // ledcWrite(PwdChannel1, 255);
             // ledcWrite(PwdChannel2, 255);
             run_correction = true;
@@ -81,9 +81,9 @@ void run_doser_now()
             preferences.putFloat("SetPumpA_Ml", SetPumpA_Ml - (StPumpA_cMl / StPumpA_cStepMl * StPumpA_cStep));
             preferences.putFloat("PumpA_SUM", PumpA_SUM + (StPumpA_cMl / StPumpA_cStepMl * StPumpA_cStep));
             preferences.putFloat("StepA_SUM", StepA_SUM + StPumpA_cStep);
-            syslog_ng("DOSER: PumpA SetPumpA_Ml  " + String(StPumpA_cMl / StPumpA_cStepMl * StPumpA_cStep));
-            syslog_ng("DOSER: PumpA StPumpA_cStep  " + String(StPumpA_cStep));
-            syslog_ng("DOSER: PumpA Stop");
+            syslogf("DOSER: PumpA SetPumpA_Ml  %s", String(StPumpA_cMl / StPumpA_cStepMl * StPumpA_cStep));
+            syslogf("DOSER: PumpA StPumpA_cStep  %s", String(StPumpA_cStep));
+            syslogf("DOSER: PumpA Stop");
         }
 
         if (BLeftStep <= StPumpB_cStep) StPumpB_cStep = BLeftStep;  // Если до конца цикла осталось меньше
@@ -96,7 +96,7 @@ void run_doser_now()
 
         if (SetPumpB_Ml > 0 and BOn != 0)
         {
-            syslog_ng("DOSER: PumpB Start");
+            syslogf("DOSER: PumpB Start");
             // ledcWrite(PwdChannel1, 255);
             // ledcWrite(PwdChannel2, 255);
 
@@ -118,29 +118,29 @@ void run_doser_now()
             preferences.putFloat("SetPumpB_Ml", SetPumpB_Ml - (StPumpB_cMl / StPumpB_cStepMl * StPumpB_cStep));
             preferences.putFloat("PumpB_SUM", PumpB_SUM + (StPumpB_cMl / StPumpB_cStepMl * StPumpB_cStep));
             preferences.putLong("StepB_SUM", StepB_SUM + StPumpB_cStep);
-            syslog_ng("DOSER: PumpB SetPumpB_Ml  " + String(StPumpB_cMl / StPumpB_cStepMl * StPumpB_cStep));
-            syslog_ng("DOSER: PumpB StPumpB_cStep  " + String(StPumpB_cStep));
-            syslog_ng("DOSER: PumpB Stop");
+            syslogf("DOSER: PumpB SetPumpB_Ml  %s", String(StPumpB_cMl / StPumpB_cStepMl * StPumpB_cStep));
+            syslogf("DOSER: PumpB StPumpB_cStep  %s", String(StPumpB_cStep));
+            syslogf("DOSER: PumpB Stop");
         }
 
         bitW4(AA, AB, AC, AD, 0, 0, 0, 0);
         bitW4(BA, BB, BC, BD, 0, 0, 0, 0);
         mcp.writeGPIOAB(bitw);
 
-        syslog_ng("DOSER: PumpA SUM ml=" + fFTS(PumpA_SUM, 2));
-        syslog_ng("DOSER: PumpB SUM ml=" + fFTS(PumpB_SUM, 2));
+        syslogf("DOSER: PumpA SUM ml=%s", fFTS(PumpA_SUM, 2));
+        syslogf("DOSER: PumpB SUM ml=%s", fFTS(PumpB_SUM, 2));
     }
     else
-        syslog_ng("DOSER: Nothing to do");
+        syslogf("DOSER: Nothing to do");
 
     if (ECDoserEnable == 1 and SetPumpA_Ml <= 0 and SetPumpB_Ml <= 0 and wEC and wEC < ECDoserLimit)
     {
-        syslog_ng("DOSER: Current EC=" + fFTS(wEC, 3) + " < " + "LimitEC=" + fFTS(ECDoserLimit, 3));
+        syslogf("DOSER: Current EC=%s < LimitEC=%s", fFTS(wEC, 3), fFTS(ECDoserLimit, 3));
         if (millis() - ECDoserTimer > ECDoserInterval * 1000)
         {
             ECDoserTimer = millis();
-            syslog_ng("DOSER: add new task for Doser A = " + fFTS(ECDoserValueA, 3) +
-                      " ml and Doser B = " + fFTS(ECDoserValueB, 3) + " ml");
+            syslogf("DOSER: add new task for Doser A = %s ml and Doser B = %s ml", fFTS(ECDoserValueA, 3),
+                    fFTS(ECDoserValueB, 3));
             preferences.putFloat("SetPumpA_Ml", ECDoserValueA);
             preferences.putFloat("SetPumpB_Ml", ECDoserValueB);
         }
@@ -153,7 +153,7 @@ void run_doser_now()
     if (run_correction)
     {
         run_correction = false;
-        syslog_ng("DOSER: restore pwd");
+        syslogf("DOSER: restore pwd");
     }
     make_doser = false;
 }

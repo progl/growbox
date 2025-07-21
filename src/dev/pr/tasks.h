@@ -50,7 +50,7 @@ float fpr(float my_arg)
     }
 
     float R = pr(my_arg);
-    syslog_ng("PR: fpr R " + fFTS(R, 3));
+    syslogf("PR: fpr R %s", fFTS(R, 3));
 
     if (pR_type == "direct" || pR_type == "reverse")
     {
@@ -71,7 +71,7 @@ void PR_void()
     unsigned long PR_time = millis();
     unsigned long pr_probe_time = micros();
     unsigned long PR0 = 0;
-    syslog_ng("PR: " + fFTS(pr_probe_time, 0) + "ms start.");
+    syslogf("PR: %sms start.", fFTS(pr_probe_time, 0));
     // Начало работы с АЦП
     adc_power_acquire();  // Без проверки на SUCCESS, т.к. функция ничего не
                           // возвращает
@@ -83,7 +83,7 @@ void PR_void()
     {
         if (__wega_adcStart(PR_AnalogPort) == false)
         {
-            syslog_ng("PR: Ошибка при запуске АЦП " + fFTS(cont, 0));
+            syslogf("PR: Ошибка при запуске АЦП %sms", fFTS(cont, 0));
             SAR_ADC1_LOCK_RELEASE();
             adc_power_release();
             return;
@@ -95,7 +95,7 @@ void PR_void()
     adc_power_release();
     // Завершаем измерения
     pr_probe_time = micros() - pr_probe_time;
-    syslog_ng("PR: " + fFTS(PR, 3));
+    syslogf("PR: %sms", fFTS(PR, 3));
 
     PR_time = millis() - PR_time;
     float Mid_PR = float(PR0) / PR_MiddleCount;
@@ -109,9 +109,8 @@ void PR_void()
     // Время работы
 
     // Логирование
-    syslog_ng("PR: " + fFTS(PR, 3) + " wPR " + fFTS(wPR, 3) + " probe time micros:" + String(pr_probe_time) +
-              " probe count:" + String(PR_MiddleCount) + " Frequency kHz:" + fFTS(PR_Freq, 3) + " " + fFTS(PR_time, 0) +
-              "ms end.");
+    syslogf("PR: %sms wPR %sms probe time micros:%sms probe count:%s Frequency kHz:%sms %sms end.", fFTS(PR, 3),
+            fFTS(wPR, 3), fFTS(pr_probe_time, 0), String(PR_MiddleCount), fFTS(PR_Freq, 3), fFTS(PR_time, 0));
 
     // Публикация данных
 

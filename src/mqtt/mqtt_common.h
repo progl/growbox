@@ -43,7 +43,7 @@ void publish_one_data(const PreferenceItem *item, String mqtt_type = "all")
     String valueStr;
     if (item->variable != nullptr)
     {
-        syslog_ng("mqtt before publish_one_data topic: " + String(item->key));
+        syslogf("mqtt before publish_one_data topic: %s", item->key);
         // Определите тип переменной и получите ее значение в зависимости от типа
         switch (item->type)
         {
@@ -62,8 +62,8 @@ void publish_one_data(const PreferenceItem *item, String mqtt_type = "all")
         }
 
         // Опубликуйте значение в MQTT
-        syslog_ng("mqtt publish_one_data topic: " + topic + " value: " + valueStr);
+        syslogf("mqtt publish_one_data topic: %s value: %s", topic.c_str(), valueStr.c_str());
         enqueueMessage(topic.c_str(), valueStr.c_str(), "", mqtt_type);
     }
-    syslog_ng("mqtt after publish_one_data topic: " + String(item->key));
+    syslogf("mqtt after publish_one_data topic: %s", String(item->key));
 }

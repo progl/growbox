@@ -16,10 +16,10 @@ void TaskHX710B()
         Dist = HX710B_DistRM.getAverage(2);
         DstRAW = data_raw;
         publish_parameter("Dist", Dist, 3, 1);
-        syslog_ng("HX710B Dist:" + fFTS(Dist, 4));
-        syslog_ng("HX710B Pressure RAW:" + fFTS(DstRAW, 0) + " cont:" + fFTS(cont, 0));
+        syslogf("HX710B Dist:%s", fFTS(Dist, 4));
+        syslogf("HX710B Pressure RAW:%s cont:%s", fFTS(DstRAW, 0), fFTS(cont, 0));
     }
     else
-        syslog_ng("HX710B Error. Please check sensor");
+        syslogf("HX710B Error. Please check sensor");
 }
 TaskParams TaskHX710BParams;

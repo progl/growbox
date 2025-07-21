@@ -4,19 +4,19 @@ bool updatePreferenceValue(PreferenceItem *item, const String &value, String mqt
     String s;
     if (item == nullptr)
     {
-        syslog_ng("ERROR: PreferenceItem is null.");
+        syslogf("ERROR: PreferenceItem is null.");
         return false;  // Exit if item is nullptr
     }
 
     if (item->preferences == nullptr)
     {
-        syslog_ng("ERROR: Preferences are null for key: " + String(item->key));
+        syslogf("ERROR: Preferences are null for key: %s", String(item->key));
         return false;  // Exit if preferences are nullptr
     }
 
     if (item->variable == nullptr)
     {
-        syslog_ng("ERROR: Variable is null for key: " + String(item->key));
+        syslogf("ERROR: Variable is null for key: %s", String(item->key));
         return false;  // Exit if variable is nullptr
     }
     switch (item->type)
@@ -38,7 +38,7 @@ bool updatePreferenceValue(PreferenceItem *item, const String &value, String mqt
             s = item->preferences->putBool(item->key, *(bool *)item->variable);
             break;
         default:
-            syslog_ng("ERROR: Unsupported data type for key: " + String(item->key));
+            syslogf("ERROR: Unsupported data type for key: %s", String(item->key));
             return false;  // Выход, если тип данных не поддерживается
     }
 
@@ -48,12 +48,12 @@ bool updatePreferenceValue(PreferenceItem *item, const String &value, String mqt
     if (s.length() > 0)
     {
         publish_one_data(item, mqtt_type);
-        syslog_ng("Updated preference for key: " + String(item->key) + " with value: " + String(value));
+        syslogf("Updated preference for key: %s with value: %s", String(item->key), String(value));
         return true;
     }
     else
     {
-        syslog_ng("Failed to update preference for key: " + String(item->key) + " with value: " + String(value));
+        syslogf("Failed to update preference for key: %s with value: %s", String(item->key), String(value));
     }
     return false;
 }
@@ -73,13 +73,13 @@ bool updatePreference(const char *settingName, const JsonVariant &value, String 
             case DataType::BOOLEAN:
                 return updatePreferenceValue(item, value.as<bool>() ? "true" : "false", mqtt_type);
             default:
-                syslog_ng("ERROR: Unsupported data type for key: " + String(settingName));
+                syslogf("ERROR: Unsupported data type for key: %s", String(settingName));
                 return false;  // Выход, если тип данных не поддерживается
         }
     }
     else
     {
-        syslog_ng("ERROR: Preference item not found for key: " + String(settingName));
+        syslogf("ERROR: Preference item not found for key: %s", String(settingName));
         return false;
     }
     return false;
@@ -94,7 +94,7 @@ bool updatePreference(const char *settingName, const String &value, String mqtt_
     }
     else
     {
-        syslog_ng("ERROR: Preference item not found for key: " + String(settingName));
+        syslogf("ERROR: Preference item not found for key: %s", String(settingName));
         return false;
     }
     return false;
@@ -129,7 +129,7 @@ void publish_switch_discovery_payload(Param param)
     // Проверка на наличие имени переключателя
     if (switch_name.length() == 0)
     {
-        syslog_ng("mqttHA ERROR: Switch name is empty.");
+        syslogf("mqttHA ERROR: Switch name is empty.");
         return;
     }
 
@@ -197,7 +197,7 @@ void publish_switch_discovery_payload(Param param)
                 if (!value.isEmpty())
                 {
                     enqueueMessage(command_topic.c_str(), value.c_str(), "", "ha");
-                    syslog_ng("mqttHA mqttClientHA publish switch state " + String(switch_name) + " value " + value);
+                    syslogf("mqttHA mqttClientHA publish switch state %s value %s", String(switch_name), String(value));
                 }
             }
 
@@ -205,12 +205,12 @@ void publish_switch_discovery_payload(Param param)
         }
         else
         {
-            syslog_ng("ERROR: mqtt publish switch  Variable is null for " + String(switch_name));
+            syslogf("ERROR: mqtt publish switch  Variable is null for %s", String(switch_name));
         }
     }
     else
     {
-        syslog_ng("mqtt ERROR: mqtt publish switch  Could not find preferences for " + String(switch_name));
+        syslogf("mqtt ERROR: mqtt publish switch  Could not find preferences for %s", String(switch_name));
     }
 }
 
@@ -223,13 +223,13 @@ void subscribe_param_ha(Param param)
 void onMqttDisconnectHA(AsyncMqttClientDisconnectReason reason)
 {
     mqttClientHAConnected = false;
-    syslog_ng("mqtt mqttClientHA Disconnected. Reason: " + String((int)reason));
-    syslog_ng("mqtt mqttClientHA: WiFi isConnected: " + String(WiFi.isConnected()));
+    syslogf("mqtt mqttClientHA Disconnected. Reason: %s", String((int)reason));
+    syslogf("mqtt mqttClientHA: WiFi isConnected: %s", String(WiFi.isConnected()));
     if (WiFi.isConnected())
     {
         if (not mqttClientHA.connected())
         {
-            syslog_ng("mqtt: Starting reconnect timer HA");
+            syslogf("mqtt: Starting reconnect timer HA");
             xTimerStart(mqttReconnectTimerHa, 0);
         }
     }
@@ -242,14 +242,14 @@ void connectToMqttHA()
         if (not mqttClientHA.connected())
         {
             mqttHAConnected = 0;
-            syslog_ng("mqtt mqttClientHA a_ha: \"" + String(a_ha) + "\", p_ha: \"" + String(p_ha) + "\", u_ha: \"" +
-                      String(u_ha) + "\"");
-            syslog_ng("mqtt mqttClientHA connectToMqtt Connecting to MQTT...");
+            syslogf("mqtt mqttClientHA a_ha: \"%s\", p_ha: \"%s\", u_ha: \"%s\"", String(a_ha), String(p_ha),
+                    String(u_ha));
+            syslogf("mqtt mqttClientHA connectToMqtt Connecting to MQTT...");
             mqttClientHA.connect();
             mqtt_not_connected_counter = mqtt_not_connected_counter + 1;
             if (mqtt_not_connected_counter > 100)
             {
-                syslog_ng("mqtt mqttClientHA connectToMqtt ESP RESTART");
+                syslogf("mqtt mqttClientHA connectToMqtt ESP RESTART");
                 preferences.putString(pref_reset_reason, "mqttHA error");
                 mqtt_not_connected_counter = 0;
             }
@@ -261,7 +261,7 @@ void connectToMqttHA()
     }
     else
     {
-        syslog_ng("mqtt mqttClientHA not enabled");
+        syslogf("mqtt mqttClientHA not enabled");
     }
 }
 
@@ -272,7 +272,7 @@ void onMqttReconnectTimerHa(TimerHandle_t xTimer)
 
 void publish_setting_groups()
 {
-    StaticJsonDocument<512> doc;
+    StaticJsonDocument<4096> doc;
     JsonObject root = doc.to<JsonObject>();
 
     for (Group &group : groups)
@@ -286,7 +286,7 @@ void publish_setting_groups()
 
             if (item == nullptr)
             {
-                syslog_ng("mqtt nullptr: " + String(param.name));
+                syslogf("mqtt nullptr: %s", String(param.name));
                 continue;
             }
 
@@ -307,7 +307,7 @@ void publish_setting_groups()
             }
             else
             {
-                syslog_ng("mqtt ERROR: Could not find preferences for " + String(param.name));
+                syslogf("mqtt ERROR: Could not find preferences for %s", String(param.name));
             }
         }
     }
@@ -315,8 +315,7 @@ void publish_setting_groups()
     // Serialize JSON object to string
     String output;
     serializeJson(doc, output);
-    String topic = update_token + "/" + main_prefix + "all_groups";
-    enqueueMessage(topic.c_str(), output.c_str());
+    enqueueMessage((update_token + "/" + main_prefix + "all_groups").c_str(), output.c_str());
     vTaskDelay(10);
 }
 
@@ -339,7 +338,7 @@ void processToggleParameters()
 
 void mqttTaskHA(void *parameter)
 {
-    syslog_ng("mqtt mqttTaskHA start");
+    syslogf("mqtt mqttTaskHA start");
     publish_discovery_payload("AirHum");
     publish_discovery_payload("AirPress");
     publish_discovery_payload("AirTemp");
@@ -371,14 +370,14 @@ void mqttTaskHA(void *parameter)
     publish_discovery_payload("wR2");
     publish_discovery_payload("wpH");
     processToggleParameters();
-    syslog_ng("mqtt mqttTaskHA processToggleParameters end");
+    syslogf("mqtt mqttTaskHA processToggleParameters end");
 
     vTaskDelete(NULL);  // Удаляем задачу после выполнения
 }
 
 void onMqttConnectHA(bool sessionPresent)
 {
-    syslog_ng("mqtt onMqttConnectHA mqttHA connected");
+    syslogf("mqtt onMqttConnectHA mqttHA connected");
     mqttClientHA.subscribe("homeassistant/status", 1);
     mqttClientHA.subscribe("homeassistant/growbox/status", 1);
     mqttHAConnected = 1;
@@ -390,11 +389,11 @@ void onMqttMessageHA(char *topic, char *payload, AsyncMqttClientMessagePropertie
 {
     if (payload == nullptr)
     {
-        syslog_ng("mqtt onMqttMessageHA topic: " + String(topic) + " null ");
+        syslogf("mqtt onMqttMessageHA topic: %s null ", String(topic));
 
         return;
     }
-    syslog_ng("mqtt HA onMqttMessageHA topic: " + String(topic) + " payload " + String(payload));
+    syslogf("mqtt HA onMqttMessageHA topic: %s payload %s", String(topic), String(payload));
 
     String message = String(payload).substring(0, len);
 
@@ -403,14 +402,14 @@ void onMqttMessageHA(char *topic, char *payload, AsyncMqttClientMessagePropertie
     {
         if (message == "online")
         {
-            syslog_ng("mqtt Home Assistant is online.");
-            syslog_ng("mqtt mqttHA server online");
+            syslogf("mqtt Home Assistant is online.");
+            syslogf("mqtt mqttHA server online");
             onMqttConnectHA(true);
         }
         else if (message == "offline")
         {
-            syslog_ng("mqtt mqttHA server offline");
-            syslog_ng("mqtt Home Assistant is offline.");
+            syslogf("mqtt mqttHA server offline");
+            syslogf("mqtt Home Assistant is offline.");
         }
         return;  // Выходим из функции для системных сообщений
     }
@@ -433,5 +432,5 @@ void onMqttMessageHA(char *topic, char *payload, AsyncMqttClientMessagePropertie
     }
 
     // Если сообщение не обработано
-    syslog_ng("mqtt HA Unknown topic: " + String(topic));
+    syslogf("mqtt HA Unknown topic: %s", String(topic));
 }

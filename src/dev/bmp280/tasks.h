@@ -6,24 +6,24 @@ void BMP280()
         syslog_err("BME280: Sensor initialization failed");
         return;
     }
-    syslog_ng("BME280: Sensor initialized");
+    syslogf("BME280: Sensor initialized");
 
     BMP280_Press = bme.readPressure() / 133.322368;  // Pa to mmHg
-    syslog_ng("BME280 AirPress: " + fFTS(BMP280_Press, 3));
+    syslogf("BME280 AirPress: %s", fFTS(BMP280_Press, 3));
 
     BMP280_Temp = bme.readTemperature();
-    syslog_ng("BME280 BMP280_Temp: " + fFTS(BMP280_Temp, 3));
+    syslogf("BME280 BMP280_Temp: %s", fFTS(BMP280_Temp, 3));
     BMP280_AirTempRM.add(BMP280_Temp);
     AirTemp = BMP280_AirTempRM.getMedianAverage(3);
 
     AirVPD = calculateVPD(AirTemp, AirHum);
-    syslog_ng("BME280 AirTemp: " + fFTS(AirTemp, 3));
+    syslogf("BME280 AirTemp: %s", fFTS(AirTemp, 3));
 
     if (bme.readHumidity() != NAN)
     {
         BMP280_AirHumRM.add(bme.readHumidity());
         AirHum = BMP280_AirHumRM.getMedianAverage(3);
-        syslog_ng("BME280 AirHum: " + fFTS(AirHum, 3));
+        syslogf("BME280 AirHum: %s", fFTS(AirHum, 3));
     }
 
     BMP280_AirPressRM.add(BMP280_Press);

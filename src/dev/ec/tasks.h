@@ -31,7 +31,7 @@ void EC_void()
         {
             SAR_ADC1_LOCK_RELEASE();
             adc_power_release();
-            syslog_ng("EC: Ошибка при запуске АЦП");
+            syslogf("EC: Ошибка при запуске АЦП");
             return;
         }
         Ap0 += __wega_adcEnd(EC_AnalogPort);
@@ -42,7 +42,7 @@ void EC_void()
 
         if (__wega_adcStart(EC_AnalogPort) == false)
         {
-            syslog_ng("EC:  Ошибка при запуске АЦП");
+            syslogf("EC:  Ошибка при запуске АЦП");
             SAR_ADC1_LOCK_RELEASE();
             adc_power_release();
             return;
@@ -94,14 +94,13 @@ void EC_void()
     get_ec();
 
     // Логирование
-    syslog_ng("EC probe time micros:" + String(ec_probe_time) + " probe count:" + String(EC_MiddleCount) +
-              " Frequency kHz:" + fFTS(EC_Freq, 3) + " wR2:" + fFTS(wR2, 3) + " wNTC:" + fFTS(wNTC, 3)
 
-              + " mv_ap0:" + fFTS(mv_ap0, 3) + " mv_an0:" + fFTS(mv_an0, 3)
-
-              + " raw_Ap:" + fFTS(raw_Ap, 3) + " raw_An:" + fFTS(raw_An, 3)
-
-              + " wEC:" + fFTS(wEC, 3) + " ec_notermo " + ec_notermo + " " + fFTS(EC_time, 0) + "ms end.");
+    syslogf(
+        "EC probe time micros:%lu probe count:%d Frequency kHz:%.3f wR2:%.3f wNTC:%.3f mv_ap0:%.3f mv_an0:%.3f "
+        "raw_Ap:%.3f raw_An:%.3f wEC:%.3f ec_notermo %f %.0fms end.",
+        (unsigned long)ec_probe_time, (int)EC_MiddleCount, safeFloat(EC_Freq), safeFloat(wR2), safeFloat(wNTC),
+        safeFloat(mv_ap0), safeFloat(mv_an0), safeFloat(raw_Ap), safeFloat(raw_An), safeFloat(wEC),
+        safeFloat(ec_notermo), safeFloat(EC_time));
 
     // Публикация данных
 

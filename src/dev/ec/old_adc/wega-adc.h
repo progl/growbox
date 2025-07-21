@@ -263,12 +263,12 @@ uint32_t IRAM_ATTR ___wega_analogReadMilliVolts(uint8_t pin, uint16_t adc_readin
     {
         if (esp_adc_cal_check_efuse(ESP_ADC_CAL_VAL_EFUSE_TP) == ESP_OK)
         {
-            syslog_ng("eFuse Two Point: Supported");
+            syslogf("eFuse Two Point: Supported");
             __analogVRef = DEFAULT_VREF;
         }
         if (esp_adc_cal_check_efuse(ESP_ADC_CAL_VAL_EFUSE_VREF) == ESP_OK)
         {
-            syslog_ng("eFuse Vref: Supported");
+            syslogf("eFuse Vref: Supported");
             __analogVRef = DEFAULT_VREF;
         }
         if (!__analogVRef)
@@ -283,25 +283,24 @@ uint32_t IRAM_ATTR ___wega_analogReadMilliVolts(uint8_t pin, uint16_t adc_readin
                     __analogVRef = __wega_analogRead(__analogVRefPin);
                     esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_12, ADC_WIDTH_BIT_12, DEFAULT_VREF, &chars);
                     __analogVRef = esp_adc_cal_raw_to_voltage(__analogVRef, &chars);
-                    syslog_ng("Vref to GPIO: " + String(__analogVRefPin) + " mV" + " __analogVRef " +
-                              String(__analogVRef));
+                    syslogf("Vref to GPIO: %s mV __analogVRef %s", String(__analogVRef));
                 }
             }
 #endif
         }
     }
-    syslog_ng("wega adc  after");
+    syslogf("wega adc  after");
     uint8_t unit = (channel > (SOC_ADC_MAX_CHANNEL_NUM - 1)) ? 2 : 1;
     uint8_t atten = (__pin_attenuation[pin] != ADC_ATTENDB_MAX) ? __pin_attenuation[pin] : __wega_analogAttenuation;
 
     esp_adc_cal_characteristics_t chars = {};
-    syslog_ng("wega adc before  esp_adc_cal_characterize");
+    syslogf("wega adc before  esp_adc_cal_characterize");
     esp_adc_cal_value_t val_type =
         esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_12, ADC_WIDTH_BIT_12, __analogVRef, &chars);
-    syslog_ng("wega adc  esp_adc_cal_characterize");
+    syslogf("wega adc  esp_adc_cal_characterize");
 
     uint32_t voltage = esp_adc_cal_raw_to_voltage((uint32_t)adc_reading, &chars);
-    syslog_ng("wega adc  esp_adc_cal_raw_to_voltage");
+    syslogf("wega adc  esp_adc_cal_raw_to_voltage");
 
     return voltage;
 }
