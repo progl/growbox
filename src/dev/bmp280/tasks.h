@@ -9,21 +9,22 @@ void BMP280()
     syslogf("BME280: Sensor initialized");
 
     BMP280_Press = bme.readPressure() / 133.322368;  // Pa to mmHg
-    syslogf("BME280 AirPress: %s", fFTS(BMP280_Press, 3));
+    char buffer[32];
+    syslogf("BME280 AirPress: %.2f", BMP280_Press);
 
     BMP280_Temp = bme.readTemperature();
-    syslogf("BME280 BMP280_Temp: %s", fFTS(BMP280_Temp, 3));
+    syslogf("BME280 BMP280_Temp: %.2f", BMP280_Temp);
     BMP280_AirTempRM.add(BMP280_Temp);
     AirTemp = BMP280_AirTempRM.getMedianAverage(3);
 
     AirVPD = calculateVPD(AirTemp, AirHum);
-    syslogf("BME280 AirTemp: %s", fFTS(AirTemp, 3));
+    syslogf("BME280 AirTemp: %.2f", AirTemp);
 
     if (bme.readHumidity() != NAN)
     {
         BMP280_AirHumRM.add(bme.readHumidity());
         AirHum = BMP280_AirHumRM.getMedianAverage(3);
-        syslogf("BME280 AirHum: %s", fFTS(AirHum, 3));
+        syslogf("BME280 AirHum: %.2f", AirHum);
     }
 
     BMP280_AirPressRM.add(BMP280_Press);

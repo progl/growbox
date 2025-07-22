@@ -304,6 +304,11 @@ void setupBot()
         bot_connected = true;
         syslogf("TG: Bot connected");
     }
+    else
+    {
+        bot_connected = false;
+        syslogf("TG: Bot not connected");
+    }
 }
 
 void applyTelegramSettings()

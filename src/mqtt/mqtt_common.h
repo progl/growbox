@@ -65,5 +65,5 @@ void publish_one_data(const PreferenceItem *item, String mqtt_type = "all")
         syslogf("mqtt publish_one_data topic: %s value: %s", topic.c_str(), valueStr.c_str());
         enqueueMessage(topic.c_str(), valueStr.c_str(), "", mqtt_type);
     }
-    syslogf("mqtt after publish_one_data topic: %s", String(item->key));
+    syslogf("mqtt after publish_one_data topic: %s", item->key);
 }

@@ -56,7 +56,7 @@ bool checkFreeSpace(size_t requiredSpace)
     size_t usedBytes = LittleFS.usedBytes();
     size_t freeSpace = totalBytes - usedBytes;
 
-    syslogf("update: Storage: Total: %s, Used: %s, Free: %s", String(totalBytes), String(usedBytes), String(freeSpace));
+    syslogf("update: Storage: Total: %d, Used: %d, Free: %d", totalBytes, usedBytes, freeSpace);
 
     return freeSpace >= requiredSpace;
 }
@@ -72,7 +72,7 @@ void updateFirmware(uint8_t* data, size_t len)
     boolean update_status = Update.end(true);
     if (Update.isFinished())
     {
-        syslogf("update: update_status %s", String(update_status));
+        syslogf("update: update_status %d", update_status);
         syslogf("update: update_status successfully Rebooting");
         preferences.putString(pref_reset_reason, "update");
         WiFi.disconnect(true);
@@ -81,7 +81,7 @@ void updateFirmware(uint8_t* data, size_t len)
     }
     else
     {
-        syslogf("update: update_status %s", String(update_status));
+        syslogf("update: update_status %d", update_status);
         syslogf("update: Update not finished? Something went wrong!");
     }
 }
@@ -196,7 +196,7 @@ bool downloadAsset(const String& url, const String& localPath)
                 size_t written = file.write(buffer, c);
                 if (written != (size_t)c)
                 {
-                    syslogf("Write failed: %s bytes written, expected %s", String(written), String(c));
+                    syslogf("Write failed: %d bytes written, expected %d", written, c);
                     file.close();
                     http.end();
                     return false;
@@ -220,12 +220,12 @@ bool downloadAsset(const String& url, const String& localPath)
 
     if (totalRead != (size_t)contentLength)
     {
-        syslogf("Download incomplete: %s of %s", String(totalRead), String(contentLength));
+        syslogf("Download incomplete: %d of %d", totalRead, contentLength);
         LittleFS.remove(localPath);
         return false;
     }
 
-    syslogf("Successfully downloaded: %s (%s bytes)", localPath.c_str(), String(totalRead));
+    syslogf("Successfully downloaded: %s (%d bytes)", localPath.c_str(), totalRead);
     return true;
 }
 
@@ -322,7 +322,7 @@ bool downloadAndUpdateIndexFile()
     String manifest;
     for (int attempt = 0; attempt < maxRetries && !success; attempt++)
     {
-        syslogf("Downloading manifest, attempt %s", String(attempt + 1));
+        syslogf("Downloading manifest, attempt %d", attempt + 1);
 
         // Configure HTTP client for this attempt
         http.setReuse(false);
@@ -341,7 +341,7 @@ bool downloadAndUpdateIndexFile()
             }
             else
             {
-                syslogf("HTTP GET failed with code: %s", String(httpCode));
+                syslogf("HTTP GET failed with code: %d", httpCode);
             }
         }
         else
@@ -359,7 +359,7 @@ bool downloadAndUpdateIndexFile()
 
     if (!success)
     {
-        syslogf("Failed to download manifest after %s attempts", String(maxRetries));
+        syslogf("Failed to download manifest after %d attempts", maxRetries);
         return false;
     }
 
@@ -368,7 +368,7 @@ bool downloadAndUpdateIndexFile()
     DeserializationError error = deserializeJson(doc, manifest);
     if (error)
     {
-        syslogf("Failed to parse manifest: %s", String(error.c_str()));
+        syslogf("Failed to parse manifest: %s", error.c_str());
         return false;
     }
 
@@ -379,7 +379,7 @@ bool downloadAndUpdateIndexFile()
     }
 
     JsonArray files = doc["files"].as<JsonArray>();
-    syslogf("Found %s files in manifest", String(files.size()));
+    syslogf("Found %d files in manifest", files.size());
 
     // Download each file
     for (JsonVariant file : files)
@@ -422,7 +422,7 @@ bool doFirmwareUpdate()
         return false;
     }
     totalLength = http.getSize();
-    syslogf("update: Starting firmware update... totalLength %s", String(totalLength));
+    syslogf("update: Starting firmware update... totalLength %d", totalLength);
 
     if (totalLength <= 0)
     {
@@ -430,7 +430,7 @@ bool doFirmwareUpdate()
         return false;
     }
     bool upd = Update.begin(totalLength, U_FLASH);
-    syslogf("update: begin %s", String(upd));
+    syslogf("update: begin %d", upd);
 
     WiFiClient* stream = http.getStreamPtr();
     int len = totalLength;
@@ -467,7 +467,7 @@ bool doFirmwareUpdate()
             }
             if (Update.write(buff, c) != c)
             {
-                syslogf("update: Write failed c %s", String(c));
+                syslogf("update: Write failed c %d", c);
                 Update.abort();
                 return false;
             }
@@ -477,7 +477,7 @@ bool doFirmwareUpdate()
             int percentage = (bytesDownloaded * 100) / totalLength;
             if (percentage != lastPercentageSent)
             {
-                syslogf("update: Updating: %s%%", String(percentage));
+                syslogf("update: Updating: %d%%", percentage);
                 lastPercentageSent = percentage;
             }
             if (bytesDownloaded % 4096 == 0) vTaskDelay(1);
@@ -515,7 +515,7 @@ bool doFilesystemUpdate()
     }
 
     totalLength = http.getSize();
-    syslogf("update: Starting filesystem update... totalLength %s", String(totalLength));
+    syslogf("update: Starting filesystem update... totalLength %d", totalLength);
 
     if (totalLength <= 0)
     {
@@ -525,7 +525,7 @@ bool doFilesystemUpdate()
 
     // Begin the update with U_SPIFFS for LittleFS
     bool upd = Update.begin(totalLength, U_SPIFFS);
-    syslogf("update: begin filesystem update %s", String(upd));
+    syslogf("update: begin filesystem update %d", upd);
     if (!upd)
     {
         syslogf("update: Not enough space for filesystem update");
@@ -567,7 +567,7 @@ bool doFilesystemUpdate()
             }
             if (Update.write(buff, c) != c)
             {
-                syslogf("update: Filesystem write failed, written %s", String(c));
+                syslogf("update: Filesystem write failed, written %d", c);
                 Update.abort();
                 return false;
             }
@@ -577,7 +577,7 @@ bool doFilesystemUpdate()
             int percentage = (bytesDownloaded * 100) / totalLength;
             if (percentage != lastPercentageSent)
             {
-                syslogf("update: Updating filesystem: %s%%", String(percentage));
+                syslogf("update: Updating filesystem: %d%%", percentage);
                 lastPercentageSent = percentage;
             }
             if (bytesDownloaded % 4096 == 0) vTaskDelay(1);
@@ -594,7 +594,7 @@ bool doFilesystemUpdate()
 
     if (!Update.end(true))
     {
-        syslogf("update: Filesystem update end failed: %s", String(Update.getError()));
+        syslogf("update: Filesystem update end failed: %d", Update.getError());
         return false;
     }
 

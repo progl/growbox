@@ -10,21 +10,21 @@ else
     US_ECHO_PIN = 13;
 }
 
-syslogf("US025: US_TRIG_PIN: %s", String(US_TRIG_PIN));
-syslogf("US025: US_ECHO_PIN: %s", String(US_ECHO_PIN));
+syslogf("US025: US_TRIG_PIN: %d", US_TRIG_PIN);
+syslogf("US025: US_ECHO_PIN: %d", US_ECHO_PIN);
 
 distanceSensor = new HCSR04(US_TRIG_PIN, US_ECHO_PIN);
 float initDist = distanceSensor->dist();
 if (isnan(initDist) || initDist < 1.0f || initDist > MAX_DISTANCE_CM)
 {
-    syslogf("US025: Initial measurement out of range or invalid: %sms", String(initDist));
+    syslogf("US025: Initial measurement out of range or invalid: %.3fms", initDist);
     setSensorDetected("US025", 0);
     return;
 }
 
 // Успешная инициализация
 setSensorDetected("US025", 1);
-syslogf("US025: Initialized, initial distance = %sms", String(initDist, 2));
+syslogf("US025: Initialized, initial distance = %.3fms", initDist);
 
 // Запуск задачи измерения
 TaskUSParams = {"US", TaskUS, 30000, xSemaphore_C};

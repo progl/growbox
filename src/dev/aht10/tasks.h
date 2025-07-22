@@ -27,7 +27,10 @@ void AHT10()
         myAHT10.begin();
     }
 
-    syslogf("AHT10 AirTemp: %s", fFTS(AirTemp, 3));
-    syslogf("AHT10 AirHum: %s", fFTS(AirHum, 3));
+    char buffer[32];
+
+    syslogf("AHT10 AirTemp: %.2f", AirTemp);
+
+    syslogf("AHT10 AirHum: %.2f", AirHum);
 }
 TaskParams AHT10Params;

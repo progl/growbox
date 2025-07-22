@@ -11,9 +11,9 @@ void TaskSDC30()
         CO2 = airSensor.CO2;
         AirTemp = airSensor.temperature;
         AirHum = airSensor.relative_humidity;
-        syslogf("SDC30 CO2 (ppm): %sms", fFTS(CO2, 3));
-        syslogf("SDC30 AirTemp: %sms", fFTS(AirTemp, 3));
-        syslogf("SDC30 AirHum: %sms", fFTS(AirHum, 3));
+        syslogf("SDC30 CO2 (ppm): %.3f", CO2);
+        syslogf("SDC30 AirTemp: %.3f", AirTemp);
+        syslogf("SDC30 AirHum: %.3f", AirHum);
 
         publish_parameter("AirTemp", AirTemp, 3, 1);
         publish_parameter("AirHum", AirHum, 3, 1);

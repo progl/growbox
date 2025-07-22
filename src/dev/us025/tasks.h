@@ -23,7 +23,7 @@ void TaskUS()
 {
     // Температура воздуха для компенсации
     float tempC = isnan(AirTemp) ? 20.0f : AirTemp;
-    syslogf("US025: AirTemp %s°C", f2(tempC, 2));
+    syslogf("US025: AirTemp %.3f°C", tempC);
 
     // Первое измерение
     float newDist = distanceSensor->dist();

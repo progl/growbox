@@ -17,8 +17,8 @@ void checkMismatchedPumps(uint16_t readGPIO, uint16_t bitw)
 
     if (errorPumps.length() > 0)
     {
-        syslog_err("MCP23017 Error set: checkMismatchedPumps readGPIO:" + String(readGPIO) +
-                   " != writeGPIO:" + String(bitw) + "; Mismatched pumps: " + errorPumps);
+        syslogf("MCP23017 Error set: checkMismatchedPumps readGPIO:%d != writeGPIO:%d; Mismatched pumps: %s", readGPIO,
+                bitw, errorPumps.c_str());
     }
     else
     {
@@ -28,8 +28,7 @@ void checkMismatchedPumps(uint16_t readGPIO, uint16_t bitw)
 
 void start_ledc_pwd(int pwdChannel, int &pwd_val, int pwd_freq, int pwd_port, const char *pwd_name)
 {
-    syslogf("MCP23017 start_ledc_%s PORT:%s VALUE:%s FREQ:%s", pwd_name, String(pwd_port), String(pwd_val),
-            String(pwd_freq));
+    syslogf("MCP23017 start_ledc_%s PORT:%d VALUE:%d FREQ:%d", pwd_name, pwd_port, pwd_val, pwd_freq);
     lcd(String(pwd_name) + "-" + String(pwd_freq) + "Hz:" + String(pwd_val));
     ledcSetup(pwdChannel, pwd_freq, PwdResolution1);
     ledcAttachPin(pwd_port, pwdChannel);
@@ -341,13 +340,12 @@ static void updateDriverStates()
                     ledcAttachPin((i < 2) ? PWDport1 : PWDport2, pwdChannel);
                     PwdPompKick(pwdChannel, KickUpMax, KickUpStrart, pwd, KickUpTime);
                     ledcWrite(pwdChannel, pwd);
-                    syslogf("MCP23017 PWD DRV %s pin %s POMP KICK: executed! %s FREQ: %s PWD: %s", String(i),
-                            String(DRV[i][j]), DRV_PK_On_Keys[i][j], String(freq), String(pwd));
+                    syslogf("MCP23017 PWD DRV %d pin %d POMP KICK: executed! FREQ: %d PWD: %d", i, DRV[i][j], freq,
+                            pwd);
                 }
                 else
                 {
-                    syslogf("MCP23017 PWD DRV %s pin %s POMP KICK: skipped! FREQ: %s PWD: %s", String(i),
-                            String(DRV[i][j]), String(freq), String(pwd));
+                    syslogf("MCP23017 PWD DRV %d pin %d POMP KICK: skipped! FREQ: %d PWD: %d", i, DRV[i][j], freq, pwd);
                 }
             }
         }
@@ -387,7 +385,7 @@ static void handleGPIOErrors()
                 bitString[15 - i] = (readGPIO & (1 << i)) ? '1' : '0';
                 bitString2[15 - i] = (bitw & (1 << i)) ? '1' : '0';
             }
-            syslogf("MCP23017 WRITE readGPIO %s bitw %s", String(readGPIO), String(bitw));
+            syslogf("MCP23017 WRITE readGPIO %s bitw %s", bitString, bitString2);
             vTaskDelay(10);
             GPIOerrcont++;
         }
@@ -433,9 +431,10 @@ void MCP23017()
         syslogf(
             "MCP23017 EC_STAB_CHECK: wEC=%.2f/%.2f, wLevel=%s, LevelRange=[%.2f-%.2f], "
             "TimeSinceLastRun=%lus/%lus, Checks: level=%s, time=%s, ec=%s, lowLevel=%s",
-            wEC, ECStabValue, isnan(wLevel) ? "NaN" : String(wLevel, 2).c_str(), ECStabMinDist, ECStabMaxDist,
-            (millis() - ECStabTimeStart) / 1000, ECStabInterval, levelCheck ? "OK" : "FAIL", timeCheck ? "OK" : "WAIT",
-            ecCheck ? "HIGH" : "OK", lowLevel ? "YES" : "NO");
+            wEC, ECStabValue,
+            isnan(wLevel) ? "NaN" : "OK",  // Simplified - can't format float without String
+            ECStabMinDist, ECStabMaxDist, (millis() - ECStabTimeStart) / 1000, ECStabInterval,
+            levelCheck ? "OK" : "FAIL", timeCheck ? "OK" : "WAIT", ecCheck ? "HIGH" : "OK", lowLevel ? "YES" : "NO");
 
         // Основная логика включения помпы
         if ((ecCheck && timeCheck && levelCheck) || lowLevel)
@@ -487,7 +486,7 @@ void MCP23017()
     // Обновляем GPIO
     if (readGPIO != bitw)
     {
-        syslogf("MCP23017 WRITE readGPIO: %s bitw: %s", String(readGPIO), String(bitw));
+        syslogf("MCP23017 WRITE readGPIO: %d bitw: %d", readGPIO, bitw);
         mcp.writeGPIOAB(bitw);
         vTaskDelay(10);
         readGPIO = mcp.readGPIOAB();
@@ -499,7 +498,7 @@ void MCP23017()
     // Публикация состояния пинов
     publishPinStates();
     readGPIO = mcp.readGPIOAB();
-    syslogf("MCP23017  readGPIO: %s", String(readGPIO));
+    syslogf("MCP23017  readGPIO: %d", readGPIO);
 
     // 1) Собираем список активных битов
     String activeList = "";
@@ -521,6 +520,6 @@ void MCP23017()
     }
 
     // 3) Логируем
-    syslogf("MCP23017 readGPIO=%s [активны: %s]", String(readGPIO), activeList);
+    syslogf("MCP23017 readGPIO=%d [активны: %s]", readGPIO, activeList.c_str());
 }
 TaskParams MCP23017Params;

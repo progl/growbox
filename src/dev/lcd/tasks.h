@@ -5,10 +5,18 @@ void TaskLCD()
     oled.clear();
     oled.home();
     oled.setScale(3);
+    char buffer[32];
     oled.println("UPTIME");
-    oled.println(fFTS(millis() / 1000, 0));
+    if (fFTS(millis() / 1000, 0, buffer, sizeof(buffer)))
+    {
+        oled.println(buffer);
+    }
     oled.setScale(2);
-    oled.println("PR:" + fFTS(PR, 0));
+    if (fFTS(PR, 0, buffer, sizeof(buffer)))
+    {
+        oled.print("PR:");
+        oled.println(buffer);
+    }
     oled.update();
 
     if (AirTemp or AirHum or CO2 or AirPress)
@@ -20,10 +28,39 @@ void TaskLCD()
         oled.setScale(2);
         oled.println("Воздух:");
         oled.setScale(2);
-        if (AirTemp) oled.println("Темп:" + fFTS(AirTemp, 1));
-        if (AirHum) oled.println("Влаж:" + fFTS(AirHum, 1) + "%");
-        if (CO2) oled.println("CO2:" + fFTS(CO2, 0));
-        if (AirPress) oled.println("Давл:" + fFTS(AirPress, 1));
+        if (AirTemp)
+        {
+            if (fFTS(AirTemp, 1, buffer, sizeof(buffer)))
+            {
+                oled.print("Темп:");
+                oled.println(buffer);
+            }
+        }
+        if (AirHum)
+        {
+            if (fFTS(AirHum, 1, buffer, sizeof(buffer)))
+            {
+                oled.print("Влаж:");
+                oled.print(buffer);
+                oled.println("%");
+            }
+        }
+        if (CO2)
+        {
+            if (fFTS(CO2, 0, buffer, sizeof(buffer)))
+            {
+                oled.print("CO2:");
+                oled.println(buffer);
+            }
+        }
+        if (AirPress)
+        {
+            if (fFTS(AirPress, 1, buffer, sizeof(buffer)))
+            {
+                oled.print("Давл:");
+                oled.println(buffer);
+            }
+        }
         oled.update();
     }
 
@@ -35,9 +72,31 @@ void TaskLCD()
         oled.setScale(2);
         oled.println("Раствор:");
         oled.setScale(2);
-        if (wEC and !isnan(wEC)) oled.println("ЕС:" + fFTS(wEC, 3) + "mS");
-        if (wpH and !isnan(wpH)) oled.println("pH:" + fFTS(wpH, 3));
-        if (wNTC and !isnan(wNTC)) oled.println("Темп:" + fFTS(wNTC, 2));
+        if (wEC and !isnan(wEC))
+        {
+            if (fFTS(wEC, 3, buffer, sizeof(buffer)))
+            {
+                oled.print("ЕС:");
+                oled.print(buffer);
+                oled.println("mS");
+            }
+        }
+        if (wpH and !isnan(wpH))
+        {
+            if (fFTS(wpH, 3, buffer, sizeof(buffer)))
+            {
+                oled.print("pH:");
+                oled.println(buffer);
+            }
+        }
+        if (wNTC and !isnan(wNTC))
+        {
+            if (fFTS(wNTC, 2, buffer, sizeof(buffer)))
+            {
+                oled.print("Темп:");
+                oled.println(buffer);
+            }
+        }
         oled.update();
     }
 }

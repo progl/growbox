@@ -37,10 +37,12 @@ void TaskVL53L0X()
     }
 
     publish_parameter("Dist", Dist, 3, 1);
-    syslogf("VL53L0X: dist=%sms", fFTS(Dist, 3));
-    syslogf("VL53L0X: Error/Count %s/%s", String(err), String(cont));
-    syslogf("VL53L0X: Highest= %sms", fFTS(VL53L0X_RangeRM.getHighest(), 1));
-    syslogf("VL53L0X: Lowest= %sms", fFTS(VL53L0X_RangeRM.getLowest(), 1));
+    syslogf("VL53L0X: dist=%sms", Dist);
+
+    syslogf("VL53L0X: Error/Count %ld/%ld", err, cont);
+
+    syslogf("VL53L0X: Highest= %.2fms", VL53L0X_RangeRM.getHighest());
+    syslogf("VL53L0X: Lowest= %.2fms", VL53L0X_RangeRM.getLowest());
     Wire.begin(I2C_SDA, I2C_SCL);
 }
 TaskParams TaskVL53L0XParams;

@@ -18,6 +18,12 @@ extern bool mqttClientHAConnected, mqttClientPonicsConnected;
 extern void applyTelegramSettings();
 extern void handleCoreDump(AsyncWebServerRequest *request);
 // Forward declarations from main.cpp
+
+StaticJsonDocument<512> dochandle_token;  // Reduced from 1024
+StaticJsonDocument<512> docApiStatuses;   // Reduced from 1024
+StaticJsonDocument<1024> docBoardInfo;    // Reduced from 2048
+StaticJsonDocument<512> docDeser;         // Reduced from 1024
+
 typedef uint8_t DeviceAddress[8];
 
 // Forward declare Sensor type
@@ -146,7 +152,7 @@ extern void syslogf(const char *format, ...);
 extern bool downloadAndUpdateIndexFile();
 extern void clearLittleFS();
 extern String sanitizeString(const String &input);
-extern String fFTS(float x, byte precision);
+bool fFTS(float x, byte precision, char *buffer, size_t bufferSize);
 
 // Web server
 extern AsyncWebServer server;
@@ -241,10 +247,11 @@ void handleApiGroups(AsyncWebServerRequest *request)
 void handle_token(AsyncWebServerRequest *request)
 {
     syslogf("WEB /handle_token");
-    StaticJsonDocument<1024> doc;
-    doc["uuid"] = update_token;
+
+    dochandle_token.clear();
+    dochandle_token["uuid"] = update_token;
     String output;
-    serializeJson(doc, output);
+    serializeJson(dochandle_token, output);
     request->send(200, "application/json", sanitizeString(output));
 }
 
@@ -253,7 +260,7 @@ void handleApiStatuses(AsyncWebServerRequest *request)
     syslogf("WEB /handleApiStatuses");
     unsigned long t_millis = millis();
 
-    StaticJsonDocument<1024> doc;
+    docApiStatuses.clear();
 
     if (not_detected_sensors.isEmpty())
     {
@@ -277,26 +284,61 @@ void handleApiStatuses(AsyncWebServerRequest *request)
         }
     }
 
-    doc["hostname"] = String(HOSTNAME);
-    doc["firmware"] = String(Firmware);
-    doc["vpdstage"] = vpdstage;
-    doc["ha"] = mqttClientHAConnected;
-    doc["ponics"] = mqttClientPonicsConnected;
-    doc["uptime"] = t_millis;
-    doc["wifi_rssi"] = fFTS(WiFi.RSSI(), 0);
-    doc["AirVPD"] = fFTS(AirVPD, 1);
-    doc["AirHum"] = fFTS(AirHum, 1) + "%";
-    doc["RootTemp"] = fFTS(RootTemp, 1);
-    doc["AirTemp"] = fFTS(AirTemp, 1);
-    doc["wPR"] = fFTS(wPR, 0);
-    doc["wEC"] = fFTS(wEC, 2) + " mS/cm";
-    doc["wNTC"] = fFTS(wNTC, 1);
-    doc["wpH"] = fFTS(wpH, 2);
-    doc["wLevel"] = fFTS(wLevel, 1);
-    doc["CPUTemp"] = fFTS(CPUTemp, 1);
+    docApiStatuses["hostname"] = String(HOSTNAME);
+    docApiStatuses["firmware"] = String(Firmware);
+    docApiStatuses["vpdstage"] = vpdstage;
+    docApiStatuses["ha"] = mqttClientHAConnected;
+    docApiStatuses["ponics"] = mqttClientPonicsConnected;
+    docApiStatuses["uptime"] = t_millis;
+    char buffer[32];
+    if (fFTS(WiFi.RSSI(), 0, buffer, sizeof(buffer)))
+    {
+        docApiStatuses["wifi_rssi"] = buffer;
+    }
+    if (fFTS(AirVPD, 1, buffer, sizeof(buffer)))
+    {
+        docApiStatuses["AirVPD"] = buffer;
+    }
+    char buffer2[32];
+    if (fFTS(AirHum, 1, buffer2, sizeof(buffer2)))
+    {
+        docApiStatuses["AirHum"] = String(buffer2) + "%";
+    }
+    if (fFTS(RootTemp, 1, buffer, sizeof(buffer)))
+    {
+        docApiStatuses["RootTemp"] = buffer;
+    }
+    if (fFTS(AirTemp, 1, buffer, sizeof(buffer)))
+    {
+        docApiStatuses["AirTemp"] = buffer;
+    }
+    if (fFTS(wPR, 1, buffer, sizeof(buffer)))
+    {
+        docApiStatuses["wPR"] = buffer;
+    }
+    if (fFTS(wEC, 2, buffer, sizeof(buffer)))
+    {
+        docApiStatuses["wEC"] = buffer;
+    }
+    if (fFTS(wNTC, 1, buffer, sizeof(buffer)))
+    {
+        docApiStatuses["wNTC"] = buffer;
+    }
+    if (fFTS(wpH, 2, buffer, sizeof(buffer)))
+    {
+        docApiStatuses["wpH"] = buffer;
+    }
+    if (fFTS(wLevel, 1, buffer, sizeof(buffer)))
+    {
+        docApiStatuses["wLevel"] = buffer;
+    }
+    if (fFTS(CPUTemp, 1, buffer, sizeof(buffer)))
+    {
+        docApiStatuses["CPUTemp"] = buffer;
+    }
 
     String output;
-    serializeJson(doc, output);
+    serializeJson(docApiStatuses, output);
     request->send(200, "application/json", sanitizeString(output));
 }
 
@@ -304,7 +346,7 @@ void handleApiStatuses(AsyncWebServerRequest *request)
 
 void handleBoardInfo(AsyncWebServerRequest *request)
 {
-    StaticJsonDocument<2048> doc;
+    docBoardInfo.clear();
 
     // --- Heap info ---
     size_t freeHeap = ESP.getFreeHeap();
@@ -315,21 +357,21 @@ void handleBoardInfo(AsyncWebServerRequest *request)
 
     size_t min_free_size_ever = heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT);
 
-    doc["heap"]["free_bytes"] = freeHeap;
-    doc["heap"]["max_alloc_bytes"] = maxAllocHeap;
-    doc["heap"]["total_allocated_bytes"] = heap_info.total_allocated_bytes;
-    doc["heap"]["total_free_bytes"] = heap_info.total_free_bytes;
-    doc["heap"]["largest_free_block"] = heap_info.largest_free_block;
-    doc["heap"]["minimum_free_bytes"] = heap_info.minimum_free_bytes;
-    doc["heap"]["free_blocks_count"] = heap_info.free_blocks;
-    doc["heap"]["min_free_size_ever"] = min_free_size_ever;
+    docBoardInfo["heap"]["free_bytes"] = freeHeap;
+    docBoardInfo["heap"]["max_alloc_bytes"] = maxAllocHeap;
+    docBoardInfo["heap"]["total_allocated_bytes"] = heap_info.total_allocated_bytes;
+    docBoardInfo["heap"]["total_free_bytes"] = heap_info.total_free_bytes;
+    docBoardInfo["heap"]["largest_free_block"] = heap_info.largest_free_block;
+    docBoardInfo["heap"]["minimum_free_bytes"] = heap_info.minimum_free_bytes;
+    docBoardInfo["heap"]["free_blocks_count"] = heap_info.free_blocks;
+    docBoardInfo["heap"]["min_free_size_ever"] = min_free_size_ever;
 
     float frag_ratio = 100.0f * (1.0f - ((float)heap_info.largest_free_block / (float)heap_info.total_free_bytes));
-    doc["heap"]["fragmentation_percent"] = frag_ratio;
+    docBoardInfo["heap"]["fragmentation_percent"] = frag_ratio;
 
     // --- PSRAM info ---
     bool psramAvailable = esp_spiram_is_initialized();
-    doc["psram"]["enabled"] = psramAvailable;
+    docBoardInfo["psram"]["enabled"] = psramAvailable;
 
     if (psramAvailable)
     {
@@ -337,27 +379,27 @@ void handleBoardInfo(AsyncWebServerRequest *request)
         size_t psramFree = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
         size_t psramMinFreeEver = heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM);
 
-        doc["psram"]["size_bytes"] = psramSize;
-        doc["psram"]["free_bytes"] = psramFree;
-        doc["psram"]["min_free_bytes_ever"] = psramMinFreeEver;
+        docBoardInfo["psram"]["size_bytes"] = psramSize;
+        docBoardInfo["psram"]["free_bytes"] = psramFree;
+        docBoardInfo["psram"]["min_free_bytes_ever"] = psramMinFreeEver;
     }
     else
     {
-        doc["psram"]["size_bytes"] = 0;
-        doc["psram"]["free_bytes"] = 0;
-        doc["psram"]["min_free_bytes_ever"] = 0;
+        docBoardInfo["psram"]["size_bytes"] = 0;
+        docBoardInfo["psram"]["free_bytes"] = 0;
+        docBoardInfo["psram"]["min_free_bytes_ever"] = 0;
     }
 
     // --- FS info ---
     size_t fsTotal = LittleFS.totalBytes();
     size_t fsUsed = LittleFS.usedBytes();
-    doc["fs"]["total_kb"] = fsTotal / 1024;
-    doc["fs"]["used_kb"] = fsUsed / 1024;
-    doc["fs"]["free_kb"] = (fsTotal - fsUsed) / 1024;
+    docBoardInfo["fs"]["total_kb"] = fsTotal / 1024;
+    docBoardInfo["fs"]["used_kb"] = fsUsed / 1024;
+    docBoardInfo["fs"]["free_kb"] = (fsTotal - fsUsed) / 1024;
 
     // --- Uptime ---
     unsigned long uptime = millis();
-    doc["uptime_ms"] = uptime;
+    docBoardInfo["uptime_ms"] = uptime;
     unsigned long days = uptime / 86400000;
     unsigned long hours = (uptime % 86400000) / 3600000;
     unsigned long minutes = (uptime % 3600000) / 60000;
@@ -365,46 +407,46 @@ void handleBoardInfo(AsyncWebServerRequest *request)
     unsigned long milliseconds = uptime % 1000;
     char uptimeStr[64];
     snprintf(uptimeStr, sizeof(uptimeStr), "%lud %02lu:%02lu:%02lu.%03lu", days, hours, minutes, seconds, milliseconds);
-    doc["uptime"]["formatted"] = uptimeStr;
+    docBoardInfo["uptime"]["formatted"] = uptimeStr;
 
     // --- Core temp ---
     float coreTemp = temperatureRead();
-    doc["core_temp_c"] = isnan(coreTemp) ? "" : String(coreTemp);
+    docBoardInfo["core_temp_c"] = isnan(coreTemp) ? "" : String(coreTemp);
 
     // --- Sketch info ---
-    doc["sketch"]["size_bytes"] = ESP.getSketchSize();
-    doc["sketch"]["free_space_bytes"] = ESP.getFreeSketchSpace();
+    docBoardInfo["sketch"]["size_bytes"] = ESP.getSketchSize();
+    docBoardInfo["sketch"]["free_space_bytes"] = ESP.getFreeSketchSpace();
 
     // --- Reset reason ---
-    doc["reset_reason"] = (int)esp_reset_reason();
+    docBoardInfo["reset_reason"] = (int)esp_reset_reason();
 
     // --- SDK and chip info ---
-    doc["sdk_version"] = ESP.getSdkVersion();
-    doc["firmware"] = Firmware;
-    doc["chip_model"] = ESP.getChipModel();
-    doc["chip_revision"] = ESP.getChipRevision();
-    doc["cpu_freq_mhz"] = ESP.getCpuFreqMHz();
+    docBoardInfo["sdk_version"] = ESP.getSdkVersion();
+    docBoardInfo["firmware"] = Firmware;
+    docBoardInfo["chip_model"] = ESP.getChipModel();
+    docBoardInfo["chip_revision"] = ESP.getChipRevision();
+    docBoardInfo["cpu_freq_mhz"] = ESP.getCpuFreqMHz();
 
     // --- WiFi info ---
     if (WiFi.isConnected())
     {
-        doc["wifi"]["ssid"] = WiFi.SSID();
-        doc["wifi"]["rssi"] = WiFi.RSSI();
-        doc["wifi"]["ip"] = WiFi.localIP().toString();
-        doc["wifi"]["connected"] = true;
+        docBoardInfo["wifi"]["ssid"] = WiFi.SSID();
+        docBoardInfo["wifi"]["rssi"] = WiFi.RSSI();
+        docBoardInfo["wifi"]["ip"] = WiFi.localIP().toString();
+        docBoardInfo["wifi"]["connected"] = true;
     }
     else
     {
-        doc["wifi"]["connected"] = false;
+        docBoardInfo["wifi"]["connected"] = false;
     }
 
     // --- JSON doc memory usage ---
-    doc["json_doc_memory_usage"] = doc.memoryUsage();
-    doc["json_doc_capacity"] = doc.capacity();
+    docBoardInfo["json_doc_memory_usage"] = docBoardInfo.memoryUsage();
+    docBoardInfo["json_doc_capacity"] = docBoardInfo.capacity();
 
     // --- Send response ---
     String output;
-    serializeJsonPretty(doc, output);
+    serializeJsonPretty(docBoardInfo, output);
     request->send(200, "application/json", output);
 }
 
@@ -710,16 +752,15 @@ void setupStaticFiles()
             // Когда получен весь body
             if (index + len == total)
             {
-                StaticJsonDocument<1024> doc;
-                DeserializationError error = deserializeJson(doc, body);
+                DeserializationError error = deserializeJson(docDeser, body);
                 if (error)
                 {
                     request->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
                     return;
                 }
 
-                const char *username = doc["username"];
-                const char *password = doc["password"];
+                const char *username = docDeser["username"];
+                const char *password = docDeser["password"];
 
                 if (!username || !password)
                 {

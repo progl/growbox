@@ -1,4 +1,7 @@
 
+// Создание JSON-объекта
+StaticJsonDocument<6144> docGroups;
+StaticJsonDocument<1024> docApiTasks;
 void setVPDStyles(String vpdstage)
 {
     if (vpdstage == "Start")
@@ -56,8 +59,8 @@ String sanitizeString(const String &input)
 
 void handleApiTasks(AsyncWebServerRequest *request)
 {
-    StaticJsonDocument<1024> doc;
-    JsonArray tasksArray = doc.createNestedArray("tasks_status");
+    docApiTasks.clear();
+    JsonArray tasksArray = docApiTasks.createNestedArray("tasks_status");
 
     for (int i = 0; i < MAX_TASKS; i++)
     {
@@ -73,27 +76,7 @@ void handleApiTasks(AsyncWebServerRequest *request)
     }
 
     String output;
-    serializeJson(doc, output);
-    request->send(200, "application/json", sanitizeString(output));
-}
-
-void handle_calibrate(AsyncWebServerRequest *request)
-{
-    syslogf("WEB /handle_calibrate");
-
-    StaticJsonDocument<1024> doc;
-    doc["wR2"] = fFTS(wR2, 2);
-    doc["An"] = fFTS(An, 3);
-    doc["Ap"] = fFTS(Ap, 3);
-    doc["Dist"] = fFTS(Dist, 1);  // Один раз достаточно
-    doc["pHmV"] = fFTS(pHmV, 3);
-    doc["PR"] = fFTS(PR, 3);
-    doc["RAW_NTC"] = fFTS(NTC_RAW, 3);
-    doc["ec_notermo"] = fFTS(ec_notermo, 2) + " mS/cm";
-    doc["not_detected_sensors"] = not_detected_sensors;
-
-    String output;
-    serializeJson(doc, output);
+    serializeJson(docApiTasks, output);
     request->send(200, "application/json", sanitizeString(output));
 }
 
@@ -101,14 +84,12 @@ String ApiGroups(bool labels = false)
 {
     // Проверка и инициализация списков не обнаруженных и обнаруженных датчиков
 
-    syslogf("WEB /groups labels %s", String(labels));
+    syslogf("WEB /groups labels %d", labels);
     unsigned long t_millis = millis();
-
-    // Создание JSON-объекта
-    StaticJsonDocument<8024> doc;
+    docGroups.clear();
 
     // Добавление групп настроек
-    JsonObject groupsJson = doc["groups"].to<JsonObject>();
+    JsonObject groupsJson = docGroups["groups"].to<JsonObject>();
 
     for (Group &group : groups)
     {
@@ -117,13 +98,17 @@ String ApiGroups(bool labels = false)
         for (int i = 0; i < group.numParams; i++)
         {
             Param &param = group.params[i];
+            if (param.name == nullptr)
+            {
+                continue;
+            }
             PreferenceItem *item = findPreferenceByKey(param.name);
 
             if (item != nullptr && item->preferences != nullptr)
             {
                 if (labels)
                 {
-                    doc[String(param.name) + "_label"] = param.label;
+                    docGroups[String(param.name) + "_label"] = param.label;
                 }
                 else
                 {
@@ -143,12 +128,12 @@ String ApiGroups(bool labels = false)
             }
             else
             {
-                syslogf("ERROR: Could not find preferences for %s", String(param.name));
+                syslogf("ERROR: Could not find preferences for %s", param.name);
             }
         }
     }
 
-    JsonArray sensorsArray = doc["sensors"].to<JsonArray>();
+    JsonArray sensorsArray = docGroups["sensors"].to<JsonArray>();
     for (int i = 0; i < sensorCount; i++)
     {
         JsonObject sensor = sensorsArray.add<JsonObject>();
@@ -158,7 +143,7 @@ String ApiGroups(bool labels = false)
 
     // Сериализация и отправка JSON
     String output;
-    serializeJson(doc, output);
+    serializeJson(docGroups, output);
 
     Serial.print("Serialized JSON length: ");
     Serial.println(output.length());

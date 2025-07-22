@@ -155,7 +155,6 @@ void processLogMessages(void *parameter)
             }
             // Send to Serial
             Serial.println(formattedMsg);
-            vTaskDelay(50);
         }
         vTaskDelay(100);  // Yield to other tasks
     }
@@ -571,16 +570,16 @@ void enqueueMessage(const char *topic, const char *payload, String key = "", Str
         {
             int packet_id = mqttClient.publish(topic, 0, false, payload);
 
-            String e = String(topic) + ":::" + String(payload);
+            char e[256];  // подберите размер под свои максимальные topic+payload
+            snprintf(e, sizeof(e), "%s:::%s", topic, payload);
+
             if (events.count() > 0)
             {
-                events.send(e.c_str(), "mqtt-ponics", millis());
+                events.send(e, "mqtt-ponics", millis());
             }
 
             if (packet_id == 0)
             {
-                int payloadSize = strlen(payload);
-                syslogf("Payload size: %d", payloadSize);
                 syslogf(" error enqueueMessage: publish packet_id %d topic %s payload %s", packet_id, topic, payload);
             }
         }
@@ -646,8 +645,6 @@ void setParamSettings(const String &key, float compare, int action, String url)
 
 void publish_parameter(const String &key, float value, int precision, int timescale)
 {
-    // Отправляем RSSI значение если это первый вызов
-
     // Проверка на пустой ключ
     if (key.length() == 0)
     {
@@ -657,22 +654,33 @@ void publish_parameter(const String &key, float value, int precision, int timesc
 
     if (timescale == 1)
     {
-        String topic = update_token + "/" + timescale_prefix + key;  // Используем соответствующий префикс темы
-        char valueStr[32];
-        if (log_debug) syslogf("mqtt publish_parameter topic %s value: %f", topic.c_str(), value);
+        // Calculate required buffer size: update_token + '/' + timescale_prefix + key + '\0'
+        const size_t topicSize = update_token.length() + 1 + timescale_prefix.length() + key.length() + 1;
+        char topic[topicSize];
+        snprintf(topic, topicSize, "%s/%s%s", update_token.c_str(), timescale_prefix.c_str(), key.c_str());
 
+        char valueStr[32];
         dtostrf(value, 1, precision, valueStr);  // Преобразуем float в строку с заданной точностью
 
-        if (log_debug) syslogf("mqtt published topic %s value: %s", topic.c_str(), valueStr);
-        enqueueMessage(topic.c_str(), valueStr, key);
+        if (log_debug)
+        {
+            syslogf("mqtt publish_parameter topic %s value: %s", topic, valueStr);
+        }
+
+        if (log_debug) syslogf("mqtt published topic %s value: %s", topic, valueStr);
+        enqueueMessage(topic, valueStr, key);
     }
     else
     {
-        String topic = update_token + "/" + data_prefix + key;  // Используем соответствующий префикс темы
+        // Calculate required buffer size: update_token + '/' + data_prefix + key + '\0'
+        const size_t topicSize = update_token.length() + 1 + data_prefix.length() + key.length() + 1;
+        char topic[topicSize];
+        snprintf(topic, topicSize, "%s/%s%s", update_token.c_str(), data_prefix.c_str(), key.c_str());
+
         char valueStr[32];
 
         dtostrf(value, 1, precision, valueStr);  // Преобразуем float в строку с заданной точностью
-        enqueueMessage(topic.c_str(), valueStr, key);
+        enqueueMessage(topic, valueStr, key);
     }
 }
 
@@ -692,19 +700,27 @@ void publish_parameter(const String &key, const String &value, int timescale)
         return;  // Выходим, если значение пустое
     }
 
-    if (timescale == 1)
-    {
-        String topic = update_token + "/" + timescale_prefix + key;  // Используем соответствующий префикс темы
-        if (log_debug) syslogf("publish_parameter topic %s value: %s", topic.c_str(), value.c_str());
+    // Calculate required buffer size for topic
+    const char *prefix = (timescale == 1) ? timescale_prefix.c_str() : data_prefix.c_str();
+    const size_t topicSize = update_token.length() + 1 + strlen(prefix) + key.length() + 1;
+    char topic[topicSize];
 
-        enqueueMessage(topic.c_str(), String(value).c_str(), key);
-        if (log_debug) syslogf("published topic %s value: %s", topic.c_str(), value.c_str());
+    // Format the topic string
+    snprintf(topic, topicSize, "%s/%s%s", update_token.c_str(), prefix, key.c_str());
+
+    // Log if debug is enabled
+    if (log_debug)
+    {
+        syslogf("publish_parameter topic %s value: %s", topic, value.c_str());
     }
-    else
-    {
-        String topic = update_token + "/" + data_prefix + key;  // Используем соответствующий префикс темы
 
-        enqueueMessage(topic.c_str(), String(value).c_str(), key);
+    // Enqueue the message
+    enqueueMessage(topic, value.c_str(), key);
+
+    // Log if debug is enabled
+    if (log_debug && timescale == 1)
+    {
+        syslogf("published topic %s value: %s", topic, value.c_str());
     }
 }
 void get_ph()
@@ -734,22 +750,40 @@ void get_ec()
 
         wR2 = (R2p + R2n) / 2;
 
+        char buffer[32];
+        char an_str[32], r1_str[32], rx1_str[32], dr_str[32], ap_str[32], rx2_str[32], r2p_str[32], r2n_str[32],
+            wr2_str[32];
+
+        fFTS(An, 3, an_str, sizeof(an_str));
+        fFTS(R1, 3, r1_str, sizeof(r1_str));
+        fFTS(Rx1, 3, rx1_str, sizeof(rx1_str));
+        fFTS(Dr, 3, dr_str, sizeof(dr_str));
+        fFTS(Ap, 3, ap_str, sizeof(ap_str));
+        fFTS(Rx2, 3, rx2_str, sizeof(rx2_str));
+        fFTS(R2p, 3, r2p_str, sizeof(r2p_str));
+        fFTS(R2n, 3, r2n_str, sizeof(r2n_str));
+        fFTS(wR2, 3, wr2_str, sizeof(wr2_str));
+
         syslogf(
             "make_raschet before calculation: An: %s, R1: %s, Rx1: %s, Dr: %s, Ap: %s, Rx2: %s, R2p: %s, R2n: %s, wR2: "
             "%s, An: %s",
-            fFTS(An, 3).c_str(), fFTS(R1, 3).c_str(), fFTS(Rx1, 3).c_str(), fFTS(Dr, 3).c_str(), fFTS(Ap, 3).c_str(),
-            fFTS(Rx2, 3).c_str(), fFTS(R2p, 3).c_str(), fFTS(R2n, 3).c_str(), fFTS(wR2, 3).c_str(),
-            fFTS(An, 3).c_str());
+            an_str, r1_str, rx1_str, dr_str, ap_str, rx2_str, r2p_str, r2n_str, wr2_str, an_str);
 
         if (wR2 > 0)
         {
             float eb = (-log10(ec1 / ec2)) / (log10(ex2 / ex1));
             float ea = pow(ex1, -eb) * ec1;
             ec_notermo = ea * pow(wR2, eb);
-            syslogf("make_raschet eb: %s ec: %s ea: %s wNTC: %s", fFTS(eb, 3).c_str(), fFTS(ec_notermo, 3).c_str(),
-                    fFTS(ea, 3).c_str(), fFTS(wNTC, 3).c_str());
+            char eb_str[32], ec_str[32], ea_str[32], wntc_str[32];
+            fFTS(eb, 3, eb_str, sizeof(eb_str));
+            fFTS(ec_notermo, 3, ec_str, sizeof(ec_str));
+            fFTS(ea, 3, ea_str, sizeof(ea_str));
+            fFTS(wNTC, 3, wntc_str, sizeof(wntc_str));
+            syslogf("make_raschet eb: %s ec: %s ea: %s wNTC: %s", eb_str, ec_str, ea_str, wntc_str);
             wEC_ususal = ec_notermo / (1 + kt * (wNTC - 25)) + eckorr;
-            syslogf("EC_KAL_E: %s", fFTS(EC_KAL_E, 3).c_str());
+            char eckal_str[32];
+            fFTS(EC_KAL_E, 3, eckal_str, sizeof(eckal_str));
+            syslogf("EC_KAL_E: %s", eckal_str);
 
             if (EC_KAL_E == 1)
             {

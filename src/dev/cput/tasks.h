@@ -15,7 +15,7 @@ void TaskCPUTEMP()
 
     if (success)
     {
-        syslogf("CPU Temperature: %s", fFTS(CPUTemp, 2));
+        syslogf("CPU Temperature: %.2f", CPUTemp);
         publish_parameter("CPUTemp", CPUTemp, 3, 1);
     }
     else

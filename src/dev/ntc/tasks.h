@@ -12,9 +12,10 @@ void get_ntc()
     }
 
     wNTC = (tR_B * 25 - r * 237.15 * 25 - r * pow(237.15, 2)) / (tR_B + r * 25 + r * 237.15) + tR_val_korr;
-    syslogf("make_raschet get_ntc EC tR_B:%s EC r:%s NTC_RAW %s NTC_KAL_E %s NTC_Kalman %s tR_DAC %s wNTC %s",
-            fFTS(tR_B, 3), fFTS(r, 3), fFTS(NTC_RAW, 3), fFTS(NTC_KAL_E, 0), fFTS(NTC_Kalman, 2), fFTS(tR_DAC, 3),
-            fFTS(wNTC, 3));
+
+    syslogf(
+        "make_raschet get_ntc EC tR_B:%.3f EC r:%.3f NTC_RAW:%.3f NTC_KAL_E:%d NTC_Kalman:%.2f tR_DAC:%.3f wNTC:%.3f",
+        tR_B, r, NTC_RAW, NTC_KAL_E, NTC_Kalman, tR_DAC, wNTC);
 }
 void get_acp()
 {
@@ -34,20 +35,24 @@ void get_acp()
 
     NTC_RAW = NTC_RAW / NTC_MiddleCount;
     KalmanNTC.filtered(NTC_RAW);
-    syslogf("Frequency kHz:%s NTC_RAW %s", fFTS(NTC_Freq, 3), fFTS(NTC_RAW, 3));
+
+    syslogf("Frequency kHz:%.3f NTC_RAW:%.3f", NTC_Freq, NTC_RAW);
 }
 
 void NTC_void()
 {
     unsigned long NTC_time = millis();
-    syslogf("NTC Start %sms", fFTS(NTC_LastTime, 0));
+    syslogf("NTC Start %dms", NTC_LastTime);
 
     get_acp();
 
     NTC_Kalman = KalmanNTC.filtered(NTC_RAW);
-    syslogf("NTC NTC_RAW %s", fFTS(NTC_RAW, 0));
+
+    syslogf("NTC NTC_RAW %.3f", NTC_RAW);
+
     NTC_time = millis() - NTC_time;
-    syslogf("NTC %s  %sms end.", fFTS(NTC_RAW, 3), fFTS(NTC_time, 0));
+
+    syslogf("NTC %dms end.", NTC_time);
     NTC_old = millis();
     if (NTC_KAL_E == 1)
     {

@@ -10,13 +10,13 @@ bool updatePreferenceValue(PreferenceItem *item, const String &value, String mqt
 
     if (item->preferences == nullptr)
     {
-        syslogf("ERROR: Preferences are null for key: %s", String(item->key));
+        syslogf("ERROR: Preferences are null for key: %s", item->key);
         return false;  // Exit if preferences are nullptr
     }
 
     if (item->variable == nullptr)
     {
-        syslogf("ERROR: Variable is null for key: %s", String(item->key));
+        syslogf("ERROR: Variable is null for key: %s", item->key);
         return false;  // Exit if variable is nullptr
     }
     switch (item->type)
@@ -38,7 +38,7 @@ bool updatePreferenceValue(PreferenceItem *item, const String &value, String mqt
             s = item->preferences->putBool(item->key, *(bool *)item->variable);
             break;
         default:
-            syslogf("ERROR: Unsupported data type for key: %s", String(item->key));
+            syslogf("ERROR: Unsupported data type for key: %s", item->key);
             return false;  // Выход, если тип данных не поддерживается
     }
 
@@ -48,12 +48,12 @@ bool updatePreferenceValue(PreferenceItem *item, const String &value, String mqt
     if (s.length() > 0)
     {
         publish_one_data(item, mqtt_type);
-        syslogf("Updated preference for key: %s with value: %s", String(item->key), String(value));
+        syslogf("Updated preference for key: %s with value: %s", item->key, value);
         return true;
     }
     else
     {
-        syslogf("Failed to update preference for key: %s with value: %s", String(item->key), String(value));
+        syslogf("Failed to update preference for key: %s with value: %s", item->key, value);
     }
     return false;
 }
@@ -73,13 +73,13 @@ bool updatePreference(const char *settingName, const JsonVariant &value, String 
             case DataType::BOOLEAN:
                 return updatePreferenceValue(item, value.as<bool>() ? "true" : "false", mqtt_type);
             default:
-                syslogf("ERROR: Unsupported data type for key: %s", String(settingName));
+                syslogf("ERROR: Unsupported data type for key: %s", settingName);
                 return false;  // Выход, если тип данных не поддерживается
         }
     }
     else
     {
-        syslogf("ERROR: Preference item not found for key: %s", String(settingName));
+        syslogf("ERROR: Preference item not found for key: %s", settingName);
         return false;
     }
     return false;
@@ -94,7 +94,7 @@ bool updatePreference(const char *settingName, const String &value, String mqtt_
     }
     else
     {
-        syslogf("ERROR: Preference item not found for key: %s", String(settingName));
+        syslogf("ERROR: Preference item not found for key: %s", settingName);
         return false;
     }
     return false;
@@ -102,62 +102,83 @@ bool updatePreference(const char *settingName, const String &value, String mqtt_
 
 void publish_discovery_payload(const char *sensor_name)
 {
-    StaticJsonDocument<512> doc;
+    StaticJsonDocument<512> docdiscovery;
+    docdiscovery.clear();
     char buffer[512];
+    char topic[256];
+    char unique_id[128];
 
-    doc["name"] = sensor_name;
-    doc["state_topic"] = update_token + "/" + timescale_prefix + sensor_name;
-    doc["state_class"] = "measurement";
-    doc["unique_id"] = String(HOSTNAME) + "_" + sensor_name;
-    doc["device"]["identifiers"][0] = HOSTNAME;
-    doc["device"]["name"] = HOSTNAME;
-    doc["device"]["model"] = "GROWBOX";
-    doc["device"]["manufacturer"] = "PONICS.ONLINE";
+    // Format state topic
+    char state_topic[128];
+    snprintf(state_topic, sizeof(state_topic), "%s/%s%s", update_token.c_str(), timescale_prefix.c_str(), sensor_name);
 
-    serializeJson(doc, buffer);
-    String discovery_topic = "homeassistant/sensor/" + String(sensor_name) + "__" + String(HOSTNAME) + "/config";
-    enqueueMessage(discovery_topic.c_str(), buffer, "", "ha");
+    // Format unique_id
+    snprintf(unique_id, sizeof(unique_id), "%s_%s", HOSTNAME, sensor_name);
+
+    // Set JSON values
+    docdiscovery["name"] = sensor_name;
+    docdiscovery["state_topic"] = state_topic;
+    docdiscovery["state_class"] = "measurement";
+    docdiscovery["unique_id"] = unique_id;
+    docdiscovery["device"]["identifiers"][0] = HOSTNAME;
+    docdiscovery["device"]["name"] = HOSTNAME;
+    docdiscovery["device"]["model"] = "GROWBOX";
+    docdiscovery["device"]["manufacturer"] = "PONICS.ONLINE";
+
+    // Serialize and publish
+    serializeJson(docdiscovery, buffer);
+
+    // Format discovery topic
+    snprintf(topic, sizeof(topic), "homeassistant/sensor/%s__%s/config", sensor_name, HOSTNAME);
+
+    enqueueMessage(topic, buffer, "", "ha");
 }
 
 void publish_switch_discovery_payload(Param param)
 {
-    String switch_name = String(param.name);
-    StaticJsonDocument<512> doc;
-    char buffer[512];
-    String command_topic = update_token + "/" + "set/" + String(param.name);
-
-    // Проверка на наличие имени переключателя
-    if (switch_name.length() == 0)
+    // Check if param.name is valid
+    if (strlen(param.name) == 0)
     {
         syslogf("mqttHA ERROR: Switch name is empty.");
         return;
     }
 
-    doc["name"] = switch_name;             // Имя устройства
-    doc["command_topic"] = command_topic;  // Топик для команд
-    doc["state_topic"] = command_topic;    // Топик для состояния
+    StaticJsonDocument<512> doc;
+    char buffer[512];
+    char command_topic[128];
+    char unique_id[128];
+    char discovery_topic[192];
 
-    doc["unique_id"] = String(HOSTNAME) + "_" + switch_name;  // Уникальный ID устройства
-    doc["payload_on"] = 1;                                    // Значение для включения
-    doc["payload_off"] = 0;                                   // Значение для выключения
-    doc["retain"] = false;                                    // Сообщения сохраняются
+    // Format command topic
+    snprintf(command_topic, sizeof(command_topic), "%s/set/%s", update_token.c_str(), param.name);
 
-    // Информация об устройстве (для Home Assistant Device Registry)
+    // Format unique_id
+    snprintf(unique_id, sizeof(unique_id), "%s_%s", HOSTNAME, param.name);
+
+    // Format discovery topic
+    snprintf(discovery_topic, sizeof(discovery_topic), "homeassistant/switch/%s__%s/config", param.name, HOSTNAME);
+
+    // Build JSON document
+    doc["name"] = param.name;              // Device name
+    doc["command_topic"] = command_topic;  // Command topic
+    doc["state_topic"] = command_topic;    // State topic
+    doc["unique_id"] = unique_id;          // Unique device ID
+    doc["payload_on"] = 1;                 // Value for ON
+    doc["payload_off"] = 0;                // Value for OFF
+    doc["retain"] = false;                 // Don't retain messages
+
+    // Device information for Home Assistant
     doc["device"]["identifiers"][0] = HOSTNAME;
     doc["device"]["name"] = HOSTNAME;
     doc["device"]["model"] = "GROWBOX";
     doc["device"]["manufacturer"] = "PONICS.ONLINE";
 
-    // Сериализуем JSON
+    // Serialize and publish
     serializeJson(doc, buffer);
+    enqueueMessage(discovery_topic, buffer, "", "ha");
 
-    // Публикуем сообщение в топик Discovery
-    String discovery_topic = "homeassistant/switch/" + String(switch_name) + "__" + String(HOSTNAME) + "/config";
-
-    enqueueMessage(discovery_topic.c_str(), buffer, "", "ha");
-
-    // Проверка наличия элемента предпочтений
-    PreferenceItem *item = findPreferenceByKey(switch_name.c_str());
+    // Check for preference item
+    PreferenceItem *item = findPreferenceByKey(param.name);
 
     if (item != nullptr)
     {
@@ -196,21 +217,21 @@ void publish_switch_discovery_payload(Param param)
                 // Отправляем сообщение и логируем состояние
                 if (!value.isEmpty())
                 {
-                    enqueueMessage(command_topic.c_str(), value.c_str(), "", "ha");
-                    syslogf("mqttHA mqttClientHA publish switch state %s value %s", String(switch_name), String(value));
+                    enqueueMessage(command_topic, value.c_str(), "", "ha");
+                    syslogf("mqttHA mqttClientHA publish switch state %s value %s", param.name, value);
                 }
             }
 
-            mqttClientHA.subscribe(command_topic.c_str(), qos);
+            mqttClientHA.subscribe(command_topic, qos);
         }
         else
         {
-            syslogf("ERROR: mqtt publish switch  Variable is null for %s", String(switch_name));
+            syslogf("ERROR: mqtt publish switch  Variable is null for %s", param.name);
         }
     }
     else
     {
-        syslogf("mqtt ERROR: mqtt publish switch  Could not find preferences for %s", String(switch_name));
+        syslogf("mqtt ERROR: mqtt publish switch  Could not find preferences for %s", param.name);
     }
 }
 
@@ -223,8 +244,8 @@ void subscribe_param_ha(Param param)
 void onMqttDisconnectHA(AsyncMqttClientDisconnectReason reason)
 {
     mqttClientHAConnected = false;
-    syslogf("mqtt mqttClientHA Disconnected. Reason: %s", String((int)reason));
-    syslogf("mqtt mqttClientHA: WiFi isConnected: %s", String(WiFi.isConnected()));
+    syslogf("mqtt mqttClientHA Disconnected. Reason: %d", reason);
+    syslogf("mqtt mqttClientHA: WiFi isConnected: %d", WiFi.isConnected());
     if (WiFi.isConnected())
     {
         if (not mqttClientHA.connected())
@@ -242,8 +263,7 @@ void connectToMqttHA()
         if (not mqttClientHA.connected())
         {
             mqttHAConnected = 0;
-            syslogf("mqtt mqttClientHA a_ha: \"%s\", p_ha: \"%s\", u_ha: \"%s\"", String(a_ha), String(p_ha),
-                    String(u_ha));
+            syslogf("mqtt mqttClientHA a_ha: \"%s\", p_ha: \"%s\", u_ha: \"%s\"", a_ha, p_ha, u_ha);
             syslogf("mqtt mqttClientHA connectToMqtt Connecting to MQTT...");
             mqttClientHA.connect();
             mqtt_not_connected_counter = mqtt_not_connected_counter + 1;
@@ -272,8 +292,8 @@ void onMqttReconnectTimerHa(TimerHandle_t xTimer)
 
 void publish_setting_groups()
 {
-    StaticJsonDocument<4096> doc;
-    JsonObject root = doc.to<JsonObject>();
+    StaticJsonDocument<16384> docsetting_groups;
+    JsonObject root = docsetting_groups.to<JsonObject>();
 
     for (Group &group : groups)
     {
@@ -286,7 +306,14 @@ void publish_setting_groups()
 
             if (item == nullptr)
             {
-                syslogf("mqtt nullptr: %s", String(param.name));
+                if (param.name)
+                {
+                    syslogf("mqtt nullptr: %s", param.name);
+                }
+                else
+                {
+                    syslogf("mqtt nullptr: [unnamed parameter]");
+                }
                 continue;
             }
 
@@ -307,15 +334,24 @@ void publish_setting_groups()
             }
             else
             {
-                syslogf("mqtt ERROR: Could not find preferences for %s", String(param.name));
+                if (param.name)
+                {
+                    syslogf("mqtt ERROR: Could not find preferences for %s", param.name);
+                }
+                else
+                {
+                    syslogf("mqtt ERROR: Could not find preferences for [unnamed parameter]");
+                }
             }
         }
     }
 
     // Serialize JSON object to string
     String output;
-    serializeJson(doc, output);
-    enqueueMessage((update_token + "/" + main_prefix + "all_groups").c_str(), output.c_str());
+    serializeJson(docsetting_groups, output);
+
+    String topic = update_token + "/" + main_prefix + "all_groups";
+    enqueueMessage(topic.c_str(), output.c_str());
     vTaskDelay(10);
 }
 
@@ -389,11 +425,11 @@ void onMqttMessageHA(char *topic, char *payload, AsyncMqttClientMessagePropertie
 {
     if (payload == nullptr)
     {
-        syslogf("mqtt onMqttMessageHA topic: %s null ", String(topic));
+        syslogf("mqtt onMqttMessageHA topic: %s null ", topic);
 
         return;
     }
-    syslogf("mqtt HA onMqttMessageHA topic: %s payload %s", String(topic), String(payload));
+    syslogf("mqtt HA onMqttMessageHA topic: %s payload %s", topic, payload);
 
     String message = String(payload).substring(0, len);
 
@@ -420,8 +456,13 @@ void onMqttMessageHA(char *topic, char *payload, AsyncMqttClientMessagePropertie
         for (int i = 0; i < group.numParams; i++)
         {
             Param &param = group.params[i];
-            String paramTopic = update_token + "/" + "set/" + String(param.name);
-            if (paramTopic == topic)
+
+            // Format the parameter topic using snprintf
+            const size_t topicSize = update_token.length() + 1 + strlen("set/") + strlen(param.name) + 1;
+            char paramTopic[topicSize];
+            snprintf(paramTopic, topicSize, "%s/set/%s", update_token.c_str(), param.name);
+
+            if (strcmp(paramTopic, topic) == 0)
             {
                 if (updatePreference(param.name, message, "usual"))
                 {
@@ -432,5 +473,5 @@ void onMqttMessageHA(char *topic, char *payload, AsyncMqttClientMessagePropertie
     }
 
     // Если сообщение не обработано
-    syslogf("mqtt HA Unknown topic: %s", String(topic));
+    syslogf("mqtt HA Unknown topic: %s", topic);
 }

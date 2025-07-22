@@ -1,6 +1,10 @@
 #include <map>
 #include <string>
 
+String message;
+StaticJsonDocument<512> jsonDoc;  // зарезервировать память
+StaticJsonDocument<4096> doc;
+
 // Map to store last update times for each parameter
 std::map<std::string, unsigned long> paramLastUpdate;
 // 5 seconds cooldown between parameter updates
@@ -8,7 +12,7 @@ const unsigned long PARAM_UPDATE_COOLDOWN = 5000;
 
 void publishVariablesListToMQTT()
 {
-    StaticJsonDocument<4096> doc;
+    doc.clear();
     JsonObject root = doc.to<JsonObject>();
 
     int arraySize =
@@ -22,7 +26,7 @@ void publishVariablesListToMQTT()
 
         if (item == nullptr)
         {
-            syslogf("ERROR: Preference item not found for key: %s", String(key));
+            syslogf("ERROR: Preference item not found for key: %s", key);
             continue;
         }
 
@@ -43,13 +47,13 @@ void publishVariablesListToMQTT()
                     root[key] = item->preferences->getBool(key.c_str(), *(bool *)item->variable);
                     break;
                 default:
-                    syslogf("ERROR: Unsupported data type for key: %s", String(key));
+                    syslogf("ERROR: Unsupported data type for key: %s", key);
                     break;
             }
         }
         else
         {
-            syslogf("ERROR: Preferences not found for key: %s", String(key));
+            syslogf("ERROR: Preferences not found for key: %s", key);
         }
     }
 
@@ -67,12 +71,15 @@ void publishVariablesListToMQTT()
 
 void subscribe()
 {
-    String mqttPrefixSet = update_token + "/" + "set/#";
-    String mqttPrefixtest = update_token + "/" + "test/#";
-    syslogf("mqtt subscribe mqttPrefixSet: %s", mqttPrefixSet);
-    syslogf("mqtt subscribe mqttPrefixSet: %s", mqttPrefixtest);
-    mqttClient.subscribe(mqttPrefixSet.c_str(), qos);  // Subscribing to topic with prefix
-    mqttClient.subscribe(mqttPrefixtest.c_str(), qos);
+    String topicSet = update_token + "/set/#";
+    String topicTest = update_token + "/test/#";
+
+    syslogf("mqtt subscribe mqttPrefixSet: %s", topicSet.c_str());
+    mqttClient.subscribe(topicSet.c_str(), qos);
+
+    syslogf("mqtt subscribe mqttPrefixTest: %s", topicTest.c_str());
+    mqttClient.subscribe(topicTest.c_str(), qos);
+
     syslogf("mqtt end subscribe");
 }
 
@@ -184,12 +191,20 @@ void onMqttConnect(bool sessionPresent)
     syslogf("mqtt onMqttConnect subscribed");
     if (first_time)
     {
-        String statusTopic = update_token + "/" + "status";
-        enqueueMessage(statusTopic.c_str(), "connected");
+        // Calculate required buffer size for status topic
+        const size_t max_topic_len = update_token.length() + 10;  // "/status" is 7 chars + some extra
+        char topic_buffer[max_topic_len];
+
+        // Format status topic
+        snprintf(topic_buffer, sizeof(topic_buffer), "%s/status", update_token.c_str());
+        enqueueMessage(topic_buffer, "connected");
+
         syslogf("Before publish_setting_groups ");
         publish_setting_groups();
+
         syslogf("Before publishVariablesListToMQTT ");
         publishVariablesListToMQTT();
+
         first_time = false;
         syslogf("After publishVariablesListToMQTT");
     }
@@ -199,16 +214,23 @@ void onMqttConnect(bool sessionPresent)
 void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index,
                    size_t total)
 {
-    String message;
-
-    StaticJsonDocument<512> jsonDoc;  // зарезервировать память
+    // Clear the message buffer and copy the payload
+    message = "";
     for (int i = 0; i < len; i++)
     {
         message += (char)payload[i];
     }
-    syslogf("mqttt: onMqttMessage %s msg: %s", String(topic), String(message));
 
-    if (strcmp(topic, (update_token + "/" + String("set/Управление/restart")).c_str()) == 0)
+    // Log the received message
+    syslogf("mqtt: onMqttMessage %s msg: %s", topic, message.c_str());
+
+    // Buffer for topic comparison
+    const size_t max_topic_len = 256;  // Should be enough for all topics
+    char topic_buffer[max_topic_len];
+
+    // Check for restart command
+    snprintf(topic_buffer, sizeof(topic_buffer), "%s/set/Управление/restart", update_token);
+    if (strcmp(topic, topic_buffer) == 0)
     {
         if (strcmp("1", message.c_str()) == 0)
         {
@@ -220,7 +242,9 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
         }
     }
 
-    if (strcmp(topic, (update_token + "/" + String("set/Управление/update")).c_str()) == 0)
+    // Check for update command
+    snprintf(topic_buffer, sizeof(topic_buffer), "%s/set/Управление/update", update_token);
+    if (strcmp(topic, topic_buffer) == 0)
     {
         if (strcmp("1", message.c_str()) == 0)
         {
@@ -232,7 +256,9 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
         }
     }
 
-    if (strcmp(topic, (update_token + "/" + String("set/Управление/preferences_clear")).c_str()) == 0)
+    // Check for preferences clear command
+    snprintf(topic_buffer, sizeof(topic_buffer), "%s/set/Управление/preferences_clear", update_token);
+    if (strcmp(topic, topic_buffer) == 0)
     {
         if (strcmp("1", message.c_str()) == 0)
         {
@@ -252,7 +278,9 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
         }
     }
 
-    if (strcmp(topic, (update_token + "/" + String("set/get_calibrate")).c_str()) == 0)
+    // Check for calibrate command
+    snprintf(topic_buffer, sizeof(topic_buffer), "%s/set/get_calibrate", update_token);
+    if (strcmp(topic, topic_buffer) == 0)
     {
         syslogf("mqtt calibrate_now calibrate_now %d", calibrate_now);
         if (calibrate_now == 0)
@@ -336,14 +364,17 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
         }
     }
 
-    if (strcmp(topic, (update_token + "/" + String("set/preferences/all")).c_str()) == 0)
+    // Check for preferences update command
+    snprintf(topic_buffer, sizeof(topic_buffer), "%s/set/preferences/all", update_token);
+    if (strcmp(topic, topic_buffer) == 0)
     {
         // Декодируем JSON из строки
+        jsonDoc.clear();
         DeserializationError error = deserializeJson(jsonDoc, message.c_str());
         syslogf("JSON mqtt preferences/all");
         if (error)
         {
-            syslogf("JSON decode failed: %s", String(error.c_str()));
+            syslogf("JSON decode failed: %s", error.c_str());
             return;
         }
 
@@ -365,7 +396,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
                             if (preferencesArray[i].preferences->putFloat(
                                     preferencesArray[i].key, jsonDoc[preferencesArray[i].key].as<float>()) == 0)
                             {
-                                syslogf("mqtt error save pref %s", String(preferencesArray[i].key));
+                                syslogf("mqtt error save pref %s", preferencesArray[i].key);
                             }
                         }
                         break;
@@ -378,7 +409,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
                             if (preferencesArray[i].preferences->putString(
                                     preferencesArray[i].key, jsonDoc[preferencesArray[i].key].as<const char *>()) == 0)
                             {
-                                syslogf("mqtt error save pref %s", String(preferencesArray[i].key));
+                                syslogf("mqtt error save pref %s", preferencesArray[i].key);
                             }
                         }
                         break;
@@ -390,7 +421,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
                             if (preferencesArray[i].preferences->putBool(
                                     preferencesArray[i].key, jsonDoc[preferencesArray[i].key].as<bool>()) == 0)
                             {
-                                syslogf("mqtt error save pref %s", String(preferencesArray[i].key));
+                                syslogf("mqtt error save pref %s", preferencesArray[i].key);
                             }
                         }
                         break;
@@ -402,7 +433,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
                             if (preferencesArray[i].preferences->putInt(
                                     preferencesArray[i].key, jsonDoc[preferencesArray[i].key].as<int>()) == 0)
                             {
-                                syslogf("mqtt error save pref %s", String(preferencesArray[i].key));
+                                syslogf("mqtt error save pref %s", preferencesArray[i].key);
                             }
                         }
                         break;
@@ -413,16 +444,45 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
 
     unsigned long currentTime = millis();
     bool found_update = false;
+    syslogf("MQTT: Processing MQTT message for topic: %s", topic);
     for (Group &group : groups)
     {
+        if (!group.caption)
+        {
+            syslogf("MQTT: Error: group.caption is null for group at index %d", &group - groups);
+            continue;
+        }
+        syslogf("MQTT: Checking group: %s", group.caption);
+
         for (int i = 0; i < group.numParams; i++)
         {
+            if (i < 0 || i >= group.numParams)
+            {
+                syslogf("MQTT: Error: Invalid param index %d in group %s", i, group.caption);
+                continue;
+            }
+
             Param &param = group.params[i];
-            String paramTopic = update_token + "/" + "set/" + String(group.caption) + "/" + String(param.name);
-            if (paramTopic == topic)
+            syslogf("MQTT: Checking param %d: %s in group %s", i, param.name ? param.name : "[null]", group.caption);
+
+            // Skip if param.name is null or empty
+            if (!param.name || strlen(param.name) == 0)
+            {
+                syslogf("MQTT: Warning: Invalid parameter name at index %d in group %s", i, group.caption);
+                continue;
+            }
+
+            // Build parameter topic using snprintf
+            const char *token = update_token.c_str();
+            const size_t max_param_topic_len =
+                strlen(token) + strlen("/set/") + strlen(group.caption) + strlen("/") + strlen(param.name) + 1;
+            char param_topic[max_param_topic_len];
+            snprintf(param_topic, sizeof(param_topic), "%s/set/%s/%s", token, group.caption, param.name);
+
+            if (strcmp(param_topic, topic) == 0)
             {
                 found_update = true;
-                syslogf("MQTT: Update  found %s %s", String(param.name), String(message));
+                syslogf("MQTT: Update  found %s %s", param.name, message);
 
                 std::string paramKey(param.name);
 
@@ -435,13 +495,13 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
 
                     if (updatePreference(param.name, message, "ha"))
                     {
-                        syslogf("MQTT: updatePreference  %s %s", String(param.name), String(message));
+                        syslogf("MQTT: updatePreference  %s %s", param.name, message);
                         return;
                     }
                 }
                 else
                 {
-                    syslogf("MQTT: Update ignored for %s, cooldown active. Wait %f s", String(param.name),
+                    syslogf("MQTT: Update ignored for %s, cooldown active. Wait %f s", param.name,
                             (PARAM_UPDATE_COOLDOWN - (currentTime - paramLastUpdate[paramKey])) / 1000.0);
                 }
             }
@@ -449,17 +509,20 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
     }
     if (!found_update)
     {
-        syslogf("MQTT: Update not found %s", String(message));
+        syslogf("MQTT: Update not found %s", message);
     }
 }
+
 void publish_params_all(int all = 1)
 {
+    // Publish uptime
     publish_parameter("uptime", millis(), 0, 0);
 
     if (calE == 1)
     {
-        syslogf("publich calibtate params");
+        syslogf("publish calibrate params");
 
+        // Publish calibration parameters
         publish_parameter("RootTemp", RootTemp, 3, 0);
         publish_parameter("NTC_RAW", NTC_RAW, 3, 0);
 

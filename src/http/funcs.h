@@ -34,23 +34,23 @@ bool makeHttpRequest(String url, HTTPClient &http)
             resp = http.GET();
         }
 
-        syslogf("update: Response %s Retry %s http_begin %s resp %s UPDATE_URL %s", String(resp), String(retryCount),
-                String(http_begin), String(resp), String(UPDATE_URL));
+        syslogf("update: Response %d Retry %d http_begin %d resp %d UPDATE_URL %s", resp, retryCount, http_begin, resp,
+                UPDATE_URL);
         if (resp == 200)
         {
             return true;  // Successful connection
         }
         else
         {
-            syslogf("update:HTTP GET failed: resp %s error %s getSize %s", String(resp),
-                    String(http.errorToString(resp)), String(http.getSize()));
+            syslogf("update:HTTP GET failed: resp %d error %s getSize %d", resp, http.errorToString(resp),
+                    http.getSize());
         }
         retryCount++;
         http.end();
         vTaskDelay(50 / portTICK_PERIOD_MS);  // Delay between attempts
     }
 
-    syslogf("update: Failed to connect after %s retries", String(maxRetries));
+    syslogf("update: Failed to connect after %d retries", maxRetries);
     return false;  // Connection failed
 }
 
